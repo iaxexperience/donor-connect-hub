@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Heart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Link } from "react-router-dom";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -37,7 +38,9 @@ const Navbar = () => {
         </div>
 
         <div className="hidden md:flex items-center gap-3">
-          <Button variant="ghost" size="sm">Entrar</Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/login">Entrar</Link>
+          </Button>
           <Button size="sm">Cadastre-se</Button>
         </div>
 
@@ -70,7 +73,9 @@ const Navbar = () => {
                 </a>
               ))}
               <div className="flex gap-3 pt-2">
-                <Button variant="ghost" size="sm" className="flex-1">Entrar</Button>
+                <Button variant="ghost" size="sm" className="flex-1" asChild>
+                  <Link to="/login">Entrar</Link>
+                </Button>
                 <Button size="sm" className="flex-1">Cadastre-se</Button>
               </div>
             </div>
