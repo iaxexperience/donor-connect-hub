@@ -73,7 +73,9 @@ const Navbar = () => {
                 </a>
               ))}
               <div className="flex gap-3 pt-2">
-                <Button variant="ghost" size="sm" className="flex-1">Entrar</Button>
+                <Button variant="ghost" size="sm" className="flex-1" asChild>
+                  <Link to="/login">Entrar</Link>
+                </Button>
                 <Button size="sm" className="flex-1">Cadastre-se</Button>
               </div>
             </div>
