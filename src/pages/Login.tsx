@@ -12,19 +12,16 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Placeholder — will connect to Lovable Cloud auth
+    // Placeholder — navigate to dashboard for now
     setTimeout(() => {
       setLoading(false);
-      toast({
-        title: "Backend não configurado",
-        description: "Habilite o Lovable Cloud para ativar autenticação.",
-        variant: "destructive",
-      });
-    }, 800);
+      navigate("/dashboard");
+    }, 600);
   };
 
   return (
