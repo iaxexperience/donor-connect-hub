@@ -7,6 +7,12 @@ import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
 import Register from "./pages/Register.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
+import Doadores from "./pages/Doadores.tsx";
+import Campanhas from "./pages/Campanhas.tsx";
+import Telemarketing from "./pages/Telemarketing.tsx";
+import Usuarios from "./pages/Usuarios.tsx";
+import Relatorios from "./pages/Relatorios.tsx";
+import Configuracoes from "./pages/Configuracoes.tsx";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
