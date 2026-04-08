@@ -34,6 +34,7 @@ const mainItems = [
 ];
 
 const configItems = [
+  { title: "Integrações", url: "/dashboard/integracoes", icon: MessageSquare },
   { title: "Configurações", url: "/dashboard/configuracoes", icon: Settings },
 ];
 
