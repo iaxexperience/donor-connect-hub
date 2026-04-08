@@ -13,6 +13,7 @@ import Telemarketing from "./pages/Telemarketing.tsx";
 import Usuarios from "./pages/Usuarios.tsx";
 import Relatorios from "./pages/Relatorios.tsx";
 import Configuracoes from "./pages/Configuracoes.tsx";
+import Integracoes from "./pages/Integracoes.tsx";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="usuarios" element={<Usuarios />} />
             <Route path="relatorios" element={<Relatorios />} />
             <Route path="configuracoes" element={<Configuracoes />} />
+            <Route path="integracoes" element={<Integracoes />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
