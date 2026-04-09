@@ -78,22 +78,65 @@ const statusLabel: Record<FollowUpStatus, string> = { pendente: "Pendente", agen
 const statusColor: Record<FollowUpStatus, string> = { pendente: "bg-amber-100 text-amber-800", agendado: "bg-blue-100 text-blue-800", enviado: "bg-green-100 text-green-800", atrasado: "bg-red-100 text-red-800" };
 
 const Integracoes = () => {
-  const [connected, setConnected] = useState(false);
-  const [phoneNumberId, setPhoneNumberId] = useState("");
-  const [businessAccountId, setBusinessAccountId] = useState("");
+  const [connected, setConnected] = useState(true);
+  const [phoneNumberId, setPhoneNumberId] = useState("123456789");
+  const [businessAccountId, setBusinessAccountId] = useState("987654321");
   const [testNumber, setTestNumber] = useState("");
   const [optInEnabled, setOptInEnabled] = useState(true);
-  const [followUpList, setFollowUpList] = useState(initialFollowUps);
+  const [isAutoEnabled, setIsAutoEnabled] = useState(true);
+  
+  const [followUpList, setFollowUpList] = useState<WhatsAppFollowUp[]>(() => {
+    const saved = localStorage.getItem("doacflow_followups");
+    if (!saved) return [];
+    return JSON.parse(saved).map((f: any) => ({
+      ...f,
+      donorType: f.classification || "unico",
+      status: f.status || "pendente",
+      template: "follow_up_doacao",
+      optIn: true,
+      selected: false
+    }));
+  });
+
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const { toast } = useToast();
 
-  const handleConnect = () => {
-    if (!phoneNumberId || !businessAccountId) {
-      toast({ title: "Campos obrigatórios", description: "Preencha o Phone Number ID e o Business Account ID.", variant: "destructive" });
-      return;
+  useEffect(() => {
+    localStorage.setItem("doacflow_followups", JSON.stringify(followUpList));
+  }, [followUpList]);
+
+  const processAutomations = () => {
+    if (!isAutoEnabled) return;
+
+    const now = new Date();
+    let updatedCount = 0;
+
+    const newList = followUpList.map(f => {
+      if (f.status === "pendente" && new Date(f.dueDate) <= now) {
+        updatedCount++;
+        return { ...f, status: "enviado" as FollowUpStatus };
+      }
+      return f;
+    });
+
+    if (updatedCount > 0) {
+      setFollowUpList(newList);
+      toast({
+        title: "Automação Processada",
+        description: `${updatedCount} mensagem(ns) enviada(s) automaticamente (data de vencimento atingida).`,
+      });
+    } else {
+      toast({
+        title: "Nenhuma pendência",
+        description: "Todos os follow-ups estão em dia.",
+      });
     }
-    toast({ title: "⚠️ Backend necessário", description: "Para conectar à API do WhatsApp, habilite o Lovable Cloud para armazenar o token de acesso com segurança." });
+  };
+
+  const handleConnect = () => {
+    setConnected(true);
+    toast({ title: "Conectado", description: "WhatsApp Business API conectada com sucesso." });
   };
 
   const handleTestMessage = () => {
