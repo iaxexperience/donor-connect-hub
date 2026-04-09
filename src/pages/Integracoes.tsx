@@ -86,7 +86,7 @@ const Integracoes = () => {
   const [isAutoEnabled, setIsAutoEnabled] = useState(true);
   
   const [followUpList, setFollowUpList] = useState<WhatsAppFollowUp[]>(() => {
-    const saved = localStorage.getItem("doacflow_followups");
+    const saved = localStorage.getItem("FAP Pulse_followups");
     if (!saved) return [];
     return JSON.parse(saved).map((f: any) => ({
       ...f,
@@ -103,7 +103,7 @@ const Integracoes = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    localStorage.setItem("doacflow_followups", JSON.stringify(followUpList));
+    localStorage.setItem("FAP Pulse_followups", JSON.stringify(followUpList));
   }, [followUpList]);
 
   const processAutomations = () => {
@@ -432,7 +432,7 @@ const Integracoes = () => {
               </div>
               <div className="space-y-2">
                 <Label>Webhook Verify Token</Label>
-                <Input readOnly value="doacflow_webhook_verify_2026" className="font-mono text-sm bg-muted" />
+                <Input readOnly value="FAP Pulse_webhook_verify_2026" className="font-mono text-sm bg-muted" />
                 <p className="text-xs text-muted-foreground">Use este token ao configurar o webhook no painel da Meta.</p>
               </div>
               <Button onClick={handleConnect} className="w-full sm:w-auto">
@@ -493,7 +493,7 @@ const Integracoes = () => {
               </div>
               <div className="space-y-2">
                 <Label>Mensagem (template hello_world)</Label>
-                <Textarea readOnly value="Olá! Esta é uma mensagem de teste do DoacFlow via WhatsApp Business API. 🎉" className="bg-muted resize-none" rows={3} />
+                <Textarea readOnly value="Olá! Esta é uma mensagem de teste do FAP Pulse via WhatsApp Business API. 🎉" className="bg-muted resize-none" rows={3} />
               </div>
               <Button onClick={handleTestMessage} variant="outline">
                 <Send className="w-4 h-4 mr-2" /> Enviar Mensagem de Teste

@@ -41,7 +41,7 @@ const Login = () => {
             <Heart className="w-8 h-8 text-accent" />
           </div>
           <h2 className="font-heading font-bold text-3xl text-primary-foreground mb-4">
-            DoacFlow
+            FAP Pulse
           </h2>
           <p className="text-primary-foreground/70 leading-relaxed">
             Gerencie doadores, automatize follow-ups e maximize suas campanhas de arrecadação com inteligência.
@@ -69,7 +69,7 @@ const Login = () => {
             <div className="w-9 h-9 rounded-lg bg-gradient-hero flex items-center justify-center">
               <Heart className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="font-heading font-bold text-xl text-foreground">DoacFlow</span>
+            <span className="font-heading font-bold text-xl text-foreground">FAP Pulse</span>
           </div>
 
           <h1 className="font-heading font-bold text-2xl text-foreground mb-1">
