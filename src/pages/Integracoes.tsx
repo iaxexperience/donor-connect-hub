@@ -198,6 +198,10 @@ const Integracoes = () => {
       <Tabs defaultValue="followups" className="space-y-4">
         <TabsList className="flex-wrap">
           <TabsTrigger value="followups">Follow-ups WhatsApp</TabsTrigger>
+          <div className="flex items-center gap-2 ml-auto px-2 border-l border-r mx-2">
+            <span className="text-[10px] font-medium uppercase text-muted-foreground">Automação</span>
+            <Switch checked={isAutoEnabled} onCheckedChange={setIsAutoEnabled} />
+          </div>
           <TabsTrigger value="config">Configuração</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="envio">Envio de Teste</TabsTrigger>
@@ -233,7 +237,15 @@ const Integracoes = () => {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-foreground">Taxa de Envio de Follow-ups</span>
-                <span className="text-sm font-bold text-primary">{completionRate}%</span>
+                <div className="flex items-center gap-3">
+                  {isAutoEnabled && (
+                    <Button variant="outline" size="sm" onClick={processAutomations} className="h-7 text-xs">
+                      <Clock className="w-3 h-3 mr-1" />
+                      Processar Pendências
+                    </Button>
+                  )}
+                  <span className="text-sm font-bold text-primary">{completionRate}%</span>
+                </div>
               </div>
               <Progress value={completionRate} className="h-2" />
             </CardContent>
