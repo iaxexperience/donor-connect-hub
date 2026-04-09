@@ -14,6 +14,7 @@ import Usuarios from "./pages/Usuarios.tsx";
 import Relatorios from "./pages/Relatorios.tsx";
 import Configuracoes from "./pages/Configuracoes.tsx";
 import Integracoes from "./pages/Integracoes.tsx";
+import FollowUps from "./pages/FollowUps.tsx";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="doadores" element={<Doadores />} />
             <Route path="campanhas" element={<Campanhas />} />
             <Route path="telemarketing" element={<Telemarketing />} />
+            <Route path="followups" element={<FollowUps />} />
             <Route path="usuarios" element={<Usuarios />} />
             <Route path="relatorios" element={<Relatorios />} />
             <Route path="configuracoes" element={<Configuracoes />} />
