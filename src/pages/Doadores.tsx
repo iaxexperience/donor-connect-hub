@@ -1,4 +1,5 @@
-import { Heart, Search, Plus, Filter } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Heart, Search, Plus, Filter, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -10,25 +11,110 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { Donor, processNewDonation } from "@/lib/donationService";
 
-const mockDonors = [
-  { id: 1, name: "Maria Silva", email: "maria@email.com", phone: "(11) 99999-0001", type: "Recorrente", total: "R$ 4.500,00", lastDonation: "02/04/2026" },
-  { id: 2, name: "João Santos", email: "joao@email.com", phone: "(21) 98888-0002", type: "Esporádico", total: "R$ 1.200,00", lastDonation: "15/03/2026" },
-  { id: 3, name: "Ana Oliveira", email: "ana@email.com", phone: "(31) 97777-0003", type: "Único", total: "R$ 300,00", lastDonation: "10/01/2026" },
-  { id: 4, name: "Carlos Souza", email: "carlos@email.com", phone: "(41) 96666-0004", type: "Recorrente", total: "R$ 8.900,00", lastDonation: "05/04/2026" },
-  { id: 5, name: "Beatriz Lima", email: "beatriz@email.com", phone: "(51) 95555-0005", type: "Esporádico", total: "R$ 750,00", lastDonation: "28/02/2026" },
+const INITIAL_DONORS: Donor[] = [
+  { id: 1, name: "Maria Silva", email: "maria@email.com", phone: "(11) 99999-0001", type: "recorrente", totalDonated: 4500.00, lastDonationDate: new Date("2026-04-02"), donationCount: 12, donations: [] },
+  { id: 2, name: "João Santos", email: "joao@email.com", phone: "(21) 98888-0002", type: "esporadico", totalDonated: 1200.00, lastDonationDate: new Date("2026-03-15"), donationCount: 3, donations: [] },
+  { id: 3, name: "Ana Oliveira", email: "ana@email.com", phone: "(31) 97777-0003", type: "unico", totalDonated: 300.00, lastDonationDate: new Date("2026-01-10"), donationCount: 1, donations: [] },
+  { id: 4, name: "Carlos Souza", email: "carlos@email.com", phone: "(41) 96666-0004", type: "recorrente", totalDonated: 8900.00, lastDonationDate: new Date("2026-04-05"), donationCount: 15, donations: [] },
+  { id: 5, name: "Beatriz Lima", email: "beatriz@email.com", phone: "(51) 95555-0005", type: "esporadico", totalDonated: 750.00, lastDonationDate: new Date("2026-02-28"), donationCount: 2, donations: [] },
 ];
 
 const typeBadgeVariant = (type: string) => {
   switch (type) {
-    case "Recorrente": return "default";
-    case "Esporádico": return "secondary";
-    case "Único": return "outline";
+    case "recorrente": return "default";
+    case "esporadico": return "secondary";
+    case "unico": return "outline";
     default: return "outline";
   }
 };
 
+const typeLabel = (type: string) => {
+  switch (type) {
+    case "recorrente": return "Recorrente";
+    case "esporadico": return "Esporádico";
+    case "unico": return "Único";
+    default: return type;
+  }
+};
+
 const Doadores = () => {
+  const [donors, setDonors] = useState<Donor[]>(() => {
+    const saved = localStorage.getItem("doacflow_donors");
+    return saved ? JSON.parse(saved).map((d: any) => ({ ...d, lastDonationDate: new Date(d.lastDonationDate) })) : INITIAL_DONORS;
+  });
+  
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedDonorId, setSelectedDonorId] = useState<string>("");
+  const [donationAmount, setDonationAmount] = useState<string>("");
+  const [campaign, setCampaign] = useState("Natal Solidário");
+  const { toast } = useToast();
+
+  useEffect(() => {
+    localStorage.setItem("doacflow_donors", JSON.stringify(donors));
+  }, [donors]);
+
+  const handleRegisterDonation = () => {
+    if (!selectedDonorId || !donationAmount) {
+      toast({ title: "Erro", description: "Selecione um doador e informe o valor.", variant: "destructive" });
+      return;
+    }
+
+    const donorIndex = donors.findIndex(d => d.id === parseInt(selectedDonorId));
+    if (donorIndex === -1) return;
+
+    const { updatedDonor, nextFollowUp } = processNewDonation(
+      donors[donorIndex],
+      parseFloat(donationAmount),
+      campaign
+    );
+
+    const newDonors = [...donors];
+    newDonors[donorIndex] = updatedDonor;
+    setDonors(newDonors);
+
+    // Save follow-up simulation
+    const followUps = JSON.parse(localStorage.getItem("doacflow_followups") || "[]");
+    followUps.push({
+      id: Date.now(),
+      donorId: updatedDonor.id,
+      donorName: updatedDonor.name,
+      phone: updatedDonor.phone,
+      classification: updatedDonor.type,
+      dueDate: nextFollowUp,
+      status: "pendente",
+      campaign: campaign
+    });
+    localStorage.setItem("doacflow_followups", JSON.stringify(followUps));
+
+    toast({
+      title: "Doação Registrada!",
+      description: `Doador agora é ${typeLabel(updatedDonor.type)}. Próximo follow-up em ${nextFollowUp.toLocaleDateString("pt-BR")}.`,
+    });
+
+    setIsDialogOpen(false);
+    setDonationAmount("");
+  };
+
+  const filteredDonors = donors.filter(d => 
+    d.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    d.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -36,16 +122,82 @@ const Doadores = () => {
           <h1 className="font-heading font-bold text-2xl text-foreground">Doadores</h1>
           <p className="text-muted-foreground text-sm">Gerencie sua base de doadores e acompanhe contribuições.</p>
         </div>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Novo Doador
-        </Button>
+        <div className="flex gap-2">
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="border-primary text-primary hover:bg-primary/5">
+                <Heart className="w-4 h-4 mr-2" />
+                Registrar Doação
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Registrar Nova Doação</DialogTitle>
+                <DialogDescription>
+                  O sistema atualizará automaticamente a classificação e agendará o follow-up.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <Label>Doador</Label>
+                  <Select onValueChange={setSelectedDonorId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um doador" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {donors.map(d => (
+                        <SelectItem key={d.id} value={d.id.toString()}>{d.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Valor (R$)</Label>
+                    <Input 
+                      type="number" 
+                      placeholder="0.00" 
+                      value={donationAmount} 
+                      onChange={(e) => setDonationAmount(e.target.value)} 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Campanha</Label>
+                    <Select defaultValue={campaign} onValueChange={setCampaign}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Natal Solidário">Natal Solidário</SelectItem>
+                        <SelectItem value="Educação para Todos">Educação para Todos</SelectItem>
+                        <SelectItem value="Reconstrução Sul">Reconstrução Sul</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+                <Button onClick={handleRegisterDonation}>Confirmar Doação</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Button>
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Doador
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Buscar doador..." className="pl-9" />
+          <Input 
+            placeholder="Buscar doador..." 
+            className="pl-9" 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
         <Button variant="outline" size="icon">
           <Filter className="w-4 h-4" />
@@ -65,16 +217,20 @@ const Doadores = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockDonors.map((donor) => (
+            {filteredDonors.map((donor) => (
               <TableRow key={donor.id}>
                 <TableCell className="font-medium">{donor.name}</TableCell>
                 <TableCell>{donor.email}</TableCell>
                 <TableCell>{donor.phone}</TableCell>
                 <TableCell>
-                  <Badge variant={typeBadgeVariant(donor.type) as any}>{donor.type}</Badge>
+                  <Badge variant={typeBadgeVariant(donor.type) as any}>
+                    {typeLabel(donor.type)}
+                  </Badge>
                 </TableCell>
-                <TableCell>{donor.total}</TableCell>
-                <TableCell>{donor.lastDonation}</TableCell>
+                <TableCell>
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(donor.totalDonated)}
+                </TableCell>
+                <TableCell>{donor.lastDonationDate.toLocaleDateString("pt-BR")}</TableCell>
               </TableRow>
             ))}
           </TableBody>
