@@ -3,6 +3,7 @@ import {
   Users,
   Megaphone,
   Phone,
+  CalendarClock,
   BarChart3,
   Settings,
   LogOut,
@@ -29,6 +30,7 @@ const mainItems = [
   { title: "Doadores", url: "/dashboard/doadores", icon: Heart },
   { title: "Campanhas", url: "/dashboard/campanhas", icon: Megaphone },
   { title: "Telemarketing", url: "/dashboard/telemarketing", icon: Phone },
+  { title: "Follow-ups", url: "/dashboard/followups", icon: CalendarClock },
   { title: "Usuários", url: "/dashboard/usuarios", icon: Users },
   { title: "Relatórios", url: "/dashboard/relatorios", icon: BarChart3 },
 ];
