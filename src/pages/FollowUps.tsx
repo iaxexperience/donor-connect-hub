@@ -143,20 +143,34 @@ const channelIcon: Record<FollowUpChannel, typeof Phone> = {
 };
 
 const FollowUps = () => {
+  const [followUpList, setFollowUpList] = useState<FollowUp[]>(() => {
+    const saved = localStorage.getItem("doacflow_followups");
+    if (!saved) return [];
+    return JSON.parse(saved).map((f: any) => ({
+      ...f,
+      dueDate: new Date(f.dueDate).toISOString().split('T')[0],
+      // Map classification to donorType for the UI
+      donorType: f.classification || "unico",
+      lastDonation: f.lastDonation || new Date().toISOString().split('T')[0],
+      lastContact: f.lastContact || new Date().toISOString().split('T')[0],
+      channel: f.channel || "whatsapp"
+    }));
+  });
+
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedFollowUp, setSelectedFollowUp] = useState<FollowUp | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const filtered = followUps.filter((f) => {
+  const filtered = followUpList.filter((f) => {
     if (filterType !== "all" && f.donorType !== filterType) return false;
     if (filterStatus !== "all" && f.status !== filterStatus) return false;
     return true;
   });
 
-  const completionRate = Math.round(
-    (followUps.filter(f => f.status === "concluido").length / followUps.length) * 100
-  );
+  const completionRate = followUpList.length > 0 ? Math.round(
+    (followUpList.filter(f => f.status === "concluido").length / followUpList.length) * 100
+  ) : 0;
 
   return (
     <div className="space-y-6">
