@@ -22,7 +22,7 @@ const Navbar = () => {
           <div className="w-9 h-9 rounded-lg bg-gradient-hero flex items-center justify-center">
             <Heart className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="font-heading font-bold text-xl text-foreground">DoacFlow</span>
+          <span className="font-heading font-bold text-xl text-foreground">Pulse Doações</span>
         </a>
 
         <div className="hidden md:flex items-center gap-8">
@@ -41,7 +41,7 @@ const Navbar = () => {
           <Button variant="ghost" size="sm" asChild>
             <Link to="/login">Entrar</Link>
           </Button>
-          <Button size="sm">Cadastre-se</Button>
+          <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">Cadastre-se</Button>
         </div>
 
         <button
@@ -76,7 +76,7 @@ const Navbar = () => {
                 <Button variant="ghost" size="sm" className="flex-1" asChild>
                   <Link to="/login">Entrar</Link>
                 </Button>
-                <Button size="sm" className="flex-1">Cadastre-se</Button>
+                <Button size="sm" className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90">Cadastre-se</Button>
               </div>
             </div>
           </motion.div>
