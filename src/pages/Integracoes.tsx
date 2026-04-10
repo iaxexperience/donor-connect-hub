@@ -3,7 +3,7 @@ import {
   MessageSquare, CheckCircle2, AlertCircle, ExternalLink, Send, Users,
   FileText, Shield, CalendarClock, UserCheck, UserMinus, Clock,
   AlertTriangle, Phone, Settings2, Key, Globe, Database, CreditCard,
-  RefreshCw, History, Info
+  RefreshCw, History, Info, ChevronRight, Code, Copy, Zap, ListChecks
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,9 +27,17 @@ import {
 } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 type DonorType = "unico" | "esporadico" | "recorrente";
-type FollowUpStatus = "pendente" | "agendado" | "enviado" | "atrasado";
+type FollowUpStatus = "pendente" | "agendado" | "enviado" | "atrasado" | "entregue" | "lido" | "falha";
 
 interface WhatsAppFollowUp {
   id: number;
@@ -42,26 +50,30 @@ interface WhatsAppFollowUp {
   template: string;
   optIn: boolean;
   selected: boolean;
+  lastPayload?: string;
 }
 
-const templateExamples = [
+const templateRepository = [
   {
     name: "boas_vindas_doador",
     category: "MARKETING",
     status: "Aprovado",
     body: "Olá {{1}}! 🎉 Obrigado por sua doação de {{2}} para a campanha {{3}}. Sua generosidade faz a diferença!",
+    variables: ["NOME_DOADOR", "VALOR_ULTIMA_DOACAO", "ULTIMA_CAMPANHA"]
+  },
+  {
+    name: "agradecimento_doacao",
+    category: "MARKETING",
+    status: "Aprovado",
+    body: "Recebemos sua doação, {{1}}! 🙏 O valor de {{2}} já foi processado e ajudará muito. Obrigado!",
+    variables: ["NOME_DOADOR", "VALOR_ULTIMA_DOACAO"]
   },
   {
     name: "follow_up_doacao",
     category: "MARKETING",
     status: "Aprovado",
-    body: "Olá {{1}}, sentimos sua falta! Há {{2}} dias sua última contribuição impactou vidas. Que tal continuar fazendo a diferença?",
-  },
-  {
-    name: "lembrete_campanha",
-    category: "UTILITY",
-    status: "Pendente",
-    body: "Olá {{1}}, a campanha {{2}} está a {{3}} do encerramento. Faltam apenas {{4}} para atingir a meta!",
+    body: "Olá {{1}}, sentimos sua falta! Há {{2}} dias sua última contribuição de {{3}} impactou vidas. Que tal continuar?",
+    variables: ["NOME_DOADOR", "DIAS_DESDE_ULTIMA", "VALOR_ULTIMA_DOACAO"]
   },
 ];
 
@@ -75,18 +87,26 @@ const donorTypeStyle = (type: DonorType) => {
   }
 };
 
-const statusLabel: Record<FollowUpStatus, string> = { pendente: "Pendente", agendado: "Agendado", enviado: "Enviado", atrasado: "Atrasado" };
+const statusLabel: Record<FollowUpStatus, string> = { 
+  pendente: "Pendente", agendado: "Agendado", enviado: "Enviado", 
+  atrasado: "Atrasado", entregue: "Entregue", lido: "Lido", falha: "Falha" 
+};
 const statusStyle: Record<FollowUpStatus, string> = { 
   pendente: "bg-amber-100 text-amber-800", 
   agendado: "bg-blue-100 text-blue-800", 
-  enviado: "bg-green-100 text-green-800", 
-  atrasado: "bg-red-100 text-red-800" 
+  enviado: "bg-gray-100 text-gray-800", 
+  atrasado: "bg-red-100 text-red-800",
+  entregue: "bg-green-50 text-green-600",
+  lido: "bg-green-100 text-green-700 font-bold",
+  falha: "bg-red-500 text-white"
 };
 
 const Integracoes = () => {
   const [waConnected, setWaConnected] = useState(true);
   const [asaasConnected, setAsaasConnected] = useState(false);
   const [isAutoEnabled, setIsAutoEnabled] = useState(true);
+  const [wabaId, setWabaId] = useState("32910291920192");
+  const [phoneId, setPhoneId] = useState("425178224512901");
   const { toast } = useToast();
 
   const [followUpList, setFollowUpList] = useState<WhatsAppFollowUp[]>(() => {
@@ -97,7 +117,7 @@ const Integracoes = () => {
         ...f,
         donorType: f.classification || f.donorType || "unico",
         status: f.status || "pendente",
-        template: "follow_up_doacao",
+        template: f.template || "follow_up_doacao",
         optIn: true,
         selected: false
       }));
@@ -108,10 +128,38 @@ const Integracoes = () => {
   });
 
   const [filterStatus, setFilterStatus] = useState("all");
+  const [selectedPayload, setSelectedPayload] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem("doacflow_followups", JSON.stringify(followUpList));
   }, [followUpList]);
+
+  const generateMetaPayload = (f: WhatsAppFollowUp) => {
+    const template = templateRepository.find(t => t.name === f.template) || templateRepository[2];
+    
+    const payload = {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: f.phone.replace(/\D/g, ""),
+      type: "template",
+      template: {
+        name: template.name,
+        language: {
+          code: "pt_BR"
+        },
+        components: [
+          {
+            type: "body",
+            parameters: template.variables.map(v => ({
+              type: "text",
+              text: v === "NOME_DOADOR" ? f.donorName : v === "VALOR_ULTIMA_DOACAO" ? "R$ 150,00" : "Campanha Geral"
+            }))
+          }
+        ]
+      }
+    };
+    return JSON.stringify(payload, null, 2);
+  };
 
   const processAutomations = () => {
     if (!waConnected) {
@@ -125,7 +173,9 @@ const Integracoes = () => {
     const newList = followUpList.map(f => {
       if (f.status === "pendente" && new Date(f.dueDate) <= now) {
         updatedCount++;
-        return { ...f, status: "enviado" as FollowUpStatus };
+        const payload = generateMetaPayload(f);
+        // Simulate progressive delivery status
+        return { ...f, status: "enviado" as FollowUpStatus, lastPayload: payload };
       }
       return f;
     });
@@ -133,19 +183,24 @@ const Integracoes = () => {
     if (updatedCount > 0) {
       setFollowUpList(newList);
       toast({
-        title: "Disparo Automático Concluído",
-        description: `${updatedCount} doadores receberam mensagens de follow-up via WhatsApp.`,
+        title: "Automação Meta Cloud API",
+        description: `${updatedCount} payloads JSON gerados seguindo o padrão oficial v18.0.`,
       });
+      
+      // Simulate deliveded status after 2 seconds
+      setTimeout(() => {
+        setFollowUpList(prev => prev.map(f => f.status === "enviado" ? { ...f, status: "entregue" as FollowUpStatus } : f));
+      }, 2000);
     } else {
       toast({
         title: "Tudo em dia!",
-        description: "Não há disparos agendados para este momento.",
+        description: "A API da Meta já processou todos os agendamentos atuais.",
       });
     }
   };
 
   const completionRate = followUpList.length > 0 
-    ? Math.round((followUpList.filter((f) => f.status === "enviado").length / followUpList.length) * 100)
+    ? Math.round((followUpList.filter((f) => ["enviado", "entregue", "lido"].includes(f.status)).length / followUpList.length) * 100)
     : 0;
 
   const filteredFollowUps = followUpList.filter((f) => {
@@ -158,7 +213,7 @@ const Integracoes = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="font-heading font-bold text-3xl text-foreground">Hub de Integrações</h1>
-          <p className="text-muted-foreground">Gerencie a inteligência de comunicação e automações do FAP Pulse.</p>
+          <p className="text-muted-foreground">Central técnica compatível com WhatsApp Cloud API (Oficial).</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex flex-col items-end mr-2">
@@ -169,7 +224,7 @@ const Integracoes = () => {
                   <TooltipTrigger asChild>
                     <Badge variant="outline" className={`gap-1.5 border-none ${waConnected ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
                       <div className={`w-1.5 h-1.5 rounded-full ${waConnected ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
-                      WABA API
+                      META API
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent>WhatsApp Business Account</TooltipContent>
@@ -189,203 +244,297 @@ const Integracoes = () => {
           </div>
           <Separator orientation="vertical" className="h-10 mx-2" />
           <Button onClick={processAutomations} className="bg-primary shadow-glow hover:scale-105 transition-all">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Processar Agora
+            <Zap className="w-4 h-4 mr-2" />
+            Processar API
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Coluna Central - Automações */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="border-none shadow-soft overflow-hidden">
-            <CardHeader className="bg-muted/30 pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <MessageSquare className="w-5 h-5 text-primary" />
+        <div className="lg:col-span-3 space-y-6">
+          <Tabs defaultValue="automation" className="w-full">
+            <TabsList className="bg-muted/50 p-1 mb-6">
+              <TabsTrigger value="automation" className="gap-2"><RefreshCw className="w-4 h-4" /> Automação</TabsTrigger>
+              <TabsTrigger value="templates" className="gap-2"><ListChecks className="w-4 h-4" /> Gerenciador de Templates</TabsTrigger>
+              <TabsTrigger value="logs" className="gap-2"><History className="w-4 h-4" /> Logs Técnicos</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="automation" className="space-y-6">
+              <Card className="border-none shadow-soft overflow-hidden">
+                <CardHeader className="bg-muted/30 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                       <div className="p-2 rounded-lg bg-primary/10">
+                        <MessageSquare className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">Fila de Disparos Oficiais</CardTitle>
+                        <CardDescription>Mapeamento de variáveis {{1}} para campos de doadores.</CardDescription>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-lg">Automação de Follow-up WhatsApp</CardTitle>
-                    <CardDescription>Gestão proativa baseada na classificação de doadores.</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      { label: "Pendentes", count: followUpList.filter(f => f.status === "pendente").length, color: "border-amber-500 text-amber-600" },
+                      { label: "Entregues", count: followUpList.filter(f => f.status === "entregue").length, color: "border-green-500 text-green-600" },
+                      { label: "Abertos", count: followUpList.filter(f => f.status === "lido").length, color: "border-blue-500 text-blue-600" },
+                      { label: "Health", count: `${completionRate}%`, color: "border-primary text-primary" },
+                    ].map((stat) => (
+                      <div key={stat.label} className={`p-4 rounded-xl border-l-4 bg-muted/20 ${stat.color}`}>
+                        <p className="text-[10px] uppercase font-bold opacity-70 tracking-tighter">{stat.label}</p>
+                        <p className="text-xl font-black">{stat.count}</p>
+                      </div>
+                    ))}
                   </div>
-                </div>
-                <div className="flex items-center gap-2 bg-background p-1.5 rounded-full border shadow-sm">
-                  <span className="text-[10px] font-bold text-muted-foreground px-2 uppercase">Automação</span>
-                  <Switch checked={isAutoEnabled} onCheckedChange={setIsAutoEnabled} />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-6">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {[
-                  { label: "Pendentes", count: followUpList.filter(f => f.status === "pendente").length, color: "border-amber-500 text-amber-600" },
-                  { label: "Atrasados", count: followUpList.filter(f => f.status === "atrasado").length, color: "border-red-500 text-red-600" },
-                  { label: "Enviados", count: followUpList.filter(f => f.status === "enviado").length, color: "border-green-500 text-green-600" },
-                  { label: "Taxa", count: `${completionRate}%`, color: "border-primary text-primary" },
-                ].map((stat) => (
-                  <div key={stat.label} className={`p-4 rounded-xl border-l-4 bg-muted/20 ${stat.color}`}>
-                    <p className="text-[10px] uppercase font-bold opacity-70 tracking-tighter">{stat.label}</p>
-                    <p className="text-xl font-black">{stat.count}</p>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Fila de Execução</Label>
+                      <Select value={filterStatus} onValueChange={setFilterStatus}>
+                        <SelectTrigger className="w-[150px] h-8 text-xs">
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos os Status</SelectItem>
+                          <SelectItem value="pendente">Pendentes</SelectItem>
+                          <SelectItem value="entregue">Entregues</SelectItem>
+                          <SelectItem value="lido">Lidos (CTR)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <ScrollArea className="h-[350px] border rounded-xl bg-background/50">
+                      <Table>
+                        <TableHeader className="bg-muted/50 sticky top-0 z-10">
+                          <TableRow>
+                            <TableHead className="text-[10px] font-bold">Doador / Phone</TableHead>
+                            <TableHead className="text-[10px] font-bold">Template Meta</TableHead>
+                            <TableHead className="text-[10px] font-bold">Status API</TableHead>
+                            <TableHead className="text-[10px] font-bold text-right">Ações</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredFollowUps.length > 0 ? (
+                            filteredFollowUps.map((f) => (
+                              <TableRow key={f.id} className="hover:bg-muted/30">
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <div className={`w-2 h-2 rounded-full ${f.status === "entregue" || f.status === "lido" ? "bg-green-500" : "bg-amber-500"}`} />
+                                    <div>
+                                      <p className="text-sm font-semibold">{f.donorName}</p>
+                                      <p className="text-[10px] text-muted-foreground font-mono">{f.phone}</p>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex flex-col">
+                                    <Badge variant="outline" className="text-[9px] w-fit mb-1">{f.template}</Badge>
+                                    <span className="text-[9px] text-muted-foreground">Variables: {{1}}, {{2}}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className={`text-[9px] px-1.5 py-0 border-none ${statusStyle[f.status]}`}>
+                                    {statusLabel[f.status]}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Dialog>
+                                    <DialogTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedPayload(generateMetaPayload(f))}>
+                                        <Code className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[500px]">
+                                      <DialogHeader>
+                                        <DialogTitle className="flex items-center gap-2">
+                                          <Code className="w-5 h-5" /> Meta Cloud Payload Preview
+                                        </DialogTitle>
+                                        <DialogDescription>Este é o JSON que será enviado para o endpoint da Meta.</DialogDescription>
+                                      </DialogHeader>
+                                      <div className="relative mt-4 group">
+                                        <pre className="p-4 rounded-xl bg-slate-950 text-slate-50 text-[10px] overflow-auto max-h-[400px] scrollbar-thin scrollbar-thumb-slate-800">
+                                          {selectedPayload}
+                                        </pre>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          className="absolute top-2 right-2 text-slate-400 hover:text-white"
+                                          onClick={() => {
+                                            if (selectedPayload) navigator.clipboard.writeText(selectedPayload);
+                                            toast({ title: "Copiado", description: "Payload copiado para a área de transferência." });
+                                          }}
+                                        >
+                                          <Copy className="w-4 h-4" />
+                                        </Button>
+                                      </div>
+                                    </DialogContent>
+                                  </Dialog>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={4} className="h-32 text-center text-muted-foreground text-xs italic">
+                                Nenhum registro na fila de automação.
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </ScrollArea>
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="templates" className="space-y-6">
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {templateRepository.map((tpl) => (
+                  <Card key={tpl.name} className="border-none shadow-soft hover:shadow-md transition-shadow relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3">
+                      <Badge variant="secondary" className="bg-blue-50 text-blue-600 text-[10px] border-none">Oficial</Badge>
+                    </div>
+                    <CardHeader className="pb-2">
+                      <div className="p-2 rounded-lg bg-primary/10 w-fit mb-2">
+                        <FileText className="w-4 h-4 text-primary" />
+                      </div>
+                      <CardTitle className="text-sm font-bold truncate pr-10">{tpl.name}</CardTitle>
+                      <CardDescription className="text-[10px] uppercase font-bold tracking-wider">{tpl.category}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="p-3 rounded-lg bg-muted/40 border border-muted min-h-[80px]">
+                        <p className="text-[11px] leading-relaxed italic opacity-80">"{tpl.body}"</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-bold text-muted-foreground uppercase">Mapeamento de Variáveis</Label>
+                        <div className="space-y-1">
+                          {tpl.variables.map((v, i) => (
+                            <div key={v} className="flex items-center justify-between text-[10px] p-1.5 bg-background rounded border">
+                              <span className="font-mono text-primary font-bold">{{i+1}}</span>
+                              <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                              <span className="font-semibold">{v}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <Button variant="outline" className="w-full text-xs h-8 group-hover:bg-primary group-hover:text-white transition-colors">
+                        Sincronizar Meta
+                      </Button>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
+            </TabsContent>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Fila de Disparos</Label>
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger className="w-[150px] h-8 text-xs">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os Status</SelectItem>
-                      <SelectItem value="pendente">Pendentes</SelectItem>
-                      <SelectItem value="enviado">Enviados</SelectItem>
-                      <SelectItem value="atrasado">Atrasados</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <ScrollArea className="h-[350px] border rounded-xl bg-background/50">
-                  <Table>
-                    <TableHeader className="bg-muted/50 sticky top-0 z-10">
-                      <TableRow>
-                        <TableHead className="text-[10px] font-bold">Doador</TableHead>
-                        <TableHead className="text-[10px] font-bold">Classificação</TableHead>
-                        <TableHead className="text-[10px] font-bold">Data Alvo</TableHead>
-                        <TableHead className="text-[10px] font-bold text-right">Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredFollowUps.length > 0 ? (
-                        filteredFollowUps.map((f) => (
-                          <TableRow key={f.id} className="hover:bg-muted/30">
-                            <TableCell>
-                              <div>
-                                <p className="text-sm font-semibold">{f.donorName}</p>
-                                <p className="text-[10px] text-muted-foreground font-mono">{f.phone}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className={`text-[9px] font-bold px-1.5 py-0 border-none ${donorTypeStyle(f.donorType)}`}>
-                                {donorTypeLabel[f.donorType]}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-xs">
-                              {new Date(f.dueDate).toLocaleDateString("pt-BR")}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Badge className={`text-[9px] px-1.5 py-0 border-none ${statusStyle[f.status]}`}>
-                                {statusLabel[f.status]}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={4} className="h-32 text-center text-muted-foreground text-xs italic">
-                            Nenhum registro encontrado na fila.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-              </div>
-            </CardContent>
-          </Card>
+            <TabsContent value="logs" className="space-y-4">
+              <Card className="border-none shadow-soft">
+                <CardHeader>
+                  <CardTitle className="text-md">Eventos da API Cloud</CardTitle>
+                  <CardDescription>Eventos de Webhook recebidos da infraestrutura da Meta.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                   <ScrollArea className="h-[400px]">
+                    <div className="space-y-3">
+                      {[ 
+                        { time: "10:32:01", event: "message_status", status: "delivered", to: "5511998881234" },
+                        { time: "10:30:15", event: "template_approved", status: "agradecimento_doacao", to: "-" },
+                        { time: "09:45:22", event: "message_sent", status: "success", to: "5521987775678" },
+                        { time: "09:45:20", event: "webhook_verify", status: "verified", to: "Meta Server" },
+                      ].map((log, i) => (
+                        <div key={i} className="flex items-center gap-4 p-3 rounded-xl border border-muted/50 bg-muted/20">
+                          <div className="text-[10px] font-mono text-muted-foreground w-16">{log.time}</div>
+                          <div className="flex-1">
+                            <p className="text-xs font-bold uppercase tracking-tighter">{log.event}</p>
+                            <p className="text-[10px] text-muted-foreground">Destinatário: {log.to}</p>
+                          </div>
+                          <Badge variant="outline" className="text-[9px] uppercase font-bold">{log.status}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                   </ScrollArea>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
 
-        {/* Coluna Direita - Configurações Técnicas */}
+        {/* Coluna Direita - Configurações Oficiais */}
         <div className="space-y-6">
-          <Card className="border-none shadow-soft">
+          <Card className="border-none shadow-soft border-t-4 border-t-primary overflow-hidden">
             <CardHeader className="pb-3 border-b border-muted">
               <div className="flex items-center gap-2">
-                <Settings2 className="w-4 h-4 text-muted-foreground" />
-                <CardTitle className="text-md">Configurações Técnicas</CardTitle>
+                <Shield className="w-4 h-4 text-primary" />
+                <CardTitle className="text-md">Meta Developer Cloud</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              <Tabs defaultValue="waba" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-6 h-9">
-                  <TabsTrigger value="waba" className="text-xs">WhatsApp</TabsTrigger>
-                  <TabsTrigger value="asaas" className="text-xs">ASAAS</TabsTrigger>
-                </TabsList>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Phone Number ID</Label>
+                    <TooltipProvider><Tooltip><TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent>ID único do seu número na Meta</TooltipContent></Tooltip></TooltipProvider>
+                  </div>
+                  <Input className="h-9 text-xs font-mono" value={phoneId} onChange={(e) => setPhoneId(e.target.value)} />
+                </div>
+                
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">WABA ID</Label>
+                    <TooltipProvider><Tooltip><TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent>WhatsApp Business Account ID</TooltipContent></Tooltip></TooltipProvider>
+                  </div>
+                  <Input className="h-9 text-xs font-mono" value={wabaId} onChange={(e) => setWabaId(e.target.value)} />
+                </div>
 
-                <TabsContent value="waba" className="space-y-4">
-                  <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Phone Number ID</Label>
-                      <div className="relative">
-                        <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                        <Input className="pl-8 h-9 text-xs" placeholder="Ex: 123456789012345" defaultValue="425178224512901" />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Access Token (WABA)</Label>
-                      <div className="relative">
-                        <Key className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                        <Input type="password" className="pl-8 h-9 text-xs" defaultValue="EAAKlkj8921jkshdakj129837912jashdkjhaskjd" />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Webhook Verify Token</Label>
-                      <div className="flex gap-2">
-                        <Input className="h-9 text-[10px] font-mono bg-muted" readOnly value="FAP_PULSE_WEBHOOK_2026" />
-                        <Button variant="outline" size="icon" className="h-9 w-9">
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                    <Button className="w-full" variant={waConnected ? "outline" : "default"}>
-                      {waConnected ? "Conectado" : "Conectar API"}
+                <div className="space-y-1.5">
+                  <Label className="text-xs">System User Access Token</Label>
+                  <div className="relative">
+                    <Key className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                    <Input type="password" className="pl-8 h-9 text-xs" defaultValue="EAAKlkj8921jkshdakj129837912jashdkjhaskjd" />
+                  </div>
+                </div>
+
+                <Separator className="my-2" />
+
+                <div className="space-y-1.5 p-3 rounded-lg bg-slate-900 text-slate-100">
+                  <Label className="text-[10px] font-bold text-slate-400 uppercase">Webhook Endpoint URL</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Globe className="w-3 h-3 text-primary shrink-0" />
+                    <code className="text-[9px] break-all opacity-80">https://lovable.dev/api/v1/meta/webhook</code>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-500 hover:text-white shrink-0">
+                      <Copy className="w-3 h-3" />
                     </Button>
                   </div>
-                </TabsContent>
+                </div>
 
-                <TabsContent value="asaas" className="space-y-4">
-                  <div className="space-y-4">
-                    <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 dark:bg-blue-950/20 dark:border-blue-900/30">
-                      <div className="flex items-start gap-3">
-                        <CreditCard className="w-5 h-5 text-blue-600 mt-0.5" />
-                        <div>
-                          <p className="text-xs font-bold text-blue-900 dark:text-blue-200">Integração Financeira</p>
-                          <p className="text-[10px] text-blue-700 dark:text-blue-300">Conecte sua chave ASAAS para sincronizar recebimentos em tempo real.</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">API ACCESS TOKEN</Label>
-                      <div className="relative">
-                        <Shield className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                        <Input type="password" placeholder="Insira seu token ASAAS" className="pl-8 h-9 text-xs" />
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] p-2 bg-muted/50 rounded-lg">
-                      <span className="text-muted-foreground">Webhooks Ativos</span>
-                      <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none">Pendente</Badge>
-                    </div>
-                    <Button className="w-full" disabled={!asaasConnected}>Vincular Conta</Button>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Verify Token (Configuração na Meta)</Label>
+                  <Input className="h-8 text-[10px] font-mono bg-muted" readOnly value="FAP_PULSE_META_2026" />
+                </div>
+
+                <div className="flex items-center justify-between p-2 bg-green-50 border border-green-100 rounded-lg">
+                  <div className="flex items-center gap-2 text-green-700">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span className="text-[10px] font-bold uppercase">Status: Online</span>
                   </div>
-                </TabsContent>
-              </Tabs>
+                  <Badge variant="outline" className="text-[8px] bg-white text-green-700 border-green-200">v18.0</Badge>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-soft bg-gradient-to-br from-primary to-primary-foreground/20 text-primary-foreground">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <Globe className="w-4 h-4" />
-                Dica Técnica
-              </CardTitle>
+          <Card className="border-none shadow-soft bg-muted/30">
+            <CardHeader className="pb-2 flex flex-row items-center gap-2">
+              <Database className="w-4 h-4 text-muted-foreground" />
+              <CardTitle className="text-sm">Configuração ASAAS</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-[11px] leading-relaxed opacity-90">
-                A API Oficial da Meta exige que você use **Templates Aprovados** para disparar mensagens fora da janela de 24h do último contato do doador.
-              </p>
-              <Button variant="secondary" size="sm" className="w-full mt-4 h-8 text-xs font-bold text-primary">
-                Gerenciar Templates
-              </Button>
+               <div className="space-y-3">
+                 <p className="text-[10px] text-muted-foreground">Integração financeira para sincronismo automático de doações confirmadas.</p>
+                 <Input type="password" placeholder="API Access Token" className="h-8 text-xs font-mono" />
+                 <Button className="w-full text-xs h-8" variant="outline">Testar Conexão</Button>
+               </div>
             </CardContent>
           </Card>
         </div>
