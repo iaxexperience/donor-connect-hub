@@ -6,16 +6,9 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function test() {
-  const { data, error } = await supabase.from('campaigns').insert([{
-    name: "Test Campaign",
-    goal_amount: 1000,
-    end_date: "2026-12-31",
-    description: "Test",
-    is_active: true
-  }]).select().single();
-  
-  console.log("DATA:", data);
-  console.log("ERROR:", error);
+  const { data, error } = await supabase.from('campaigns').select('*');
+  console.log("FETCH DATA:", data);
+  console.log("FETCH ERROR:", error);
 }
 
 test();
