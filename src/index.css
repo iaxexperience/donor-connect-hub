@@ -46,6 +46,11 @@
     --shadow-elevated: 0 12px 40px -8px hsl(222 47% 11% / 0.12);
     --shadow-glow: 0 0 40px -10px hsl(214 100% 50% / 0.25);
 
+    --glass-bg: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-blur: 12px;
+  }
+
     --sidebar-background: 214 100% 50%;
     --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 0 0% 100%;
@@ -130,5 +135,37 @@
   }
   .shadow-glow {
     box-shadow: var(--shadow-glow);
+  }
+
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+  }
+
+  .mesh-gradient {
+    background-color: hsla(214, 100%, 50%, 1);
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(214, 100%, 50%, 1) 0%, transparent 50%),
+      radial-gradient(at 50% 0%, hsla(220, 100%, 40%, 1) 0%, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(214, 100%, 60%, 1) 0%, transparent 50%);
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.05); }
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 4s ease-in-out infinite;
   }
 }
