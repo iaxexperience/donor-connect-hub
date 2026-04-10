@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,8 +17,9 @@ import { ArrowLeft, User, Phone, MapPin, CheckCircle2, Loader2, CreditCard } fro
 import { useToast } from "@/hooks/use-toast";
 
 const DonorForm = () => {
-  const navigate = useNavigate();
-  const { registerNewDonor, isRegistering } = useDonors();
+  const { id } = useParams();
+  const isEditMode = !!id;
+  const { registerNewDonor, updateDonor, donors, isRegistering } = useDonors();
   const { toast } = useToast();
   
   const [formData, setFormData] = useState({
@@ -38,6 +39,29 @@ const DonorForm = () => {
   });
 
   const [loadingCep, setLoadingCep] = useState(false);
+
+  useEffect(() => {
+    if (isEditMode && donors.length > 0) {
+      const donor = donors.find(d => d.id === parseInt(id));
+      if (donor) {
+        setFormData({
+          name: donor.name,
+          email: donor.email,
+          phone: donor.phone,
+          type: donor.type,
+          cpf_cnpj: donor.document_id || "",
+          birth_date: donor.birth_date || "",
+          zip_code: donor.zip_code || "",
+          address: donor.address || "",
+          address_number: donor.address_number || "",
+          complement: donor.complement || "",
+          neighborhood: donor.neighborhood || "",
+          city: donor.city || "",
+          state: donor.state || ""
+        });
+      }
+    }
+  }, [isEditMode, id, donors]);
 
   const formatPhone = (value: string) => {
     const digits = value.replace(/\D/g, "").slice(0, 11);
@@ -98,18 +122,25 @@ const DonorForm = () => {
     }
 
     try {
-      await registerNewDonor(formData as any);
-      
-      toast({
-        title: "Sucesso!",
-        description: "Doador cadastrado com sucesso.",
-      });
+      if (isEditMode) {
+        await updateDonor(parseInt(id), formData);
+        toast({
+          title: "Sucesso!",
+          description: "Doador atualizado com sucesso.",
+        });
+      } else {
+        await registerNewDonor(formData as any);
+        toast({
+          title: "Sucesso!",
+          description: "Doador cadastrado com sucesso.",
+        });
+      }
       
       navigate("/dashboard/doadores");
     } catch (error) {
-      console.error("Erro ao cadastrar:", error);
+      console.error("Erro ao salvar:", error);
       toast({
-        title: "Erro ao Cadastrar",
+        title: "Erro ao Salvar",
         description: "Ocorreu um erro ao salvar o doador no banco de dados.",
         variant: "destructive"
       });
@@ -128,8 +159,14 @@ const DonorForm = () => {
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h1 className="font-heading font-bold text-2xl text-foreground">Novo Doador</h1>
-          <p className="text-muted-foreground text-sm">Preencha os dados para registrar um novo doador no sistema.</p>
+          <h1 className="font-heading font-bold text-2xl text-foreground">
+            {isEditMode ? "Editar Doador" : "Novo Doador"}
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            {isEditMode 
+              ? "Atualize as informações do doador no sistema." 
+              : "Preencha os dados para registrar um novo doador no sistema."}
+          </p>
         </div>
       </div>
 
@@ -342,7 +379,7 @@ const DonorForm = () => {
             ) : (
               <>
                 <CheckCircle2 className="w-4 h-4 mr-2" />
-                Confirmar Cadastro
+                {isEditMode ? "Salvar Alterações" : "Confirmar Cadastro"}
               </>
             )}
           </Button>

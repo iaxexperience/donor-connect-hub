@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getDonors, registerDonation, updateDonorType, Donor, DonorType } from "@/lib/donationService";
+import { getDonors, registerDonation, updateDonorType, updateDonor, Donor, DonorType } from "@/lib/donationService";
 import { supabase } from "@/integrations/supabase/client";
 
 export const useDonors = () => {
@@ -47,6 +47,16 @@ export const useDonors = () => {
     },
   });
 
+  // Mutation to update an existing donor
+  const updateDonorMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number, data: Partial<Donor> }) => {
+      return await updateDonor(id, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['donors'] });
+    },
+  });
+
   const addDonation = (donorId: number, amount: number, campaignId?: string) => {
     return donationMutation.mutate({ donorId, amount, campaignId });
   };
@@ -65,6 +75,18 @@ export const useDonors = () => {
     });
   };
 
+  const handleUpdateDonor = async (id: number, donorData: any) => {
+    const { cpf_cnpj, ...rest } = donorData;
+    return await updateDonorMutation.mutateAsync({ 
+      id, 
+      data: {
+        ...rest,
+        document_id: cpf_cnpj,
+        phone: donorData.phone?.replace(/\D/g, "")
+      } 
+    });
+  };
+
   const updateType = (donorId: number, newType: DonorType) => {
     return updateTypeMutation.mutate({ donorId, newType });
   };
@@ -75,8 +97,8 @@ export const useDonors = () => {
     error,
     addDonation,
     registerNewDonor,
+    updateDonor: handleUpdateDonor,
     updateType,
-    isRegistering: donationMutation.isPending || addDonorMutation.isPending || updateTypeMutation.isPending,
+    isRegistering: donationMutation.isPending || addDonorMutation.isPending || updateTypeMutation.isPending || updateDonorMutation.isPending,
   };
 };
-

@@ -38,6 +38,7 @@ const App = () => (
             <Route index element={<Dashboard />} />
             <Route path="doadores" element={<Doadores />} />
             <Route path="doadores/novo" element={<DonorForm />} />
+            <Route path="doadores/editar/:id" element={<DonorForm />} />
             <Route path="kanbam" element={<Pipeline />} />
             <Route path="campanhas" element={<Campanhas />} />
             <Route path="telemarketing" element={<Telemarketing />} />

@@ -1,4 +1,5 @@
 import { Donor, typeLabel, DonorType } from "@/lib/donationService";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ const typeBadgeStyle = (type: string) => {
 };
 
 export const KanbanCard = ({ donor, onMove }: KanbanCardProps) => {
+  const navigate = useNavigate();
   const getNextTypes = (currentType: DonorType): DonorType[] => {
     if (currentType === "lead") return ["unico", "esporadico", "recorrente"];
     if (currentType !== "desativado") return ["desativado"];
@@ -75,6 +77,12 @@ export const KanbanCard = ({ donor, onMove }: KanbanCardProps) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem 
+                  className="text-xs"
+                  onClick={() => navigate(`/dashboard/doadores/editar/${donor.id}`)}
+                >
+                  Editar Doador
+                </DropdownMenuItem>
                 <DropdownMenuItem className="text-xs">Ver Detalhes</DropdownMenuItem>
                 <DropdownMenuItem className="text-xs">Registrar Doação</DropdownMenuItem>
                 {nextTypes.map((type) => (
