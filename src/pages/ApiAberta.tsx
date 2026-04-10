@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+import { useNavigate } from "react-router-dom";
 
 const API_BASE_URL = "https://api.donorconnect.hub/v1";
 
@@ -58,6 +59,7 @@ const ENDPOINTS = [
 
 const ApiAberta = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [apiKey, setApiKey] = useState("pk_live_51NwX...");
   const [showKey, setShowKey] = useState(false);
 
@@ -83,7 +85,7 @@ const ApiAberta = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => navigate("/dashboard/api-documentacao")}>
             <BookOpen className="w-4 h-4" />
             Documentação Completa
           </Button>
