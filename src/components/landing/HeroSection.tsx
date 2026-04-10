@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import {
   Users, MessageCircle, BarChart3, Kanban,
-  Brain, Webhook, Shield, Zap, ArrowRight,
+  Brain, Webhook, Shield, Zap, ArrowRight, TrendingUp,
 } from "lucide-react";
 
 const HeroSection = () => {
@@ -122,27 +122,5 @@ const HeroSection = () => {
     </section>
   );
 };
-
-const FloatingCard = ({
-  icon,
-  title,
-  desc,
-  delay,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-  delay: number;
-}) => (
-  <motion.div
-    animate={{ y: [0, -6, 0] }}
-    transition={{ duration: 4, repeat: Infinity, delay: delay * 0.5 }}
-    className="bg-card/20 backdrop-blur-md rounded-xl border border-primary-foreground/10 p-4"
-  >
-    <div className="mb-2">{icon}</div>
-    <p className="font-heading font-semibold text-sm text-primary-foreground">{title}</p>
-    <p className="text-xs text-primary-foreground/60">{desc}</p>
-  </motion.div>
-);
 
 export default HeroSection;
