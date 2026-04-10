@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { Plus, Search, Target, Calendar, DollarSign, FileText } from "lucide-react";
+import { Plus, Search, Target, Calendar, DollarSign, FileText, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -88,6 +87,25 @@ const Campanhas = () => {
     });
   };
 
+  const handleDeleteCampaign = (id: number) => {
+    setCampaigns(campaigns.filter((c: any) => c.id !== id));
+    toast({
+      title: "Campanha Excluída",
+      description: "A campanha foi removida com sucesso.",
+    });
+  };
+
+  const handleClearAll = () => {
+    if (window.confirm("Tem certeza que deseja excluir TODAS as campanhas?")) {
+      setCampaigns([]);
+      localStorage.removeItem("fappulse_campaigns");
+      toast({
+        title: "Lista Limpa",
+        description: "Todas as campanhas foram excluídas.",
+      });
+    }
+  };
+
   const resetForm = () => {
     setNewName("");
     setNewGoal("");
@@ -108,8 +126,15 @@ const Campanhas = () => {
           <p className="text-muted-foreground text-sm">Crie e acompanhe suas campanhas de arrecadação.</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
+        <div className="flex gap-2">
+          {campaigns.length > 0 && (
+            <Button variant="outline" className="text-destructive hover:bg-destructive/5 border-destructive/20" onClick={handleClearAll}>
+              <Trash2 className="w-4 h-4 mr-2" />
+              Excluir Todas
+            </Button>
+          )}
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
             <Button className="bg-primary hover:bg-primary/90 shadow-glow transition-all">
               <Plus className="w-4 h-4 mr-2" />
               Nova Campanha
@@ -216,9 +241,19 @@ const Campanhas = () => {
                     <CardTitle className="text-base group-hover:text-primary transition-colors">{campaign.name}</CardTitle>
                     <CardDescription className="text-[10px] line-clamp-1">{campaign.description}</CardDescription>
                   </div>
-                  <Badge variant="outline" className={`text-[10px] px-1.5 py-0 border-none ${statusColor(campaign.status)}`}>
-                    {campaign.status}
-                  </Badge>
+                  <div className="flex items-start gap-2">
+                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 border-none ${statusColor(campaign.status)}`}>
+                      {campaign.status}
+                    </Badge>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-muted-foreground hover:text-destructive group-hover:opacity-100 transition-opacity"
+                      onClick={() => handleDeleteCampaign(campaign.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4 pt-4">
