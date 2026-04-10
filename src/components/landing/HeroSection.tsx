@@ -70,14 +70,14 @@ const HeroSection = () => {
             transition={{ duration: 1, delay: 0.3, ease: "easeOut" }}
             className="relative"
           >
-            {/* Main Logo */}
-            <div className="relative z-20 rounded-[2rem] overflow-hidden border border-white/20 shadow-2xl shadow-blue-900/40 animate-float bg-white">
+            {/* Main Mockup */}
+            <div className="relative z-20 rounded-[2rem] overflow-hidden border border-white/20 shadow-2xl shadow-blue-900/40 animate-float">
               <img 
-                src="/logo.png" 
-                alt="Pulse Doações Logo" 
-                className="w-full h-auto object-contain p-12"
+                src="/mockup.png" 
+                alt="Pulse Doações Dashboard Mockup" 
+                className="w-full h-auto object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-blue-900/10 to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-blue-900/40 to-transparent pointer-events-none" />
             </div>
 
             {/* Decorative Floating Elements */}
