@@ -20,7 +20,7 @@ export interface Donor {
   total_donated: number;
   last_donation_date: string | null;
   donation_count: number;
-  cpf_cnpj?: string;
+  document_id?: string;
   birth_date?: string;
   zip_code?: string;
   address?: string;
