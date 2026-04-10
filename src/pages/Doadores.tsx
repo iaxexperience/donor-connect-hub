@@ -26,20 +26,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useDonors } from "@/hooks/useDonors";
 import { useCampaigns } from "@/hooks/useCampaigns";
-import { typeLabel } from "@/lib/donationService";
+import { typeLabel, typeBadgeStyle } from "@/lib/donationService";
 
 // INITIAL_DONORS moved to hook
-const typeBadgeStyle = (type: string) => {
-  switch (type) {
-    case "lead": return "bg-purple-100 text-purple-700 border-purple-200";
-    case "recorrente": return "bg-green-100 text-green-700 border-green-200";
-    case "esporadico": return "bg-orange-100 text-orange-700 border-orange-200";
-    case "unico": return "bg-blue-100 text-blue-700 border-blue-200";
-    case "desativado": return "bg-gray-100 text-gray-700 border-gray-200";
-    default: return "bg-gray-100 text-gray-700";
-  }
-};
-
 const Doadores = () => {
   const navigate = useNavigate();
   const { donors, addDonation, isLoading: donorsLoading } = useDonors();
