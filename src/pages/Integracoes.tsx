@@ -3,7 +3,7 @@ import {
   MessageSquare, CheckCircle2, AlertCircle, ExternalLink, Send, Users,
   FileText, Shield, CalendarClock, UserCheck, UserMinus, Clock,
   AlertTriangle, Phone, Settings2, Key, Globe, Database, CreditCard,
-  RefreshCw, History, Info, ChevronRight, Code, Copy, Zap, ListChecks
+  RefreshCw, History, Info, ChevronRight, Code, Copy, Zap, ListChecks, Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -130,7 +130,6 @@ const Integracoes = () => {
   useEffect(() => {
     localStorage.setItem("asaas_automation_enabled", isAutoEnabled.toString());
   }, [isAutoEnabled]);
-
   const simulateAsaasDonation = async () => {
     const mockEvent = generateMockAsaasEvent();
     await handleAsaasDonation(
@@ -139,6 +138,49 @@ const Integracoes = () => {
       registerNewDonor,
       addDonation
     );
+  };
+
+  const [templates, setTemplates] = useState(() => {
+    const saved = localStorage.getItem("meta_templates");
+    return saved ? JSON.parse(saved) : INITIAL_TEMPLATES;
+  });
+
+  const [isAddingTemplate, setIsAddingTemplate] = useState(false);
+  const [newTemplate, setNewTemplate] = useState({
+    name: "",
+    category: "MARKETING",
+    body: "",
+    variables: [] as string[]
+  });
+
+  useEffect(() => {
+    localStorage.setItem("meta_templates", JSON.stringify(templates));
+  }, [templates]);
+
+  const detectVariables = (body: string) => {
+    const regex = /\{\{(\d+)\}\}/g;
+    const matches = body.match(regex) || [];
+    return matches.map((_, i) => `VARIABLE_${i + 1}`);
+  };
+
+  const handleCreateTemplate = () => {
+    if (!newTemplate.name || !newTemplate.body) {
+      toast({ title: "Erro", description: "Preencha o nome e o corpo do template.", variant: "destructive" });
+      return;
+    }
+
+    const variables = detectVariables(newTemplate.body);
+    const template = {
+      ...newTemplate,
+      name: newTemplate.name.toLowerCase().replace(/\s+/g, "_"),
+      status: "Em Análise",
+      variables
+    };
+
+    setTemplates([...templates, template]);
+    setIsAddingTemplate(false);
+    setNewTemplate({ name: "", category: "MARKETING", body: "", variables: [] });
+    toast({ title: "Template Criado", description: "O template foi enviado para análise na Meta Cloud API." });
   };
   const handleTestWhatsApp = () => {
     setIsTestingWa(true);
