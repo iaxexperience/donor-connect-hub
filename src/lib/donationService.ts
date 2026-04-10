@@ -37,6 +37,12 @@ const CLASSIFICATION_RULES = {
   recorrente: { days: 30, label: "Recorrente" },
 };
 
+export const typeLabel: Record<DonorType, string> = { 
+  unico: "Único", 
+  esporadico: "Esporádico", 
+  recorrente: "Recorrente" 
+};
+
 /**
  * Classifies a donor based on their donation history.
  * - Recorrente: 3+ donations in the last 3 months.
