@@ -9,10 +9,10 @@ const FooterSection = () => {
             <div className="w-8 h-8 rounded-lg bg-gradient-accent flex items-center justify-center">
               <Heart className="w-4 h-4 text-accent-foreground" />
             </div>
-            <span className="font-heading font-bold text-lg text-background">DoacFlow</span>
+            <span className="font-heading font-bold text-lg text-background">Pulse Doações</span>
           </div>
           <p className="text-sm text-background/50">
-            © {new Date().getFullYear()} DoacFlow. Todos os direitos reservados.
+            © {new Date().getFullYear()} Pulse Doações. Todos os direitos reservados.
           </p>
         </div>
       </div>

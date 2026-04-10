@@ -377,7 +377,7 @@ const Integracoes = () => {
               </div>
               <div className="space-y-2">
                 <Label>Webhook Verify Token</Label>
-                <Input readOnly value="doacflow_webhook_verify_2026" className="font-mono text-sm bg-muted" />
+                <Input readOnly value="pulse_doacoes_webhook_verify_2026" className="font-mono text-sm bg-muted" />
                 <p className="text-xs text-muted-foreground">Use este token ao configurar o webhook no painel da Meta.</p>
               </div>
               <Button onClick={handleConnect} className="w-full sm:w-auto">
@@ -438,7 +438,7 @@ const Integracoes = () => {
               </div>
               <div className="space-y-2">
                 <Label>Mensagem (template hello_world)</Label>
-                <Textarea readOnly value="Olá! Esta é uma mensagem de teste do DoacFlow via WhatsApp Business API. 🎉" className="bg-muted resize-none" rows={3} />
+                <Textarea readOnly value="Olá! Esta é uma mensagem de teste do Pulse Doações via WhatsApp Business API. 🎉" className="bg-muted resize-none" rows={3} />
               </div>
               <Button onClick={handleTestMessage} variant="outline">
                 <Send className="w-4 h-4 mr-2" /> Enviar Mensagem de Teste
