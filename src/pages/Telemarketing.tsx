@@ -1,4 +1,4 @@
-import { Phone, PhoneCall, PhoneOff, Clock, CheckCircle2 } from "lucide-react";
+import { Phone, PhoneCall, PhoneOff, Clock, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,21 +10,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-const stats = [
-  { label: "Ligações Hoje", value: "47", icon: Phone, color: "text-primary" },
-  { label: "Atendidas", value: "32", icon: CheckCircle2, color: "text-green-600" },
-  { label: "Não Atendidas", value: "15", icon: PhoneOff, color: "text-destructive" },
-  { label: "Tempo Médio", value: "4:32", icon: Clock, color: "text-amber-600" },
-];
-
-const callQueue = [
-  { id: 1, name: "Pedro Almeida", phone: "(11) 99111-2233", campaign: "Natal Solidário", priority: "Alta", lastContact: "Há 90 dias" },
-  { id: 2, name: "Lucia Ferreira", phone: "(21) 98222-3344", campaign: "Educação para Todos", priority: "Média", lastContact: "Há 60 dias" },
-  { id: 3, name: "Roberto Costa", phone: "(31) 97333-4455", campaign: "Alimentação Infantil", priority: "Alta", lastContact: "Há 120 dias" },
-  { id: 4, name: "Fernanda Dias", phone: "(41) 96444-5566", campaign: "Natal Solidário", priority: "Baixa", lastContact: "Há 30 dias" },
-  { id: 5, name: "Marcos Vieira", phone: "(51) 95555-6677", campaign: "Educação para Todos", priority: "Média", lastContact: "Há 75 dias" },
-];
+import { useTelemarketing } from "@/hooks/useTelemarketing";
+import { typeLabel, typeBadgeStyle } from "@/lib/donationService";
 
 const priorityVariant = (p: string) => {
   switch (p) {
@@ -36,6 +23,15 @@ const priorityVariant = (p: string) => {
 };
 
 const Telemarketing = () => {
+  const { queue, stats: dynamicStats, isLoading } = useTelemarketing();
+
+  const stats = [
+    { label: "Fila de Ligações", value: dynamicStats.totalQueue, icon: Phone, color: "text-primary" },
+    { label: "Leads Novos", value: dynamicStats.leadsCount, icon: CheckCircle2, color: "text-green-600" },
+    { label: "Inativos (30d+)", value: dynamicStats.inactiveCount, icon: PhoneOff, color: "text-destructive" },
+    { label: "Tempo Médio", value: dynamicStats.averageTime, icon: Clock, color: "text-amber-600" },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
@@ -67,31 +63,54 @@ const Telemarketing = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
+                <TableHead>Doador</TableHead>
                 <TableHead>Telefone</TableHead>
-                <TableHead>Campanha</TableHead>
-                <TableHead>Prioridade</TableHead>
-                <TableHead>Último Contato</TableHead>
-                <TableHead></TableHead>
+                <TableHead>Classificação</TableHead>
+                <TableHead>Total Doado</TableHead>
+                <TableHead>Última Doação</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {callQueue.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell className="font-medium">{c.name}</TableCell>
-                  <TableCell>{c.phone}</TableCell>
-                  <TableCell>{c.campaign}</TableCell>
-                  <TableCell>
-                    <Badge variant={priorityVariant(c.priority) as any}>{c.priority}</Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{c.lastContact}</TableCell>
-                  <TableCell>
-                    <Button size="sm" variant="outline">
-                      <PhoneCall className="w-4 h-4 mr-1" /> Ligar
-                    </Button>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                    Carregando fila...
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : queue.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                    Nenhuma ligação pendente no momento.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                queue.map((donor) => (
+                  <TableRow key={donor.id}>
+                    <TableCell className="font-medium">{donor.name}</TableCell>
+                    <TableCell>{donor.phone}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={typeBadgeStyle(donor.type)}>
+                        {typeLabel[donor.type]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-semibold text-primary">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(donor.total_donated)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {donor.last_donation_date 
+                        ? new Date(donor.last_donation_date).toLocaleDateString("pt-BR") 
+                        : "Nunca"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button size="sm" variant="outline" className="hover:bg-primary hover:text-white transition-colors">
+                        <PhoneCall className="w-4 h-4 mr-1" /> Ligar
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -99,5 +118,7 @@ const Telemarketing = () => {
     </div>
   );
 };
+
+export default Telemarketing;
 
 export default Telemarketing;
