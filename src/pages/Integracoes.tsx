@@ -36,6 +36,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 
 type DonorType = "unico" | "esporadico" | "recorrente";
