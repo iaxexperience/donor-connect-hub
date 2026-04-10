@@ -17,8 +17,8 @@ export interface Donor {
   email: string;
   phone: string;
   type: DonorType;
-  totalDonated: number;
-  lastDonationDate: Date;
+  total_donated: number;
+  last_donation_date: string | null;
   donation_count: number;
   cpf_cnpj?: string;
   birth_date?: string;
@@ -62,15 +62,11 @@ export const getDonors = async (): Promise<Donor[]> => {
   }
 
   return data.map(d => ({
-    id: d.id,
-    name: d.name,
-    email: d.email,
-    phone: d.phone,
-    type: d.type,
-    totalDonated: d.total_donated,
-    lastDonationDate: new Date(d.last_donation_date),
-    donation_count: d.donation_count
-  })) as unknown as Donor[];
+    ...d,
+    total_donated: d.total_donated || 0,
+    donation_count: d.donation_count || 0,
+    last_donation_date: d.last_donation_date
+  })) as Donor[];
 };
 
 /**

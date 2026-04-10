@@ -56,7 +56,7 @@ export const useDonors = () => {
       ...donorData,
       phone: donorData.phone?.replace(/\D/g, ""),
       type: donorData.type || 'lead',
-      totalDonated: 0,
+      total_donated: 0,
       donation_count: 0
     });
   };

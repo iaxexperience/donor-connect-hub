@@ -255,9 +255,9 @@ const Doadores = () => {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(donor.totalDonated)}
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(donor.total_donated)}
                 </TableCell>
-                <TableCell>{new Date(donor.lastDonationDate).toLocaleDateString("pt-BR")}</TableCell>
+                <TableCell>{donor.last_donation_date ? new Date(donor.last_donation_date).toLocaleDateString("pt-BR") : "Nunca"}</TableCell>
               </TableRow>
             ))}
           </TableBody>
