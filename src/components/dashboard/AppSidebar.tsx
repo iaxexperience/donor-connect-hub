@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const mainItems = [
-  { title: "Painel", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Doadores", url: "/dashboard/doadores", icon: Heart },
   { title: "Campanhas", url: "/dashboard/campanhas", icon: Megaphone },
   { title: "Telemarketing", url: "/dashboard/telemarketing", icon: Phone },
@@ -58,7 +58,7 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <span className="font-heading font-bold text-lg text-sidebar-foreground">
-              Pulse Doações
+              FAP Pulse
             </span>
           )}
         </div>
