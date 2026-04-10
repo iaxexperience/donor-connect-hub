@@ -252,35 +252,39 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <motion.div variants={item}>
-              <Card className="shadow-soft h-[300px]">
-                <CardHeader className="pb-0">
-                  <CardTitle className="text-sm font-semibold">Mix por Campanha</CardTitle>
-                </CardHeader>
-                <CardContent className="h-[220px] pt-2">
+              <Card className="shadow-soft h-[350px] overflow-hidden border-none">
+                <div className="bg-[#0066CC] p-3 text-white text-center">
+                  <p className="text-[10px] uppercase font-bold opacity-80 text-left">Mix por Campanha</p>
+                  <p className="text-4xl font-extrabold mt-1">100%</p>
+                </div>
+                <CardContent className="h-[250px] pt-6 pr-8">
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={campaignData}
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
+                    <BarChart
+                      data={campaignData}
+                      layout="vertical"
+                      margin={{ left: 20, right: 20 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f0f0f0" />
+                      <XAxis type="number" hide />
+                      <YAxis
+                        dataKey="name"
+                        type="category"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 10, fill: "#666", fontWeight: "bold" }}
+                        width={100}
+                      />
+                      <Tooltip
+                        cursor={{ fill: 'transparent' }}
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      />
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={18}>
                         {campaignData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
+                      </Bar>
+                    </BarChart>
                   </ResponsiveContainer>
-                  <div className="flex flex-wrap justify-center gap-2 mt-[-20px]">
-                    {campaignData.map((item) => (
-                      <div key={item.name} className="flex items-center gap-1">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                        <span className="text-[10px] text-muted-foreground">{item.name}</span>
-                      </div>
-                    ))}
-                  </div>
                 </CardContent>
               </Card>
             </motion.div>
