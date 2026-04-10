@@ -32,14 +32,22 @@ const Navbar = () => {
     }`}>
       <div className="container mx-auto flex items-center justify-between px-4">
         <a href="#" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-500">
-            <Heart className="w-6 h-6 text-blue-600" fill="currentColor" />
+          <div className="w-12 h-12 rounded-2xl bg-orange-500 shadow-xl shadow-orange-500/30 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+            <Heart className="w-7 h-7 text-white" fill="currentColor" />
           </div>
-          <span className={`font-heading font-black text-2xl tracking-tighter transition-colors ${
-            scrolled ? "text-slate-900" : "text-white"
-          }`}>
-            FAP Pulse
-          </span>
+          <div className="flex flex-col leading-none">
+            <span className={`font-heading font-black text-3xl tracking-tighter transition-colors ${
+              scrolled ? "text-slate-900" : "text-white"
+            }`}>
+              FAP
+              <span className={`font-light ml-1 ${scrolled ? "text-blue-600" : "text-blue-200"}`}>Pulse</span>
+            </span>
+            <span className={`text-[9px] font-bold uppercase tracking-[0.2em] transition-colors ${
+              scrolled ? "text-slate-400" : "text-white/60"
+            }`}>
+              Fundação Assistencial
+            </span>
+          </div>
         </a>
 
         <div className="hidden md:flex items-center gap-10">

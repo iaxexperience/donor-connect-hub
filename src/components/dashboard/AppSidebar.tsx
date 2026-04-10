@@ -53,15 +53,21 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
-        {/* Logo */}
-        <div className="flex items-center gap-2 px-4 py-5 border-b border-sidebar-border">
-          <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center shrink-0">
-            <Heart className="w-4 h-4 text-accent-foreground" />
+        {/* Logo Branding - Concept 3 */}
+        <div className="flex items-center gap-2 px-6 py-8 border-b border-sidebar-border bg-sidebar-background/50 backdrop-blur-sm">
+          <div className="w-10 h-10 rounded-2xl bg-orange-500 shadow-lg shadow-orange-500/30 flex items-center justify-center shrink-0 animate-pulse-glow">
+            <Heart className="w-6 h-6 text-white" fill="currentColor" />
           </div>
           {!collapsed && (
-            <span className="font-heading font-bold text-lg text-sidebar-foreground">
-              FAP Pulse
-            </span>
+            <div className="flex flex-col leading-none">
+              <span className="font-heading font-black text-2xl tracking-tighter text-white">
+                FAP
+                <span className="font-light text-blue-200 ml-1">Pulse</span>
+              </span>
+              <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-blue-100/60 mt-1">
+                Fundação Assistencial
+              </span>
+            </div>
           )}
         </div>
 
