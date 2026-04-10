@@ -84,7 +84,7 @@ const DonorForm = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
@@ -97,14 +97,23 @@ const DonorForm = () => {
       return;
     }
 
-    registerNewDonor(formData as any);
-    
-    toast({
-      title: "Sucesso!",
-      description: "Doador cadastrado com sucesso.",
-    });
-    
-    navigate("/dashboard/doadores");
+    try {
+      await registerNewDonor(formData as any);
+      
+      toast({
+        title: "Sucesso!",
+        description: "Doador cadastrado com sucesso.",
+      });
+      
+      navigate("/dashboard/doadores");
+    } catch (error) {
+      console.error("Erro ao cadastrar:", error);
+      toast({
+        title: "Erro ao Cadastrar",
+        description: "Ocorreu um erro ao salvar o doador no banco de dados.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
