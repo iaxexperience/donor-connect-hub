@@ -51,13 +51,12 @@ export const useDonors = () => {
     return donationMutation.mutate({ donorId, amount, campaignId });
   };
 
-  const registerNewDonor = (name: string, email: string, phone: string) => {
+  const registerNewDonor = (donorData: Partial<Donor>) => {
     return addDonorMutation.mutate({ 
-      name, 
-      email, 
-      phone: phone.replace(/\D/g, ""),
-      type: 'lead',
-      total_donated: 0,
+      ...donorData,
+      phone: donorData.phone?.replace(/\D/g, ""),
+      type: donorData.type || 'lead',
+      totalDonated: 0,
       donation_count: 0
     });
   };

@@ -17,9 +17,18 @@ export interface Donor {
   email: string;
   phone: string;
   type: DonorType;
-  total_donated: number;
-  last_donation_date: string;
+  totalDonated: number;
+  lastDonationDate: Date;
   donation_count: number;
+  cpf_cnpj?: string;
+  birth_date?: string;
+  zip_code?: string;
+  address?: string;
+  address_number?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
 }
 
 export interface FollowUp {
