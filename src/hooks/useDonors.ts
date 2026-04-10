@@ -51,8 +51,8 @@ export const useDonors = () => {
     return donationMutation.mutate({ donorId, amount, campaignId });
   };
 
-  const registerNewDonor = (donorData: Partial<Donor>) => {
-    return addDonorMutation.mutate({ 
+  const registerNewDonor = async (donorData: Partial<Donor>) => {
+    return await addDonorMutation.mutateAsync({ 
       ...donorData,
       phone: donorData.phone?.replace(/\D/g, ""),
       type: donorData.type || 'lead',
