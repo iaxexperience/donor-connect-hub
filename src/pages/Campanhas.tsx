@@ -25,13 +25,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
-const INITIAL_CAMPAIGNS = [
-  { id: 1, name: "Natal Solidário 2026", goal: 50000, raised: 32500, donors: 124, status: "Ativa", endDate: "2026-12-25", description: "Campanha anual de arrecadação de brinquedos e alimentos." },
-  { id: 2, name: "Educação para Todos", goal: 30000, raised: 28700, donors: 89, status: "Ativa", endDate: "2026-06-30", description: "Fundo para bolsas de estudo e material escolar." },
-  { id: 3, name: "Saúde Comunitária", goal: 20000, raised: 20000, donors: 67, status: "Concluída", endDate: "2026-03-01", description: "Mutirão de exames e atendimento básico." },
-  { id: 4, name: "Alimentação Infantil", goal: 15000, raised: 4200, donors: 31, status: "Ativa", endDate: "2026-08-15", description: "Combate à desnutrição em creches parceiras." },
-  { id: 5, name: "Moradia Digna", goal: 80000, raised: 0, donors: 0, status: "Planejada", endDate: "2027-01-01", description: "Reforma de casas em comunidades vulneráveis." },
-];
+const INITIAL_CAMPAIGNS = [];
 
 const statusColor = (status: string) => {
   switch (status) {
