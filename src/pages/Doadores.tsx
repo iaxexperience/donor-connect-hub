@@ -58,6 +58,7 @@ const Doadores = () => {
   });
   
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDonorId, setSelectedDonorId] = useState<string>("");
   const [donationAmount, setDonationAmount] = useState<string>("");
@@ -110,10 +111,12 @@ const Doadores = () => {
     setDonationAmount("");
   };
 
-  const filteredDonors = donors.filter(d => 
-    d.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    d.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredDonors = donors.filter(d => {
+    const matchesSearch = d.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         d.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = filterType === "all" || d.type === filterType;
+    return matchesSearch && matchesType;
+  });
 
   return (
     <div className="space-y-6">
@@ -199,9 +202,18 @@ const Doadores = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button variant="outline" size="icon">
-          <Filter className="w-4 h-4" />
-        </Button>
+        <Select value={filterType} onValueChange={setFilterType}>
+          <SelectTrigger className="w-[180px]">
+            <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
+            <SelectValue placeholder="Classificação" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas Classificações</SelectItem>
+            <SelectItem value="recorrente">Recorrente</SelectItem>
+            <SelectItem value="esporadico">Esporádico</SelectItem>
+            <SelectItem value="unico">Único</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="rounded-lg border bg-card">
