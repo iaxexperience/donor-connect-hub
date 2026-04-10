@@ -63,6 +63,8 @@ export const getDonors = async (): Promise<Donor[]> => {
 
   return data.map(d => ({
     ...d,
+    name: d.name || "Doador sem Nome",
+    email: d.email || "sem@email.com",
     total_donated: d.total_donated || 0,
     donation_count: d.donation_count || 0,
     last_donation_date: d.last_donation_date
