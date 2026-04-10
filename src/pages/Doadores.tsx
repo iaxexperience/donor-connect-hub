@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { Heart, Search, Plus, Filter, MessageSquare, Upload, FileDown, CheckCircle2, LayoutGrid, List } from "lucide-react";
-import { DonorKanban } from "@/components/donors/DonorKanban";
+import { Heart, Search, Plus, Filter, MessageSquare, Upload, FileDown, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,11 +40,10 @@ const typeBadgeStyle = (type: string) => {
 };
 
 const Doadores = () => {
-  const { donors, addDonation, updateType, isLoading: donorsLoading } = useDonors();
+  const { donors, addDonation, isLoading: donorsLoading } = useDonors();
   const { campaigns, isLoading: campaignsLoading } = useCampaigns();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
-  const [viewMode, setViewMode] = useState<"table" | "kanban">("kanban");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDonorId, setSelectedDonorId] = useState<string>("");
   const [donationAmount, setDonationAmount] = useState<string>("");
@@ -221,32 +219,10 @@ const Doadores = () => {
             <SelectItem value="desativado">Desativado</SelectItem>
           </SelectContent>
         </Select>
-
-        <div className="flex items-center gap-1 bg-muted p-1 rounded-lg border ml-auto">
-          <Button 
-            variant={viewMode === "table" ? "secondary" : "ghost"} 
-            size="sm" 
-            className="h-8 w-8 p-0"
-            onClick={() => setViewMode("table")}
-          >
-            <List className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant={viewMode === "kanban" ? "secondary" : "ghost"} 
-            size="sm" 
-            className="h-8 w-8 p-0"
-            onClick={() => setViewMode("kanban")}
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </Button>
-        </div>
       </div>
 
-      {viewMode === "kanban" ? (
-        <DonorKanban donors={filteredDonors} onMove={updateType} />
-      ) : (
-        <div className="rounded-lg border bg-card">
-          <Table>
+      <div className="rounded-lg border bg-card">
+        <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
@@ -275,9 +251,8 @@ const Doadores = () => {
               </TableRow>
             ))}
           </TableBody>
-          </Table>
-        </div>
-      )}
+        </Table>
+      </div>
     </div>
   );
 };
