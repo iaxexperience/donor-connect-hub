@@ -26,13 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useDonors } from "@/hooks/useDonors";
 import { typeLabel } from "@/lib/donationService";
 
-const INITIAL_DONORS: Donor[] = [
-  { id: 1, name: "Maria Silva", email: "maria@email.com", phone: "(11) 99999-0001", type: "recorrente", totalDonated: 4500.00, lastDonationDate: new Date("2026-04-02"), donationCount: 12, donations: [] },
-  { id: 2, name: "João Santos", email: "joao@email.com", phone: "(21) 98888-0002", type: "esporadico", totalDonated: 1200.00, lastDonationDate: new Date("2026-03-15"), donationCount: 3, donations: [] },
-  { id: 3, name: "Ana Oliveira", email: "ana@email.com", phone: "(31) 97777-0003", type: "unico", totalDonated: 300.00, lastDonationDate: new Date("2026-01-10"), donationCount: 1, donations: [] },
-  { id: 4, name: "Carlos Souza", email: "carlos@email.com", phone: "(41) 96666-0004", type: "recorrente", totalDonated: 8900.00, lastDonationDate: new Date("2026-04-05"), donationCount: 15, donations: [] },
-  { id: 5, name: "Beatriz Lima", email: "beatriz@email.com", phone: "(51) 95555-0005", type: "esporadico", totalDonated: 750.00, lastDonationDate: new Date("2026-02-28"), donationCount: 2, donations: [] },
-];
+// INITIAL_DONORS moved to hook hook
 
 const typeBadgeStyle = (type: string) => {
   switch (type) {
