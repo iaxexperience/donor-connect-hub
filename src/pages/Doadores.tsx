@@ -246,22 +246,39 @@ const Doadores = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredDonors.map((donor) => (
-              <TableRow key={donor.id}>
-                <TableCell className="font-medium">{donor.name}</TableCell>
-                <TableCell>{donor.email}</TableCell>
-                <TableCell>{donor.phone}</TableCell>
-                <TableCell>
-                  <Badge variant="outline" className={typeBadgeStyle(donor.type)}>
-                    {typeLabel[donor.type]}
-                  </Badge>
+            {donorsLoading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-32 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <p className="text-xs">Carregando doadores...</p>
+                  </div>
                 </TableCell>
-                <TableCell>
-                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(donor.total_donated)}
-                </TableCell>
-                <TableCell>{donor.last_donation_date ? new Date(donor.last_donation_date).toLocaleDateString("pt-BR") : "Nunca"}</TableCell>
               </TableRow>
-            ))}
+            ) : filteredDonors.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                  Nenhum doador encontrado.
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredDonors.map((donor) => (
+                <TableRow key={donor.id} className="group hover:bg-muted/30 transition-colors">
+                  <TableCell className="font-medium">{donor.name}</TableCell>
+                  <TableCell>{donor.email}</TableCell>
+                  <TableCell>{donor.phone}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={typeBadgeStyle(donor.type)}>
+                      {typeLabel[donor.type]}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(donor.total_donated)}
+                  </TableCell>
+                  <TableCell>{donor.last_donation_date ? new Date(donor.last_donation_date).toLocaleDateString("pt-BR") : "Nunca"}</TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
