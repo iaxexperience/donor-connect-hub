@@ -23,12 +23,11 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tabs, TabsContent, TabsList, TabsTrigger,
 } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -80,20 +79,11 @@ const INITIAL_TEMPLATES = [
   },
 ];
 
-const donorTypeLabel: Record<DonorType, string> = { unico: "Único", esporadico: "Esporádico", recorrente: "Recorrente" };
-const donorTypeStyle = (type: DonorType) => {
-  switch (type) {
-    case "recorrente": return "bg-green-100 text-green-700 border-green-200";
-    case "esporadico": return "bg-orange-100 text-orange-700 border-orange-200";
-    case "unico": return "bg-blue-100 text-blue-700 border-blue-200";
-    default: return "";
-  }
-};
-
 const statusLabel: Record<FollowUpStatus, string> = { 
   pendente: "Pendente", agendado: "Agendado", enviado: "Enviado", 
   atrasado: "Atrasado", entregue: "Entregue", lido: "Lido", falha: "Falha" 
 };
+
 const statusStyle: Record<FollowUpStatus, string> = { 
   pendente: "bg-amber-100 text-amber-800", 
   agendado: "bg-blue-100 text-blue-800", 
@@ -120,8 +110,15 @@ const Integracoes = () => {
 
   useEffect(() => {
     const loadLogs = () => {
-      setWhatsappLogs(JSON.parse(localStorage.getItem("whatsapp_logs") || "[]"));
-      setAsaasLogs(JSON.parse(localStorage.getItem("asaas_logs") || "[]"));
+      try {
+        const wLogs = JSON.parse(localStorage.getItem("whatsapp_logs") || "[]");
+        const aLogs = JSON.parse(localStorage.getItem("asaas_logs") || "[]");
+        setWhatsappLogs(Array.isArray(wLogs) ? wLogs : []);
+        setAsaasLogs(Array.isArray(aLogs) ? aLogs : []);
+      } catch (e) {
+        setWhatsappLogs([]);
+        setAsaasLogs([]);
+      }
     };
     loadLogs();
     const interval = setInterval(loadLogs, 2000);
@@ -131,6 +128,7 @@ const Integracoes = () => {
   useEffect(() => {
     localStorage.setItem("asaas_automation_enabled", isAutoEnabled.toString());
   }, [isAutoEnabled]);
+
   const simulateAsaasDonation = async () => {
     const mockEvent = generateMockAsaasEvent();
     await handleAsaasDonation(
@@ -188,6 +186,7 @@ const Integracoes = () => {
     setNewTemplate({ name: "", category: "MARKETING", body: "", variables: [] });
     toast({ title: "Template Criado", description: "O template foi enviado para análise na Meta Cloud API." });
   };
+
   const handleTestWhatsApp = () => {
     setIsTestingWa(true);
     setTimeout(() => {
@@ -213,10 +212,10 @@ const Integracoes = () => {
       });
     }, 1500);
   };
+
   const [followUpList, setFollowUpList] = useState<WhatsAppFollowUp[]>(() => {
-    const saved = localStorage.getItem("doacflow_followups");
-    if (!saved) return [];
     try {
+      const saved = localStorage.getItem("doacflow_followups");
       const parsed = saved ? JSON.parse(saved) : [];
       if (!Array.isArray(parsed)) return [];
       return parsed.map((f: any) => ({
@@ -228,7 +227,6 @@ const Integracoes = () => {
         selected: false
       }));
     } catch (e) {
-      console.error("Failed to parse followups", e);
       return [];
     }
   });
@@ -256,7 +254,7 @@ const Integracoes = () => {
         components: [
           {
             type: "body",
-            parameters: template.variables.map(v => ({
+            parameters: (template.variables || []).map(v => ({
               type: "text",
               text: v === "NOME_DOADOR" ? f.donorName : v === "VALOR_ULTIMA_DOACAO" ? "R$ 150,00" : "Campanha Geral"
             }))
@@ -265,44 +263,6 @@ const Integracoes = () => {
       }
     };
     return JSON.stringify(payload, null, 2);
-  };
-
-  const processAutomations = () => {
-    if (!waConnected) {
-      toast({ title: "Erro de Conexão", description: "WhatsApp Business API não está conectada.", variant: "destructive" });
-      return;
-    }
-
-    const now = new Date();
-    let updatedCount = 0;
-
-    const newList = followUpList.map(f => {
-      if (f.status === "pendente" && new Date(f.dueDate) <= now) {
-        updatedCount++;
-        const payload = generateMetaPayload(f);
-        // Simulate progressive delivery status
-        return { ...f, status: "enviado" as FollowUpStatus, lastPayload: payload };
-      }
-      return f;
-    });
-
-    if (updatedCount > 0) {
-      setFollowUpList(newList);
-      toast({
-        title: "Automação Meta Cloud API",
-        description: `${updatedCount} payloads JSON gerados seguindo o padrão oficial v18.0.`,
-      });
-      
-      // Simulate deliveded status after 2 seconds
-      setTimeout(() => {
-        setFollowUpList(prev => prev.map(f => f.status === "enviado" ? { ...f, status: "entregue" as FollowUpStatus } : f));
-      }, 2000);
-    } else {
-      toast({
-        title: "Tudo em dia!",
-        description: "A API da Meta já processou todos os agendamentos atuais.",
-      });
-    }
   };
 
   const completionRate = followUpList.length > 0 
@@ -325,7 +285,6 @@ const Integracoes = () => {
           <div className="flex flex-col items-end mr-2">
             <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Status Global</span>
             <div className="flex gap-2">
-              <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Badge variant="outline" className={`gap-1.5 border-none ${waConnected ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
@@ -345,7 +304,6 @@ const Integracoes = () => {
                   </TooltipTrigger>
                   <TooltipContent>Gateway de Pagamentos</TooltipContent>
                 </Tooltip>
-              </TooltipProvider>
             </div>
           </div>
           <Separator orientation="vertical" className="h-10 mx-2" />
@@ -357,7 +315,6 @@ const Integracoes = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Coluna Central - Automações */}
         <div className="lg:col-span-3 space-y-6">
           <Tabs defaultValue="automation" className="w-full">
             <TabsList className="bg-muted/50 p-1 mb-6">
@@ -441,8 +398,8 @@ const Integracoes = () => {
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <Badge className={`text-[9px] px-1.5 py-0 border-none ${statusStyle[f.status]}`}>
-                                    {statusLabel[f.status]}
+                                  <Badge className={`text-[9px] px-1.5 py-0 border-none ${statusStyle[f.status] || ""}`}>
+                                    {statusLabel[f.status] || f.status}
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
@@ -584,8 +541,8 @@ const Integracoes = () => {
                       <div className="space-y-2">
                         <Label className="text-[10px] font-bold text-muted-foreground uppercase">Mapeamento de Variáveis</Label>
                         <div className="space-y-1">
-                          {tpl.variables.map((v, i) => (
-                            <div key={v} className="flex items-center justify-between text-[10px] p-1.5 bg-background rounded border">
+                          {(tpl.variables || []).map((v: string, i: number) => (
+                            <div key={`${tpl.name}-var-${i}`} className="flex items-center justify-between text-[10px] p-1.5 bg-background rounded border">
                               <span className="font-mono text-primary font-bold">{"{{"}{i+1}{"}}"}</span>
                               <ChevronRight className="w-3 h-3 text-muted-foreground" />
                               <span className="font-semibold">{v}</span>
@@ -623,7 +580,7 @@ const Integracoes = () => {
                     <div className="space-y-6">
                       <div className="space-y-3">
                         <Label className="text-[10px] font-bold uppercase text-primary">WhatsApp Outbound</Label>
-                        {whatsappLogs.length > 0 ? whatsappLogs.map((log, i) => (
+                        {whatsappLogs.length > 0 ? whatsappLogs.map((log) => (
                           <div key={log.id} className="flex items-center gap-4 p-3 rounded-xl border border-muted/50 bg-muted/20">
                             <div className="text-[10px] font-mono text-muted-foreground w-16">{log.time}</div>
                             <div className="flex-1">
@@ -641,7 +598,7 @@ const Integracoes = () => {
 
                       <div className="space-y-3">
                         <Label className="text-[10px] font-bold uppercase text-orange-500">Asaas Inbound</Label>
-                        {asaasLogs.length > 0 ? asaasLogs.map((log, i) => (
+                        {asaasLogs.length > 0 ? asaasLogs.map((log) => (
                           <div key={log.id} className="flex items-center gap-4 p-3 rounded-xl border border-orange-100 bg-orange-50/30">
                             <div className="text-[10px] font-mono text-muted-foreground w-16">{log.time}</div>
                             <div className="flex-1">
@@ -662,7 +619,6 @@ const Integracoes = () => {
           </Tabs>
         </div>
 
-        {/* Coluna Direita - Configurações Oficiais */}
         <div className="space-y-6">
           <Card className="border-none shadow-soft border-t-4 border-t-primary overflow-hidden">
             <CardHeader className="pb-3 border-b border-muted">
@@ -676,7 +632,7 @@ const Integracoes = () => {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <Label className="text-xs">Phone Number ID</Label>
-                    <TooltipProvider><Tooltip><TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent>ID único do seu número na Meta</TooltipContent></Tooltip></TooltipProvider>
+                    <Tooltip><TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent>ID único do seu número na Meta</TooltipContent></Tooltip>
                   </div>
                   <Input className="h-9 text-xs font-mono" value={phoneId} onChange={(e) => setPhoneId(e.target.value)} />
                 </div>
@@ -684,7 +640,7 @@ const Integracoes = () => {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <Label className="text-xs">WABA ID</Label>
-                    <TooltipProvider><Tooltip><TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent>WhatsApp Business Account ID</TooltipContent></Tooltip></TooltipProvider>
+                    <Tooltip><TooltipTrigger asChild><Info className="w-3 h-3 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent>WhatsApp Business Account ID</TooltipContent></Tooltip>
                   </div>
                   <Input className="h-9 text-xs font-mono" value={wabaId} onChange={(e) => setWabaId(e.target.value)} />
                 </div>
