@@ -12,39 +12,31 @@ import {
   Clock,
   AlertTriangle,
   ChevronRight,
+  Zap,
+  Play,
+  Pause,
+  History,
+  Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
 
 type DonorType = "unico" | "esporadico" | "recorrente";
 type FollowUpStatus = "pendente" | "agendado" | "concluido" | "atrasado";
@@ -66,32 +58,31 @@ interface FollowUp {
   notes: string;
 }
 
-const classificationRules = [
-  {
-    type: "Único" as const,
-    rule: "1 doação registrada",
-    followUpDays: 90,
-    color: "text-amber-600",
-    bg: "bg-amber-100",
-    icon: UserMinus,
-  },
-  {
-    type: "Esporádico" as const,
-    rule: "2+ doações em 6 meses",
-    followUpDays: 60,
-    color: "text-blue-600",
-    bg: "bg-blue-100",
-    icon: Users,
-  },
-  {
-    type: "Recorrente" as const,
-    rule: "3+ doações em 3 meses",
-    followUpDays: 30,
-    color: "text-green-600",
-    bg: "bg-green-100",
-    icon: UserCheck,
-  },
-];
+interface AutomationRule {
+  type: DonorType;
+  label: string;
+  rule: string;
+  followUpDays: number;
+  enabled: boolean;
+  channel: FollowUpChannel;
+  template: string;
+  color: string;
+  bg: string;
+  icon: typeof UserCheck;
+  maxRetries: number;
+  sendHour: string;
+}
+
+interface AutomationLog {
+  id: number;
+  donorName: string;
+  donorType: DonorType;
+  channel: FollowUpChannel;
+  template: string;
+  sentAt: string;
+  status: "enviado" | "falha" | "aguardando";
+  retryCount: number;
+}
 
 const followUps: FollowUp[] = [
   { id: 1, donorName: "Maria Silva", donorType: "recorrente", phone: "(11) 99888-1234", email: "maria@email.com", lastDonation: "2026-03-25", lastContact: "2026-03-28", dueDate: "2026-04-10", status: "pendente", channel: "whatsapp", campaign: "Natal Solidário", totalDonations: 12, notes: "Doadora fiel, prefere WhatsApp" },
@@ -103,6 +94,22 @@ const followUps: FollowUp[] = [
   { id: 7, donorName: "Fernanda Costa", donorType: "recorrente", phone: "(71) 93222-6789", email: "fernanda@email.com", lastDonation: "2026-04-01", lastContact: "2026-04-03", dueDate: "2026-04-15", status: "agendado", channel: "whatsapp", campaign: "Natal Solidário", totalDonations: 15, notes: "Top doadora, tratamento VIP" },
 ];
 
+const initialAutomationRules: AutomationRule[] = [
+  { type: "unico", label: "Único", rule: "1 doação registrada", followUpDays: 90, enabled: true, channel: "whatsapp", template: "follow_up_primeiro_doador", color: "text-amber-600", bg: "bg-amber-100", icon: UserMinus, maxRetries: 2, sendHour: "10:00" },
+  { type: "esporadico", label: "Esporádico", rule: "2+ doações em 6 meses", followUpDays: 60, enabled: true, channel: "whatsapp", template: "follow_up_engajamento", color: "text-blue-600", bg: "bg-blue-100", icon: Users, maxRetries: 3, sendHour: "14:00" },
+  { type: "recorrente", label: "Recorrente", rule: "3+ doações em 3 meses", followUpDays: 30, enabled: true, channel: "whatsapp", template: "follow_up_fidelizacao", color: "text-green-600", bg: "bg-green-100", icon: UserCheck, maxRetries: 1, sendHour: "09:00" },
+];
+
+const automationLogs: AutomationLog[] = [
+  { id: 1, donorName: "Maria Silva", donorType: "recorrente", channel: "whatsapp", template: "follow_up_fidelizacao", sentAt: "2026-04-10 09:00", status: "enviado", retryCount: 0 },
+  { id: 2, donorName: "Carlos Mendes", donorType: "recorrente", channel: "whatsapp", template: "follow_up_fidelizacao", sentAt: "2026-04-10 09:01", status: "enviado", retryCount: 0 },
+  { id: 3, donorName: "Ana Oliveira", donorType: "esporadico", channel: "whatsapp", template: "follow_up_engajamento", sentAt: "2026-04-05 14:00", status: "falha", retryCount: 2 },
+  { id: 4, donorName: "João Santos", donorType: "unico", channel: "whatsapp", template: "follow_up_primeiro_doador", sentAt: "2026-04-09 10:00", status: "aguardando", retryCount: 0 },
+  { id: 5, donorName: "Patrícia Lima", donorType: "unico", channel: "whatsapp", template: "follow_up_primeiro_doador", sentAt: "2026-03-20 10:00", status: "falha", retryCount: 2 },
+  { id: 6, donorName: "Roberto Alves", donorType: "esporadico", channel: "whatsapp", template: "follow_up_engajamento", sentAt: "2026-04-08 14:00", status: "enviado", retryCount: 0 },
+  { id: 7, donorName: "Fernanda Costa", donorType: "recorrente", channel: "whatsapp", template: "follow_up_fidelizacao", sentAt: "2026-04-03 09:00", status: "enviado", retryCount: 0 },
+];
+
 const stats = [
   { label: "Pendentes", value: followUps.filter(f => f.status === "pendente").length, icon: Clock, color: "text-amber-600" },
   { label: "Agendados", value: followUps.filter(f => f.status === "agendado").length, icon: CalendarClock, color: "text-primary" },
@@ -110,37 +117,12 @@ const stats = [
   { label: "Concluídos", value: followUps.filter(f => f.status === "concluido").length, icon: CheckCircle2, color: "text-green-600" },
 ];
 
-const donorTypeLabel: Record<DonorType, string> = {
-  unico: "Único",
-  esporadico: "Esporádico",
-  recorrente: "Recorrente",
-};
-
-const donorTypeBadge: Record<DonorType, string> = {
-  unico: "outline",
-  esporadico: "default",
-  recorrente: "secondary",
-};
-
-const statusLabel: Record<FollowUpStatus, string> = {
-  pendente: "Pendente",
-  agendado: "Agendado",
-  concluido: "Concluído",
-  atrasado: "Atrasado",
-};
-
-const statusColor: Record<FollowUpStatus, string> = {
-  pendente: "bg-amber-100 text-amber-800",
-  agendado: "bg-blue-100 text-blue-800",
-  concluido: "bg-green-100 text-green-800",
-  atrasado: "bg-red-100 text-red-800",
-};
-
-const channelIcon: Record<FollowUpChannel, typeof Phone> = {
-  telefone: Phone,
-  whatsapp: MessageSquare,
-  email: Mail,
-};
+const donorTypeLabel: Record<DonorType, string> = { unico: "Único", esporadico: "Esporádico", recorrente: "Recorrente" };
+const donorTypeBadge: Record<DonorType, string> = { unico: "outline", esporadico: "default", recorrente: "secondary" };
+const statusLabel: Record<FollowUpStatus, string> = { pendente: "Pendente", agendado: "Agendado", concluido: "Concluído", atrasado: "Atrasado" };
+const statusColor: Record<FollowUpStatus, string> = { pendente: "bg-amber-100 text-amber-800", agendado: "bg-blue-100 text-blue-800", concluido: "bg-green-100 text-green-800", atrasado: "bg-red-100 text-red-800" };
+const channelIcon: Record<FollowUpChannel, typeof Phone> = { telefone: Phone, whatsapp: MessageSquare, email: Mail };
+const logStatusColor: Record<string, string> = { enviado: "bg-green-100 text-green-800", falha: "bg-red-100 text-red-800", aguardando: "bg-amber-100 text-amber-800" };
 
 const FollowUps = () => {
   const [followUpList, setFollowUpList] = useState<FollowUp[]>(() => {
@@ -161,6 +143,9 @@ const FollowUps = () => {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedFollowUp, setSelectedFollowUp] = useState<FollowUp | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [automationRules, setAutomationRules] = useState(initialAutomationRules);
+  const [automationGlobal, setAutomationGlobal] = useState(true);
+  const { toast } = useToast();
 
   const filtered = followUpList.filter((f) => {
     if (filterType !== "all" && f.donorType !== filterType) return false;
@@ -171,6 +156,26 @@ const FollowUps = () => {
   const completionRate = followUpList.length > 0 ? Math.round(
     (followUpList.filter(f => f.status === "concluido").length / followUpList.length) * 100
   ) : 0;
+
+  const toggleRuleEnabled = (type: DonorType) => {
+    setAutomationRules(prev => prev.map(r => r.type === type ? { ...r, enabled: !r.enabled } : r));
+  };
+
+  const updateRuleChannel = (type: DonorType, channel: FollowUpChannel) => {
+    setAutomationRules(prev => prev.map(r => r.type === type ? { ...r, channel } : r));
+  };
+
+  const updateRuleSendHour = (type: DonorType, sendHour: string) => {
+    setAutomationRules(prev => prev.map(r => r.type === type ? { ...r, sendHour } : r));
+  };
+
+  const updateRuleRetries = (type: DonorType, maxRetries: number) => {
+    setAutomationRules(prev => prev.map(r => r.type === type ? { ...r, maxRetries } : r));
+  };
+
+  const activeRulesCount = automationRules.filter(r => r.enabled).length;
+  const totalSent = automationLogs.filter(l => l.status === "enviado").length;
+  const totalFailed = automationLogs.filter(l => l.status === "falha").length;
 
   return (
     <div className="space-y-6">
@@ -217,6 +222,12 @@ const FollowUps = () => {
       <Tabs defaultValue="lista" className="space-y-4">
         <TabsList>
           <TabsTrigger value="lista">Lista de Follow-ups</TabsTrigger>
+          <TabsTrigger value="automacao" className="gap-1.5">
+            <Zap className="w-3.5 h-3.5" /> Automação
+          </TabsTrigger>
+          <TabsTrigger value="historico" className="gap-1.5">
+            <History className="w-3.5 h-3.5" /> Histórico de Envios
+          </TabsTrigger>
           <TabsTrigger value="regras">Regras de Classificação</TabsTrigger>
         </TabsList>
 
@@ -229,9 +240,7 @@ const FollowUps = () => {
                 <div className="flex items-center gap-2">
                   <Filter className="w-4 h-4 text-muted-foreground" />
                   <Select value={filterType} onValueChange={setFilterType}>
-                    <SelectTrigger className="w-[160px]">
-                      <SelectValue placeholder="Tipo de doador" />
-                    </SelectTrigger>
+                    <SelectTrigger className="w-[160px]"><SelectValue placeholder="Tipo de doador" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos os tipos</SelectItem>
                       <SelectItem value="unico">Único</SelectItem>
@@ -240,9 +249,7 @@ const FollowUps = () => {
                     </SelectContent>
                   </Select>
                   <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger className="w-[160px]">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
+                    <SelectTrigger className="w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos</SelectItem>
                       <SelectItem value="pendente">Pendente</SelectItem>
@@ -279,9 +286,7 @@ const FollowUps = () => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={donorTypeBadge[f.donorType] as any}>
-                            {donorTypeLabel[f.donorType]}
-                          </Badge>
+                          <Badge variant={donorTypeBadge[f.donorType] as any}>{donorTypeLabel[f.donorType]}</Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1 text-muted-foreground">
@@ -290,20 +295,14 @@ const FollowUps = () => {
                           </div>
                         </TableCell>
                         <TableCell className="text-sm">{f.campaign}</TableCell>
-                        <TableCell className="text-sm">
-                          {new Date(f.dueDate).toLocaleDateString("pt-BR")}
-                        </TableCell>
+                        <TableCell className="text-sm">{new Date(f.dueDate).toLocaleDateString("pt-BR")}</TableCell>
                         <TableCell>
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusColor[f.status]}`}>
                             {statusLabel[f.status]}
                           </span>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => { setSelectedFollowUp(f); setDialogOpen(true); }}
-                          >
+                          <Button size="sm" variant="ghost" onClick={() => { setSelectedFollowUp(f); setDialogOpen(true); }}>
                             <ChevronRight className="w-4 h-4" />
                           </Button>
                         </TableCell>
@@ -323,10 +322,210 @@ const FollowUps = () => {
           </Card>
         </TabsContent>
 
+        {/* Tab Automação */}
+        <TabsContent value="automacao" className="space-y-4">
+          {/* Status global */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${automationGlobal ? "bg-green-100" : "bg-muted"}`}>
+                    {automationGlobal ? <Play className="w-5 h-5 text-green-600" /> : <Pause className="w-5 h-5 text-muted-foreground" />}
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">
+                      Automação {automationGlobal ? "Ativa" : "Pausada"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {automationGlobal
+                        ? `${activeRulesCount} regra(s) ativa(s) · Mensagens enviadas automaticamente ao atingir o prazo`
+                        : "Nenhuma mensagem será enviada automaticamente"}
+                    </p>
+                  </div>
+                </div>
+                <Switch checked={automationGlobal} onCheckedChange={setAutomationGlobal} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* KPIs de automação */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Card>
+              <CardContent className="flex items-center gap-4 pt-6">
+                <div className="p-2 rounded-lg bg-green-100 text-green-600"><CheckCircle2 className="w-5 h-5" /></div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{totalSent}</p>
+                  <p className="text-sm text-muted-foreground">Enviados automaticamente</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="flex items-center gap-4 pt-6">
+                <div className="p-2 rounded-lg bg-red-100 text-destructive"><AlertTriangle className="w-5 h-5" /></div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{totalFailed}</p>
+                  <p className="text-sm text-muted-foreground">Falhas de envio</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="flex items-center gap-4 pt-6">
+                <div className="p-2 rounded-lg bg-blue-100 text-blue-600"><Settings2 className="w-5 h-5" /></div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{activeRulesCount}/3</p>
+                  <p className="text-sm text-muted-foreground">Regras ativas</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Regras de automação */}
+          <div className="grid gap-4 md:grid-cols-3">
+            {automationRules.map((rule) => (
+              <Card key={rule.type} className={!automationGlobal || !rule.enabled ? "opacity-60" : ""}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`p-2 rounded-lg ${rule.bg}`}>
+                        <rule.icon className={`w-5 h-5 ${rule.color}`} />
+                      </div>
+                      <div>
+                        <CardTitle className="text-sm">Doador {rule.label}</CardTitle>
+                        <CardDescription className="text-xs">{rule.rule}</CardDescription>
+                      </div>
+                    </div>
+                    <Switch checked={rule.enabled} onCheckedChange={() => toggleRuleEnabled(rule.type)} disabled={!automationGlobal} />
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Disparo automático após</Label>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={rule.followUpDays <= 30 ? "destructive" : rule.followUpDays <= 60 ? "default" : "secondary"}>
+                        {rule.followUpDays} dias
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">da última doação</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Canal de envio</Label>
+                    <Select value={rule.channel} onValueChange={(v) => updateRuleChannel(rule.type, v as FollowUpChannel)} disabled={!automationGlobal || !rule.enabled}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                        <SelectItem value="email">E-mail</SelectItem>
+                        <SelectItem value="telefone">Telefone (lembrete)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Horário de envio</Label>
+                    <Input type="time" value={rule.sendHour} onChange={(e) => updateRuleSendHour(rule.type, e.target.value)} className="h-8 text-xs" disabled={!automationGlobal || !rule.enabled} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Tentativas máximas</Label>
+                    <Select value={String(rule.maxRetries)} onValueChange={(v) => updateRuleRetries(rule.type, Number(v))} disabled={!automationGlobal || !rule.enabled}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 tentativa</SelectItem>
+                        <SelectItem value="2">2 tentativas</SelectItem>
+                        <SelectItem value="3">3 tentativas</SelectItem>
+                        <SelectItem value="5">5 tentativas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Template</Label>
+                    <p className="text-xs font-mono bg-muted px-2 py-1 rounded">{rule.template}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Info */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-3">
+                <Zap className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p className="font-medium text-foreground">Como funciona a automação</p>
+                  <ul className="list-disc pl-4 space-y-0.5">
+                    <li>O sistema verifica diariamente os doadores que atingiram o prazo de follow-up.</li>
+                    <li>Mensagens são enviadas automaticamente via o canal configurado, usando templates pré-aprovados.</li>
+                    <li>Somente doadores com <strong className="text-foreground">opt-in ativo</strong> recebem mensagens.</li>
+                    <li>Em caso de falha, o sistema tenta novamente até o limite de tentativas configurado.</li>
+                    <li>Follow-ups manuais continuam funcionando normalmente na aba "Lista".</li>
+                  </ul>
+                  <p className="text-xs mt-2 text-amber-600">⚠️ Para ativar o envio real, habilite o Lovable Cloud e configure a API do WhatsApp na página de Integrações.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-end">
+            <Button onClick={() => toast({ title: "Configurações salvas", description: "As regras de automação foram atualizadas com sucesso." })}>
+              Salvar Configurações
+            </Button>
+          </div>
+        </TabsContent>
+
+        {/* Tab Histórico */}
+        <TabsContent value="historico" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Histórico de Envios Automáticos</CardTitle>
+              <CardDescription>Registro de todas as mensagens disparadas automaticamente pelo sistema.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Doador</TableHead>
+                    <TableHead>Classificação</TableHead>
+                    <TableHead>Canal</TableHead>
+                    <TableHead>Template</TableHead>
+                    <TableHead>Enviado em</TableHead>
+                    <TableHead>Tentativas</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {automationLogs.map((log) => {
+                    const ChannelIcon = channelIcon[log.channel];
+                    return (
+                      <TableRow key={log.id}>
+                        <TableCell className="font-medium">{log.donorName}</TableCell>
+                        <TableCell>
+                          <Badge variant={donorTypeBadge[log.donorType] as any}>{donorTypeLabel[log.donorType]}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <ChannelIcon className="w-4 h-4" />
+                            <span className="text-xs capitalize">{log.channel}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs font-mono">{log.template}</TableCell>
+                        <TableCell className="text-sm">{log.sentAt}</TableCell>
+                        <TableCell className="text-sm text-center">{log.retryCount}</TableCell>
+                        <TableCell>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${logStatusColor[log.status]}`}>
+                            {log.status === "enviado" ? "Enviado" : log.status === "falha" ? "Falha" : "Aguardando"}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Tab Regras */}
         <TabsContent value="regras" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
-            {classificationRules.map((rule) => (
+            {initialAutomationRules.map((rule) => (
               <Card key={rule.type}>
                 <CardContent className="pt-6 space-y-4">
                   <div className="flex items-center gap-3">
@@ -334,7 +533,7 @@ const FollowUps = () => {
                       <rule.icon className={`w-6 h-6 ${rule.color}`} />
                     </div>
                     <div>
-                      <h3 className="font-heading font-bold text-foreground">Doador {rule.type}</h3>
+                      <h3 className="font-heading font-bold text-foreground">Doador {rule.label}</h3>
                       <p className="text-xs text-muted-foreground">{rule.rule}</p>
                     </div>
                   </div>
@@ -421,9 +620,7 @@ const FollowUps = () => {
                   <div>
                     <Label>Novo status</Label>
                     <Select defaultValue={selectedFollowUp.status}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="pendente">Pendente</SelectItem>
                         <SelectItem value="agendado">Agendado</SelectItem>

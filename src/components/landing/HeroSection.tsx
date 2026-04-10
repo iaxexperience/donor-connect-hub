@@ -66,7 +66,6 @@ const HeroSection = () => {
             className="hidden lg:block"
           >
             <div className="relative">
-              {/* Floating cards */}
               <div className="bg-card/10 backdrop-blur-xl rounded-2xl border border-primary-foreground/10 p-6 shadow-elevated">
                 <div className="grid grid-cols-2 gap-4">
                   <FloatingCard

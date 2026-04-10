@@ -53,12 +53,12 @@ export function AppSidebar() {
       <SidebarContent>
         {/* Logo */}
         <div className="flex items-center gap-2 px-4 py-5 border-b border-sidebar-border">
-          <div className="w-8 h-8 rounded-lg bg-gradient-hero flex items-center justify-center shrink-0">
-            <Heart className="w-4 h-4 text-primary-foreground" />
+          <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center shrink-0">
+            <Heart className="w-4 h-4 text-accent-foreground" />
           </div>
           {!collapsed && (
             <span className="font-heading font-bold text-lg text-sidebar-foreground">
-              DoacaoApp
+              Pulse Doações
             </span>
           )}
         </div>
@@ -74,7 +74,7 @@ export function AppSidebar() {
                       to={item.url}
                       end
                       className="hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent text-primary font-medium"
+                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
                     >
                       <item.icon className="mr-2 h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
@@ -97,7 +97,7 @@ export function AppSidebar() {
                       to={item.url}
                       end
                       className="hover:bg-sidebar-accent"
-                      activeClassName="bg-sidebar-accent text-primary font-medium"
+                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
                     >
                       <item.icon className="mr-2 h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
