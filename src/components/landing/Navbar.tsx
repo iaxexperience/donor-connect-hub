@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Heart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -6,6 +6,15 @@ import { Link } from "react-router-dom";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const links = [
     { label: "Funcionalidades", href: "#features" },
@@ -16,40 +25,57 @@ const Navbar = () => {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-      <div className="container mx-auto flex items-center justify-between h-16 px-4">
-        <a href="#" className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-lg bg-gradient-hero flex items-center justify-center">
-            <Heart className="w-5 h-5 text-primary-foreground" />
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      scrolled 
+        ? "bg-white/70 backdrop-blur-xl border-b border-slate-200 py-3 shadow-sm" 
+        : "bg-transparent py-5"
+    }`}>
+      <div className="container mx-auto flex items-center justify-between px-4">
+        <a href="#" className="flex items-center gap-2 group">
+          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-500">
+            <Heart className="w-6 h-6 text-blue-600" fill="currentColor" />
           </div>
-          <span className="font-heading font-bold text-xl text-foreground">FAP Pulse</span>
+          <span className={`font-heading font-black text-2xl tracking-tighter transition-colors ${
+            scrolled ? "text-slate-900" : "text-white"
+          }`}>
+            FAP Pulse
+          </span>
         </a>
 
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden md:flex items-center gap-10">
           {links.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className={`text-sm font-bold transition-all hover:translate-y-[-2px] ${
+                scrolled 
+                  ? "text-slate-600 hover:text-blue-600" 
+                  : "text-white/80 hover:text-white"
+              }`}
             >
               {link.label}
             </a>
           ))}
         </div>
 
-        <div className="hidden md:flex items-center gap-3">
-          <Button variant="ghost" size="sm" asChild>
+        <div className="hidden md:flex items-center gap-4">
+          <Button variant="ghost" className={`font-bold ${
+            scrolled ? "text-slate-900 hover:bg-slate-100" : "text-white hover:bg-white/10"
+          }`} asChild>
             <Link to="/login">Entrar</Link>
           </Button>
-          <Button size="sm">Cadastre-se</Button>
+          <Button className={`font-bold shadow-lg rounded-xl px-6 ${
+            scrolled ? "bg-blue-600 text-white" : "bg-white text-blue-600 hover:bg-blue-50"
+          }`}>
+            Cadastre-se
+          </Button>
         </div>
 
         <button
-          className="md:hidden text-foreground"
+          className={`md:hidden focus:outline-none ${scrolled ? "text-slate-900" : "text-white"}`}
           onClick={() => setIsOpen(!isOpen)}
-          aria-label="Toggle menu"
         >
-          {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          {isOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
         </button>
       </div>
 

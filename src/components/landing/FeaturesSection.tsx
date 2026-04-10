@@ -49,39 +49,54 @@ const features = [
 
 const FeaturesSection = () => {
   return (
-    <section id="features" className="py-24 bg-background">
-      <div className="container mx-auto px-4">
+    <section id="features" className="py-24 bg-slate-50 relative overflow-hidden">
+      {/* Background Decor */}
+      <div className="absolute top-0 left-0 w-full h-full opacity-30 pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-200/40 rounded-full blur-[100px]" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-200/40 rounded-full blur-[100px]" />
+      </div>
+
+      <div className="container mx-auto px-4 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-16"
+          className="text-center mb-20"
         >
-          <span className="text-sm font-semibold text-accent uppercase tracking-wider">Funcionalidades</span>
-          <h2 className="font-heading font-bold text-3xl md:text-4xl text-foreground mt-3 mb-4">
-            Tudo que você precisa para{" "}
-            <span className="text-gradient-primary">maximizar doações</span>
+          <div className="inline-block px-3 py-1 rounded-full bg-blue-100/50 border border-blue-200 mb-4">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">Alta Performance</span>
+          </div>
+          <h2 className="font-heading font-extrabold text-4xl md:text-5xl text-slate-900 mt-3 mb-6 tracking-tight">
+            Ferramentas que <br />
+            <span className="text-blue-600">impulsionam resultados</span>
           </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Uma plataforma completa que centraliza informações, automatiza processos e fornece insights para sua organização.
+          <p className="text-slate-500 max-w-2xl mx-auto text-lg leading-relaxed">
+            Uma suíte completa de gestão e automação desenhada especificamente para escalas doações e otimizar o relacionamento com sua base.
           </p>
         </motion.div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {features.map((feature, i) => (
             <motion.div
               key={feature.title}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.05 }}
-              className="group bg-card rounded-xl border border-border p-6 hover:shadow-elevated transition-all duration-300 hover:-translate-y-1"
+              transition={{ delay: i * 0.1 }}
+              className="group relative"
             >
-              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                <feature.icon className="w-6 h-6 text-primary" />
+              <div className="h-full bg-white/70 backdrop-blur-sm rounded-[2rem] border border-slate-200 p-8 hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 hover:-translate-y-2 group-hover:bg-white">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mb-6 shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform duration-500">
+                  <feature.icon className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="font-heading font-bold text-slate-900 text-xl mb-3">{feature.title}</h3>
+                <p className="text-slate-500 text-sm leading-relaxed mb-6">{feature.description}</p>
+                
+                <div className="flex items-center gap-2 text-blue-600 font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                  Saber mais
+                  <ArrowRight className="w-3 h-3" />
+                </div>
               </div>
-              <h3 className="font-heading font-semibold text-foreground mb-2">{feature.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
             </motion.div>
           ))}
         </div>
