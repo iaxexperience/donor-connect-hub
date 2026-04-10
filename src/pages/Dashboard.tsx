@@ -93,6 +93,7 @@ const item = {
   show: { opacity: 1, y: 0 },
 };
 
+export default function Dashboard() {
   const { donors } = useDonors();
 
   const totalReceivedToday = donors.reduce((acc, d) => {
