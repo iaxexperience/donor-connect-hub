@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Search, Filter, GitMerge } from "lucide-react";
+import { Search, Filter, GitMerge, List } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { 
   Select, 
@@ -12,6 +14,7 @@ import { useDonors } from "@/hooks/useDonors";
 import { DonorKanban } from "@/components/donors/DonorKanban";
 
 const Pipeline = () => {
+  const navigate = useNavigate();
   const { donors, updateType, isLoading } = useDonors();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
@@ -37,6 +40,14 @@ const Pipeline = () => {
             Gerencie o pipeline de conversão de leads em doadores ativos através do quadro Kanbam.
           </p>
         </div>
+        <Button 
+          variant="outline" 
+          className="border-primary/50 text-primary hover:bg-primary/5" 
+          onClick={() => navigate("/dashboard/doadores")}
+        >
+          <List className="w-4 h-4 mr-2" />
+          Ver Lista
+        </Button>
       </div>
 
       <div className="flex items-center gap-3 shrink-0">

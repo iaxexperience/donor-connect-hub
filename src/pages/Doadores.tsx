@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Heart, Search, Plus, Filter, MessageSquare, Upload, FileDown, CheckCircle2 } from "lucide-react";
+import { Heart, Search, Plus, Filter, MessageSquare, Upload, FileDown, CheckCircle2, GitMerge } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -190,6 +190,14 @@ const Doadores = () => {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          <Button 
+            variant="outline" 
+            className="border-primary/50 text-primary hover:bg-primary/5" 
+            onClick={() => navigate("/dashboard/kanbam")}
+          >
+            <GitMerge className="w-4 h-4 mr-2" />
+            Ver no Kanbam
+          </Button>
           <Button className="bg-primary shadow-glow" onClick={() => navigate("/dashboard/doadores/novo")}>
             <Plus className="w-4 h-4 mr-2" />
             Novo Doador
