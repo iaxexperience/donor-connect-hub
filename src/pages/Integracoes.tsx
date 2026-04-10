@@ -142,8 +142,13 @@ const Integracoes = () => {
   };
 
   const [templates, setTemplates] = useState(() => {
-    const saved = localStorage.getItem("meta_templates");
-    return saved ? JSON.parse(saved) : INITIAL_TEMPLATES;
+    try {
+      const saved = localStorage.getItem("meta_templates");
+      const parsed = saved ? JSON.parse(saved) : null;
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_TEMPLATES;
+    } catch (e) {
+      return INITIAL_TEMPLATES;
+    }
   });
 
   const [isAddingTemplate, setIsAddingTemplate] = useState(false);
@@ -212,7 +217,9 @@ const Integracoes = () => {
     const saved = localStorage.getItem("doacflow_followups");
     if (!saved) return [];
     try {
-      return JSON.parse(saved).map((f: any) => ({
+      const parsed = saved ? JSON.parse(saved) : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.map((f: any) => ({
         ...f,
         donorType: f.classification || f.donorType || "unico",
         status: f.status || "pendente",
@@ -234,7 +241,7 @@ const Integracoes = () => {
   }, [followUpList]);
 
   const generateMetaPayload = (f: WhatsAppFollowUp) => {
-    const template = templates.find(t => t.name === f.template) || templates[2];
+    const template = templates.find(t => t.name === f.template) || templates[0] || INITIAL_TEMPLATES[0];
     
     const payload = {
       messaging_product: "whatsapp",
