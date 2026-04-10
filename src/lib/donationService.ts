@@ -173,3 +173,29 @@ export const updateDonor = async (donorId: number, updateData: Partial<Donor>) =
 
   return data;
 };
+
+/**
+ * Fetches donors who need telemarketing contact.
+ * Logic: 
+ * - All leads
+ * - Non-leads with last donation > 30 days ago
+ */
+export const getTelemarketingQueue = async (): Promise<Donor[]> => {
+  const donors = await getDonors();
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  return donors.filter(donor => {
+    // Leads are always in the queue
+    if (donor.type === 'lead') return true;
+    
+    // Inactive donors (last donation > 30 days)
+    if (donor.last_donation_date) {
+      const lastDate = new Date(donor.last_donation_date);
+      return lastDate < thirtyDaysAgo;
+    }
+
+    // No donation yet but not a lead (should not happen normally but just in case)
+    return true;
+  });
+};
