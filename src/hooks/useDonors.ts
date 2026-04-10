@@ -51,9 +51,13 @@ export const useDonors = () => {
     return donationMutation.mutate({ donorId, amount, campaignId });
   };
 
-  const registerNewDonor = async (donorData: Partial<Donor>) => {
+  const registerNewDonor = async (donorData: any) => {
+    // Map cpf_cnpj from form to document_id for DB
+    const { cpf_cnpj, ...rest } = donorData;
+    
     return await addDonorMutation.mutateAsync({ 
-      ...donorData,
+      ...rest,
+      document_id: cpf_cnpj,
       phone: donorData.phone?.replace(/\D/g, ""),
       type: donorData.type || 'lead',
       total_donated: 0,
