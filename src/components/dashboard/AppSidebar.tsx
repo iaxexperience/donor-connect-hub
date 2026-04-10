@@ -9,6 +9,7 @@ import {
   LogOut,
   Heart,
   MessageSquare,
+  Globe,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -37,6 +38,7 @@ const mainItems = [
 
 const configItems = [
   { title: "Integrações", url: "/dashboard/integracoes", icon: MessageSquare },
+  { title: "API Aberta", url: "/dashboard/api-aberta", icon: Globe },
   { title: "Configurações", url: "/dashboard/configuracoes", icon: Settings },
 ];
 

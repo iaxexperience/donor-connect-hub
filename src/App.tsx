@@ -15,6 +15,7 @@ import Relatorios from "./pages/Relatorios.tsx";
 import Configuracoes from "./pages/Configuracoes.tsx";
 import Integracoes from "./pages/Integracoes.tsx";
 import FollowUps from "./pages/FollowUps.tsx";
+import ApiAberta from "./pages/ApiAberta.tsx";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="relatorios" element={<Relatorios />} />
             <Route path="configuracoes" element={<Configuracoes />} />
             <Route path="integracoes" element={<Integracoes />} />
+            <Route path="api-aberta" element={<ApiAberta />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
