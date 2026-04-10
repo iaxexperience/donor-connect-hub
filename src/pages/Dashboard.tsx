@@ -39,6 +39,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 // --- Mock Data ---
 
+const COLORS = ["#007bff", "#28a745", "#f39c12", "#dc3545", "#17a2b8", "#6f42c1", "#e83e8c"];
+
 const monthlyData = [
   { name: "Jan", total: 45000 },
   { name: "Fev", total: 52000 },
@@ -237,7 +239,11 @@ export default function Dashboard() {
                       cursor={{ fill: '#f5f5f5' }}
                       contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                     />
-                    <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={24} />
+                    <Bar dataKey="total" radius={[4, 4, 0, 0]} barSize={32}>
+                      {monthlyData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
