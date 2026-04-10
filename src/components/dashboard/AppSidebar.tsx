@@ -61,8 +61,8 @@ export function AppSidebar() {
           {!collapsed && (
             <div className="flex flex-col leading-none">
               <span className="font-heading font-black text-2xl tracking-tighter text-white">
-                FAP
-                <span className="font-light text-blue-200 ml-1">Pulse</span>
+                Pulse
+                <span className="font-light text-blue-200 ml-1">Doações</span>
               </span>
               <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-blue-100/60 mt-1">
                 Fundação Assistencial

@@ -39,8 +39,8 @@ const Navbar = () => {
             <span className={`font-heading font-black text-3xl tracking-tighter transition-colors ${
               scrolled ? "text-slate-900" : "text-white"
             }`}>
-              FAP
-              <span className={`font-light ml-1 ${scrolled ? "text-blue-600" : "text-blue-200"}`}>Pulse</span>
+              Pulse
+              <span className={`font-light ml-1 ${scrolled ? "text-blue-600" : "text-blue-200"}`}>Doações</span>
             </span>
             <span className={`text-[9px] font-bold uppercase tracking-[0.2em] transition-colors ${
               scrolled ? "text-slate-400" : "text-white/60"
