@@ -106,7 +106,7 @@ export const KanbanCard = ({ donor, onMove }: KanbanCardProps) => {
               <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Total Doado</span>
               <div className="flex items-center text-sm font-bold text-foreground">
                 <DollarSign className="w-3 h-3 text-green-500" />
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(donor.totalDonated)}
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(donor.total_donated)}
               </div>
             </div>
             <Badge variant="outline" className={`text-[10px] h-5 px-2 font-medium ${typeBadgeStyle(donor.type)}`}>

@@ -20,8 +20,10 @@ const Pipeline = () => {
   const [filterType, setFilterType] = useState("all");
 
   const filteredDonors = donors.filter(d => {
-    const matchesSearch = d.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         d.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const donorName = d.name || "";
+    const donorEmail = d.email || "";
+    const matchesSearch = donorName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         donorEmail.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === "all" || d.type === filterType;
     return matchesSearch && matchesType;
   });
