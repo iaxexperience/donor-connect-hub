@@ -46,14 +46,14 @@
     --shadow-elevated: 0 12px 40px -8px hsl(222 47% 11% / 0.12);
     --shadow-glow: 0 0 40px -10px hsl(214 100% 50% / 0.25);
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 214 100% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 214 100% 95%;
-    --sidebar-accent-foreground: 214 100% 40%;
-    --sidebar-border: 214.3 31.8% 91.4%;
-    --sidebar-ring: 214 100% 50%;
+    --sidebar-background: 214 100% 50%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 214 100% 50%;
+    --sidebar-accent: 214 100% 40%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 214 100% 45%;
+    --sidebar-ring: 0 0% 100%;
   }
 
   .dark {
