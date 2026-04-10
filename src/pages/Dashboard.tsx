@@ -35,7 +35,9 @@ import {
   Line,
 } from "recharts";
 import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useDonors } from "@/hooks/useDonors";
 
 // --- Mock Data ---
 
@@ -91,7 +93,30 @@ const item = {
   show: { opacity: 1, y: 0 },
 };
 
-export default function Dashboard() {
+  const { donors } = useDonors();
+
+  const totalReceivedToday = donors.reduce((acc, d) => {
+    const isToday = new Date(d.lastDonationDate).toDateString() === new Date().toDateString();
+    return isToday ? acc + d.totalDonated : acc;
+  }, 0);
+
+  const stats = {
+    today: donors.reduce((acc, d) => {
+       const today = new Date().toDateString();
+       const dDate = new Date(d.lastDonationDate).toDateString();
+       if (today === dDate) {
+         // Simple heuristic for "today" donations in our mock setup:
+         // since we only track totalDonated, we'll use a portion or assuming single donations for today
+         return acc + (d.donationCount > 0 ? d.totalDonated / d.donationCount : 0); 
+       }
+       return acc;
+    }, 0),
+    recorrentes: donors.filter(d => d.type === "recorrente").length,
+    unicos: donors.filter(d => d.type === "unico").length,
+    esporadicos: donors.filter(d => d.type === "esporadico").length,
+    totalBalance: donors.reduce((acc, d) => acc + d.totalDonated, 0)
+  };
+
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="p-1 space-y-6 pb-10">
       
@@ -139,10 +164,10 @@ export default function Dashboard() {
 
       {/* MAIN KPIs */}
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard title="Recebidos Hoje" value="R$ 14.250" change="+12.5%" trend="up" icon={DollarSign} color="orange" />
-        <StatCard title="Recorrentes" value="842" change="+4.2%" trend="up" icon={Users} color="teal" />
-        <StatCard title="Doadores Únicos" value="1.560" change="-2.1%" trend="down" icon={Activity} color="green" />
-        <StatCard title="Esporádicos" value="432" change="+8.7%" trend="up" icon={Heart} color="red" />
+        <StatCard title="Recebidos Hoje" value={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.today)} change="+12.5%" trend="up" icon={DollarSign} color="orange" />
+        <StatCard title="Recorrentes" value={stats.recorrentes.toString()} change="+4.2%" trend="up" icon={Users} color="teal" />
+        <StatCard title="Doadores Únicos" value={stats.unicos.toString()} change="-2.1%" trend="down" icon={Activity} color="green" />
+        <StatCard title="Esporádicos" value={stats.esporadicos.toString()} change="+8.7%" trend="up" icon={Heart} color="red" />
         <StatCard title="Follow-ups Pendentes" value="28" badge="Alta" color="blue" icon={Phone} />
       </motion.div>
 
@@ -159,7 +184,7 @@ export default function Dashboard() {
                 <CardTitle className="text-sm font-medium opacity-80">Saldo ASAAS (Real-time)</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">R$ 145.890,22</div>
+                <div className="text-3xl font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.totalBalance)}</div>
                 <div className="flex items-center gap-2 mt-2 text-xs opacity-90">
                   <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                   Sincronizado via API agora

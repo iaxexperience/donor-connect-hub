@@ -17,6 +17,7 @@ import Integracoes from "./pages/Integracoes.tsx";
 import FollowUps from "./pages/FollowUps.tsx";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import { AsaasAutomationWorker } from "./components/automation/AsaasAutomationWorker.tsx";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <AsaasAutomationWorker />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />

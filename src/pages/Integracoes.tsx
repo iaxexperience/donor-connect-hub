@@ -14,6 +14,8 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useDonors } from "@/hooks/useDonors";
+import { handleAsaasDonation, generateMockAsaasEvent } from "@/lib/asaasIntegrationService";
 import { Progress } from "@/components/ui/progress";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -103,11 +105,39 @@ const statusStyle: Record<FollowUpStatus, string> = {
 
 const Integracoes = () => {
   const [waConnected, setWaConnected] = useState(true);
-  const [asaasConnected, setAsaasConnected] = useState(false);
-  const [isAutoEnabled, setIsAutoEnabled] = useState(true);
+  const [asaasConnected, setAsaasConnected] = useState(true);
+  const [isAutoEnabled, setIsAutoEnabled] = useState(() => localStorage.getItem("asaas_automation_enabled") !== "false");
   const [wabaId, setWabaId] = useState("32910291920192");
   const [phoneId, setPhoneId] = useState("425178224512901");
   const { toast } = useToast();
+  const { findDonorByEmailOrPhone, registerNewDonor, addDonation } = useDonors();
+
+  const [whatsappLogs, setWhatsappLogs] = useState<any[]>([]);
+  const [asaasLogs, setAsaasLogs] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadLogs = () => {
+      setWhatsappLogs(JSON.parse(localStorage.getItem("whatsapp_logs") || "[]"));
+      setAsaasLogs(JSON.parse(localStorage.getItem("asaas_logs") || "[]"));
+    };
+    loadLogs();
+    const interval = setInterval(loadLogs, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("asaas_automation_enabled", isAutoEnabled.toString());
+  }, [isAutoEnabled]);
+
+  const simulateAsaasDonation = async () => {
+    const mockEvent = generateMockAsaasEvent();
+    await handleAsaasDonation(
+      mockEvent,
+      findDonorByEmailOrPhone,
+      registerNewDonor,
+      addDonation
+    );
+  };
 
   const [followUpList, setFollowUpList] = useState<WhatsAppFollowUp[]>(() => {
     const saved = localStorage.getItem("doacflow_followups");
@@ -243,9 +273,9 @@ const Integracoes = () => {
             </div>
           </div>
           <Separator orientation="vertical" className="h-10 mx-2" />
-          <Button onClick={processAutomations} className="bg-primary shadow-glow hover:scale-105 transition-all">
+          <Button onClick={simulateAsaasDonation} className="bg-primary shadow-glow hover:scale-105 transition-all">
             <Zap className="w-4 h-4 mr-2" />
-            Processar API
+            Simular Doação Asaas
           </Button>
         </div>
       </div>
@@ -429,29 +459,57 @@ const Integracoes = () => {
             </TabsContent>
 
             <TabsContent value="logs" className="space-y-4">
-              <Card className="border-none shadow-soft">
-                <CardHeader>
-                  <CardTitle className="text-md">Eventos da API Cloud</CardTitle>
-                  <CardDescription>Eventos de Webhook recebidos da infraestrutura da Meta.</CardDescription>
+               <Card className="border-none shadow-soft">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                  <div>
+                    <CardTitle className="text-md">Logs de Integração em Tempo Real</CardTitle>
+                    <CardDescription>Monitoramento de eventos Meta Cloud e Asaas.</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="auto-mode" className="text-xs">Auto-Processing</Label>
+                    <Switch 
+                      id="auto-mode" 
+                      checked={isAutoEnabled} 
+                      onCheckedChange={setIsAutoEnabled} 
+                    />
+                  </div>
                 </CardHeader>
                 <CardContent>
                    <ScrollArea className="h-[400px]">
-                    <div className="space-y-3">
-                      {[ 
-                        { time: "10:32:01", event: "message_status", status: "delivered", to: "5511998881234" },
-                        { time: "10:30:15", event: "template_approved", status: "agradecimento_doacao", to: "-" },
-                        { time: "09:45:22", event: "message_sent", status: "success", to: "5521987775678" },
-                        { time: "09:45:20", event: "webhook_verify", status: "verified", to: "Meta Server" },
-                      ].map((log, i) => (
-                        <div key={i} className="flex items-center gap-4 p-3 rounded-xl border border-muted/50 bg-muted/20">
-                          <div className="text-[10px] font-mono text-muted-foreground w-16">{log.time}</div>
-                          <div className="flex-1">
-                            <p className="text-xs font-bold uppercase tracking-tighter">{log.event}</p>
-                            <p className="text-[10px] text-muted-foreground">Destinatário: {log.to}</p>
+                    <div className="space-y-6">
+                      <div className="space-y-3">
+                        <Label className="text-[10px] font-bold uppercase text-primary">WhatsApp Outbound</Label>
+                        {whatsappLogs.length > 0 ? whatsappLogs.map((log, i) => (
+                          <div key={log.id} className="flex items-center gap-4 p-3 rounded-xl border border-muted/50 bg-muted/20">
+                            <div className="text-[10px] font-mono text-muted-foreground w-16">{log.time}</div>
+                            <div className="flex-1">
+                              <p className="text-xs font-bold uppercase tracking-tighter">{log.event}</p>
+                              <p className="text-[10px] text-muted-foreground">Destinatário: {log.to}</p>
+                            </div>
+                            <Badge variant="outline" className="text-[9px] uppercase font-bold text-green-600">{log.status}</Badge>
                           </div>
-                          <Badge variant="outline" className="text-[9px] uppercase font-bold">{log.status}</Badge>
-                        </div>
-                      ))}
+                        )) : (
+                          <p className="text-[10px] text-muted-foreground italic">Nenhuma mensagem enviada ainda.</p>
+                        )}
+                      </div>
+
+                      <Separator />
+
+                      <div className="space-y-3">
+                        <Label className="text-[10px] font-bold uppercase text-orange-500">Asaas Inbound</Label>
+                        {asaasLogs.length > 0 ? asaasLogs.map((log, i) => (
+                          <div key={log.id} className="flex items-center gap-4 p-3 rounded-xl border border-orange-100 bg-orange-50/30">
+                            <div className="text-[10px] font-mono text-muted-foreground w-16">{log.time}</div>
+                            <div className="flex-1">
+                              <p className="text-xs font-bold uppercase tracking-tighter text-orange-700">{log.type}</p>
+                              <p className="text-[10px] text-muted-foreground">{log.donor} &bull; R$ {log.amount}</p>
+                            </div>
+                            <Badge variant="outline" className="text-[9px] uppercase font-bold bg-white text-orange-600 border-orange-200">confirmado</Badge>
+                          </div>
+                        )) : (
+                          <p className="text-[10px] text-muted-foreground italic">Nenhuma doação recebida via API ainda.</p>
+                        )}
+                      </div>
                     </div>
                    </ScrollArea>
                 </CardContent>

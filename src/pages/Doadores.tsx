@@ -23,7 +23,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Donor, processNewDonation } from "@/lib/donationService";
+import { useDonors } from "@/hooks/useDonors";
+import { typeLabel } from "@/lib/donationService";
 
 const INITIAL_DONORS: Donor[] = [
   { id: 1, name: "Maria Silva", email: "maria@email.com", phone: "(11) 99999-0001", type: "recorrente", totalDonated: 4500.00, lastDonationDate: new Date("2026-04-02"), donationCount: 12, donations: [] },
@@ -52,11 +53,7 @@ const typeLabel = (type: string) => {
 };
 
 const Doadores = () => {
-  const [donors, setDonors] = useState<Donor[]>(() => {
-    const saved = localStorage.getItem("doacflow_donors");
-    return saved ? JSON.parse(saved).map((d: any) => ({ ...d, lastDonationDate: new Date(d.lastDonationDate) })) : INITIAL_DONORS;
-  });
-  
+  const { donors, addDonation } = useDonors();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -65,46 +62,17 @@ const Doadores = () => {
   const [campaign, setCampaign] = useState("Natal Solidário");
   const { toast } = useToast();
 
-  useEffect(() => {
-    localStorage.setItem("doacflow_donors", JSON.stringify(donors));
-  }, [donors]);
-
   const handleRegisterDonation = () => {
     if (!selectedDonorId || !donationAmount) {
       toast({ title: "Erro", description: "Selecione um doador e informe o valor.", variant: "destructive" });
       return;
     }
 
-    const donorIndex = donors.findIndex(d => d.id === parseInt(selectedDonorId));
-    if (donorIndex === -1) return;
-
-    const { updatedDonor, nextFollowUp } = processNewDonation(
-      donors[donorIndex],
-      parseFloat(donationAmount),
-      campaign
-    );
-
-    const newDonors = [...donors];
-    newDonors[donorIndex] = updatedDonor;
-    setDonors(newDonors);
-
-    // Save follow-up simulation
-    const followUps = JSON.parse(localStorage.getItem("doacflow_followups") || "[]");
-    followUps.push({
-      id: Date.now(),
-      donorId: updatedDonor.id,
-      donorName: updatedDonor.name,
-      phone: updatedDonor.phone,
-      classification: updatedDonor.type,
-      dueDate: nextFollowUp,
-      status: "pendente",
-      campaign: campaign
-    });
-    localStorage.setItem("doacflow_followups", JSON.stringify(followUps));
+    addDonation(parseInt(selectedDonorId), parseFloat(donationAmount), campaign);
 
     toast({
       title: "Doação Registrada!",
-      description: `Doador agora é ${typeLabel(updatedDonor.type)}. Próximo follow-up em ${nextFollowUp.toLocaleDateString("pt-BR")}.`,
+      description: `O registro foi atualizado e um follow-up foi agendado.`,
     });
 
     setIsDialogOpen(false);
@@ -242,7 +210,7 @@ const Doadores = () => {
                 <TableCell>
                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(donor.totalDonated)}
                 </TableCell>
-                <TableCell>{donor.lastDonationDate.toLocaleDateString("pt-BR")}</TableCell>
+                <TableCell>{new Date(donor.lastDonationDate).toLocaleDateString("pt-BR")}</TableCell>
               </TableRow>
             ))}
           </TableBody>
