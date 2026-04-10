@@ -22,6 +22,10 @@ const ENDPOINTS = [
     method: "GET",
     path: "/donors",
     description: "Retorna a lista completa de doadores cadastrados.",
+    headers: [
+      { name: "Authorization", value: "Bearer YOUR_API_KEY" },
+      { name: "Accept", value: "application/json" }
+    ],
     params: [
       { name: "page", type: "integer", desc: "Número da página (default: 1)" },
       { name: "limit", type: "integer", desc: "Itens por página (max: 100)" }
@@ -31,8 +35,38 @@ const ENDPOINTS = [
   },
   {
     method: "POST",
+    path: "/donors",
+    description: "Cadastra um novo doador na plataforma.",
+    headers: [
+      { name: "Authorization", value: "Bearer YOUR_API_KEY" },
+      { name: "Content-Type", value: "application/json" }
+    ],
+    body: {
+      name: "João Silva",
+      email: "joao@exemplo.com",
+      phone: "+55 11 99999-9999",
+      cpf: "123.456.789-00",
+      type: "individual"
+    },
+    example: `curl -X POST "${API_BASE_URL}/donors" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -d '{
+    "name": "João Silva",
+    "email": "joao@exemplo.com",
+    "phone": "+55 11 99999-9999",
+    "cpf": "123.456.789-00",
+    "type": "individual"
+  }'`
+  },
+  {
+    method: "POST",
     path: "/donations",
     description: "Registra uma nova doação no sistema.",
+    headers: [
+      { name: "Authorization", value: "Bearer YOUR_API_KEY" },
+      { name: "Content-Type", value: "application/json" }
+    ],
     body: {
       donor_id: 123,
       amount: 150.00,
@@ -45,13 +79,17 @@ const ENDPOINTS = [
   -d '{
     "donor_id": 123,
     "amount": 150.00,
-    "campaign": "Natal Solidário"
+    "campaign": "Natal Solidário",
+    "payment_method": "credit_card"
   }'`
   },
   {
     method: "GET",
     path: "/integration/status",
     description: "Verifica o status de conectividade com as APIs da Meta e Asaas.",
+    headers: [
+      { name: "Authorization", value: "Bearer YOUR_API_KEY" }
+    ],
     example: `curl -X GET "${API_BASE_URL}/integration/status" \\
   -H "Authorization: Bearer YOUR_API_KEY"`
   }
@@ -168,29 +206,79 @@ const ApiAberta = () => {
                         <Copy className="w-3.5 h-3.5" />
                       </Button>
                     </div>
-                    <CardContent className="pt-6 space-y-4">
+                    <CardContent className="pt-6 space-y-6">
                       <p className="text-sm text-muted-foreground">{ep.description}</p>
                       
-                      {ep.params && (
-                        <div className="space-y-2">
-                          <p className="text-xs font-bold uppercase text-muted-foreground tracking-tighter">Query Parameters</p>
-                          <div className="grid grid-cols-1 gap-2">
-                            {ep.params.map(p => (
-                              <div key={p.name} className="flex items-center justify-between p-2 rounded-lg bg-muted/30 text-xs">
-                                <span className="font-mono font-bold text-primary">{p.name} <span className="text-muted-foreground font-normal">({p.type})</span></span>
-                                <span className="text-muted-foreground">{p.desc}</span>
-                              </div>
-                            ))}
+                      <div className="space-y-4">
+                        {/* Headers */}
+                        {ep.headers && (
+                          <div className="space-y-2">
+                            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                              <ShieldCheck className="w-3 h-3" />
+                              Headers
+                            </p>
+                            <div className="grid grid-cols-1 gap-1.5">
+                              {ep.headers.map(h => (
+                                <div key={h.name} className="flex items-center justify-between p-2.5 rounded-xl bg-muted/30 border border-muted/20 text-xs">
+                                  <span className="font-mono font-bold text-foreground">{h.name}</span>
+                                  <span className="font-mono text-muted-foreground">{h.value}</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      <div className="space-y-2">
-                        <p className="text-xs font-bold uppercase text-muted-foreground tracking-tighter">Exemplo de Requisição</p>
-                        <div className="relative">
-                          <pre className="p-4 rounded-xl bg-slate-950 text-slate-50 text-[11px] font-mono overflow-x-auto leading-relaxed">
-                            {ep.example}
-                          </pre>
+                        {/* Params */}
+                        {ep.params && ep.params.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                              <Info className="w-3 h-3" />
+                              Query Parameters
+                            </p>
+                            <div className="grid grid-cols-1 gap-1.5">
+                              {ep.params.map(p => (
+                                <div key={p.name} className="flex items-center justify-between p-2.5 rounded-xl bg-muted/30 border border-muted/20 text-xs">
+                                  <span className="font-mono font-bold text-primary">{p.name} <span className="text-muted-foreground font-normal">({p.type})</span></span>
+                                  <span className="text-muted-foreground">{p.desc}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Body */}
+                        {ep.body && (
+                          <div className="space-y-2">
+                            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                              <FileJson className="w-3 h-3" />
+                              Corpo da Requisição (JSON)
+                            </p>
+                            <div className="relative">
+                              <pre className="p-4 rounded-xl bg-muted/50 border border-muted/50 text-foreground text-[11px] font-mono overflow-x-auto">
+                                {JSON.stringify(ep.body, null, 2)}
+                              </pre>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                            <Terminal className="w-3 h-3" />
+                            Exemplo de Requisição (cURL)
+                          </p>
+                          <div className="relative group/code">
+                            <pre className="p-4 rounded-xl bg-slate-950 text-slate-50 text-[11px] font-mono overflow-x-auto leading-relaxed border border-white/5">
+                              {ep.example}
+                            </pre>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="absolute top-2 right-2 h-7 w-7 bg-white/10 hover:bg-white/20 text-white opacity-0 group-hover/code:opacity-100 transition-opacity"
+                              onClick={() => copyToClipboard(ep.example, "Exemplo cURL")}
+                            >
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
