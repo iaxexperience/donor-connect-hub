@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { addDays } from "date-fns";
 
-export type DonorType = "unico" | "esporadico" | "recorrente";
+export type DonorType = "lead" | "unico" | "esporadico" | "recorrente" | "desativado";
 
 export interface Donation {
   id: string;
@@ -31,9 +31,11 @@ export interface FollowUp {
 }
 
 export const typeLabel: Record<DonorType, string> = { 
+  lead: "Lead",
   unico: "Único", 
   esporadico: "Esporádico", 
-  recorrente: "Recorrente" 
+  recorrente: "Recorrente",
+  desativado: "Desativado"
 };
 
 /**
@@ -122,6 +124,25 @@ export const getFollowUps = async () => {
 
   if (error) {
     console.error('Error fetching follow-ups:', error);
+    throw error;
+  }
+
+  return data;
+};
+
+/**
+ * Updates a donor's type/classification.
+ */
+export const updateDonorType = async (donorId: number, newType: DonorType) => {
+  const { data, error } = await supabase
+    .from('donors')
+    .update({ type: newType })
+    .eq('id', donorId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating donor type:', error);
     throw error;
   }
 
