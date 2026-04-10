@@ -4,27 +4,35 @@ import { ArrowRight } from "lucide-react";
 
 const CTASection = () => {
   return (
-    <section className="py-24 bg-gradient-hero relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-accent/10 blur-3xl" />
+    <section className="py-24 bg-blue-600 relative overflow-hidden">
+      {/* Dynamic Background */}
+      <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full bg-blue-400/20 blur-[120px] animate-pulse-glow" />
+      <div className="absolute -bottom-20 -left-20 w-[400px] h-[400px] rounded-full bg-indigo-500/30 blur-[100px]" />
+
       <div className="container mx-auto px-4 text-center relative z-10">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
+          className="max-w-4xl mx-auto"
         >
-          <h2 className="font-heading font-bold text-3xl md:text-4xl text-primary-foreground mb-4">
-            Pronto para transformar sua arrecadação?
+          <div className="inline-block px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-8 backdrop-blur-md">
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-white">Comece Agora</span>
+          </div>
+          <h2 className="font-heading font-black text-4xl md:text-6xl text-white mb-8 tracking-tighter leading-[1.1]">
+            Pronto para revolucionar <br />
+            sua captação de recursos?
           </h2>
-          <p className="text-primary-foreground/70 max-w-xl mx-auto mb-8">
-            Comece hoje mesmo e veja seus resultados crescerem com automação inteligente e gestão centralizada.
+          <p className="text-white/80 text-lg md:text-xl max-w-2xl mx-auto mb-12 font-medium">
+            Junte-se a centenas de organizações que já aceleraram seu impacto social com a inteligência do FAP Pulse.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button variant="hero" size="xl">
-              Começar Agora
-              <ArrowRight className="w-5 h-5" />
+          <div className="flex flex-col sm:flex-row gap-5 justify-center">
+            <Button size="xl" className="bg-white text-blue-600 hover:bg-blue-50 shadow-2xl rounded-2xl font-bold px-10">
+              Criar Conta Grátis
+              <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
-            <Button variant="heroOutline" size="xl">
-              Falar com Especialista
+            <Button size="xl" variant="outline" className="border-white/30 bg-white/5 text-white hover:bg-white/10 rounded-2xl font-bold px-10 backdrop-blur-sm">
+              Falar com Consultor
             </Button>
           </div>
         </motion.div>

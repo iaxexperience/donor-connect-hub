@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import {
   Users, MessageCircle, BarChart3, Kanban,
-  Brain, Webhook, Shield, Zap,
+  Brain, Webhook, Shield, Zap, ArrowRight,
 } from "lucide-react";
 
 const features = [

@@ -1,6 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { ArrowRight, Users, TrendingUp, MessageCircle } from "lucide-react";
+import {
+  Users, MessageCircle, BarChart3, Kanban,
+  Brain, Webhook, Shield, Zap, ArrowRight,
+} from "lucide-react";
 
 const HeroSection = () => {
   return (
@@ -70,7 +73,7 @@ const HeroSection = () => {
             {/* Main Mockup */}
             <div className="relative z-20 rounded-[2rem] overflow-hidden border border-white/20 shadow-2xl shadow-blue-900/40 animate-float">
               <img 
-                src="C:\Users\maxra\.gemini\antigravity\brain\ebb80fd4-af7a-4f41-8707-72c4ed2f63aa\dashboard_mockup_arrecadacao_1775837111925.png" 
+                src="/mockup.png" 
                 alt="FAP Pulse Dashboard Mockup" 
                 className="w-full h-auto object-cover"
               />
