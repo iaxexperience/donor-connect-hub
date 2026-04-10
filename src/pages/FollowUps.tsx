@@ -118,7 +118,11 @@ const stats = [
 ];
 
 const donorTypeLabel: Record<DonorType, string> = { unico: "Único", esporadico: "Esporádico", recorrente: "Recorrente" };
-const donorTypeBadge: Record<DonorType, string> = { unico: "outline", esporadico: "default", recorrente: "secondary" };
+const donorTypeBadge: Record<DonorType, string> = { 
+  unico: "bg-blue-100 text-blue-700 border-blue-200", 
+  esporadico: "bg-orange-100 text-orange-700 border-orange-200", 
+  recorrente: "bg-green-100 text-green-700 border-green-200" 
+};
 const statusLabel: Record<FollowUpStatus, string> = { pendente: "Pendente", agendado: "Agendado", concluido: "Concluído", atrasado: "Atrasado" };
 const statusColor: Record<FollowUpStatus, string> = { pendente: "bg-amber-100 text-amber-800", agendado: "bg-blue-100 text-blue-800", concluido: "bg-green-100 text-green-800", atrasado: "bg-red-100 text-red-800" };
 const channelIcon: Record<FollowUpChannel, typeof Phone> = { telefone: Phone, whatsapp: MessageSquare, email: Mail };
@@ -286,7 +290,7 @@ const FollowUps = () => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={donorTypeBadge[f.donorType] as any}>{donorTypeLabel[f.donorType]}</Badge>
+                          <Badge variant="outline" className={donorTypeBadge[f.donorType]}>{donorTypeLabel[f.donorType]}</Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1 text-muted-foreground">
@@ -497,7 +501,7 @@ const FollowUps = () => {
                       <TableRow key={log.id}>
                         <TableCell className="font-medium">{log.donorName}</TableCell>
                         <TableCell>
-                          <Badge variant={donorTypeBadge[log.donorType] as any}>{donorTypeLabel[log.donorType]}</Badge>
+                          <Badge variant="outline" className={donorTypeBadge[log.donorType]}>{donorTypeLabel[log.donorType]}</Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1 text-muted-foreground">

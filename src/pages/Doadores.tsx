@@ -33,12 +33,12 @@ const INITIAL_DONORS: Donor[] = [
   { id: 5, name: "Beatriz Lima", email: "beatriz@email.com", phone: "(51) 95555-0005", type: "esporadico", totalDonated: 750.00, lastDonationDate: new Date("2026-02-28"), donationCount: 2, donations: [] },
 ];
 
-const typeBadgeVariant = (type: string) => {
+const typeBadgeStyle = (type: string) => {
   switch (type) {
-    case "recorrente": return "default";
-    case "esporadico": return "secondary";
-    case "unico": return "outline";
-    default: return "outline";
+    case "recorrente": return "bg-green-100 text-green-700 border-green-200";
+    case "esporadico": return "bg-orange-100 text-orange-700 border-orange-200";
+    case "unico": return "bg-blue-100 text-blue-700 border-blue-200";
+    default: return "bg-gray-100 text-gray-700";
   }
 };
 
@@ -223,7 +223,7 @@ const Doadores = () => {
                 <TableCell>{donor.email}</TableCell>
                 <TableCell>{donor.phone}</TableCell>
                 <TableCell>
-                  <Badge variant={typeBadgeVariant(donor.type) as any}>
+                  <Badge variant="outline" className={typeBadgeStyle(donor.type)}>
                     {typeLabel(donor.type)}
                   </Badge>
                 </TableCell>
