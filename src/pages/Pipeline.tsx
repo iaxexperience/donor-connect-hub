@@ -31,10 +31,10 @@ const Pipeline = () => {
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
               <GitMerge className="w-5 h-5" />
             </div>
-            <h1 className="font-heading font-bold text-2xl text-foreground">Pipeline de Doadores</h1>
+            <h1 className="font-heading font-bold text-2xl text-foreground">Kanbam de Doadores</h1>
           </div>
           <p className="text-muted-foreground text-sm mt-1">
-            Gerencie o fluxo de conversão de leads em doadores ativos.
+            Gerencie o pipeline de conversão de leads em doadores ativos através do quadro Kanbam.
           </p>
         </div>
       </div>
