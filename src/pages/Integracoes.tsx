@@ -270,7 +270,7 @@ const Integracoes = () => {
                       </div>
                       <div>
                         <CardTitle className="text-lg">Fila de Disparos Oficiais</CardTitle>
-                        <CardDescription>Mapeamento de variáveis {{1}} para campos de doadores.</CardDescription>
+                        <CardDescription>Mapeamento de variáveis {"{{1}}"} para campos de doadores.</CardDescription>
                       </div>
                     </div>
                   </div>
@@ -331,7 +331,7 @@ const Integracoes = () => {
                                 <TableCell>
                                   <div className="flex flex-col">
                                     <Badge variant="outline" className="text-[9px] w-fit mb-1">{f.template}</Badge>
-                                    <span className="text-[9px] text-muted-foreground">Variables: {{1}}, {{2}}</span>
+                                    <span className="text-[9px] text-muted-foreground">Variables: {"{{1}}, {{2}}"}</span>
                                   </div>
                                 </TableCell>
                                 <TableCell>
@@ -412,7 +412,7 @@ const Integracoes = () => {
                         <div className="space-y-1">
                           {tpl.variables.map((v, i) => (
                             <div key={v} className="flex items-center justify-between text-[10px] p-1.5 bg-background rounded border">
-                              <span className="font-mono text-primary font-bold">{{i+1}}</span>
+                              <span className="font-mono text-primary font-bold">{"{{"}{i+1}{"}}"}</span>
                               <ChevronRight className="w-3 h-3 text-muted-foreground" />
                               <span className="font-semibold">{v}</span>
                             </div>
