@@ -155,3 +155,21 @@ export const updateDonorType = async (donorId: number, newType: DonorType) => {
 
   return data;
 };
+/**
+ * Updates an entire donor record.
+ */
+export const updateDonor = async (donorId: number, updateData: Partial<Donor>) => {
+  const { data, error } = await supabase
+    .from('donors')
+    .update(updateData)
+    .eq('id', donorId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating donor:', error);
+    throw error;
+  }
+
+  return data;
+};
