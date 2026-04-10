@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Heart, Search, Plus, Filter, MessageSquare } from "lucide-react";
+import { Heart, Search, Plus, Filter, MessageSquare, Upload, FileDown, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -137,7 +137,53 @@ const Doadores = () => {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          <Button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Upload className="w-4 h-4" />
+                Importar
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Importar Doadores</DialogTitle>
+                <DialogDescription>
+                  Selecione um arquivo CSV ou Excel para importar sua base de doadores.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-6 py-6">
+                <div className="border-2 border-dashed border-muted rounded-2xl p-10 flex flex-col items-center justify-center gap-3 bg-muted/20 hover:bg-muted/30 transition-colors cursor-pointer group">
+                  <div className="p-4 rounded-full bg-primary/10 group-hover:scale-110 transition-transform">
+                    <Upload className="w-8 h-8 text-primary" />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-bold text-sm">Arraste seu arquivo aqui</p>
+                    <p className="text-xs text-muted-foreground mt-1">Formatos suportados: .csv, .xlsx</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                    <FileDown className="w-3 h-3" />
+                    Exemplo de Modelo
+                  </p>
+                  <Button variant="ghost" className="w-full h-10 border border-muted text-xs justify-between">
+                    <span>modelo_importacao_doadores.csv</span>
+                    <Badge variant="secondary">Baixar</Badge>
+                  </Button>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+                <Button onClick={() => {
+                  toast({
+                    title: "Importação Iniciada",
+                    description: "Seus doadores estão sendo processados em segundo plano.",
+                  });
+                }}>Iniciar Importação</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Button className="bg-primary shadow-glow">
             <Plus className="w-4 h-4 mr-2" />
             Novo Doador
           </Button>
@@ -188,7 +234,7 @@ const Doadores = () => {
                 <TableCell>{donor.phone}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className={typeBadgeStyle(donor.type)}>
-                    {typeLabel(donor.type)}
+                    {typeLabel[donor.type]}
                   </Badge>
                 </TableCell>
                 <TableCell>
