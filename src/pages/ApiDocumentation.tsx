@@ -2,7 +2,7 @@ import {
   Book, Code, Shield, Zap, Info, ArrowLeft, 
   ChevronRight, Database, MessageSquare, 
   Lock, AlertTriangle, Terminal, Search,
-  FileText, Globe, Layers, Cpu
+  FileText, Globe, Layers, Cpu, CheckCircle2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
