@@ -26,23 +26,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useDonors } from "@/hooks/useDonors";
 import { typeLabel } from "@/lib/donationService";
 
-// INITIAL_DONORS moved to hook hook
-
+// INITIAL_DONORS moved to hook
 const typeBadgeStyle = (type: string) => {
   switch (type) {
     case "recorrente": return "bg-green-100 text-green-700 border-green-200";
     case "esporadico": return "bg-orange-100 text-orange-700 border-orange-200";
     case "unico": return "bg-blue-100 text-blue-700 border-blue-200";
     default: return "bg-gray-100 text-gray-700";
-  }
-};
-
-const typeLabel = (type: string) => {
-  switch (type) {
-    case "recorrente": return "Recorrente";
-    case "esporadico": return "Esporádico";
-    case "unico": return "Único";
-    default: return type;
   }
 };
 
