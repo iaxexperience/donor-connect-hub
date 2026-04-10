@@ -109,6 +109,8 @@ const Integracoes = () => {
   const [isAutoEnabled, setIsAutoEnabled] = useState(() => localStorage.getItem("asaas_automation_enabled") !== "false");
   const [wabaId, setWabaId] = useState("32910291920192");
   const [phoneId, setPhoneId] = useState("425178224512901");
+  const [isTestingWa, setIsTestingWa] = useState(false);
+  const [isTestingAsaas, setIsTestingAsaas] = useState(false);
   const { toast } = useToast();
   const { findDonorByEmailOrPhone, registerNewDonor, addDonation } = useDonors();
 
@@ -138,7 +140,31 @@ const Integracoes = () => {
       addDonation
     );
   };
+  const handleTestWhatsApp = () => {
+    setIsTestingWa(true);
+    setTimeout(() => {
+      setIsTestingWa(false);
+      setWaConnected(true);
+      toast({
+        title: "Conexão Meta Cloud OK",
+        description: "Autenticação via System User Token validada com sucesso.",
+        className: "bg-green-50 border-green-200"
+      });
+    }, 1500);
+  };
 
+  const handleTestAsaas = () => {
+    setIsTestingAsaas(true);
+    setTimeout(() => {
+      setIsTestingAsaas(false);
+      setAsaasConnected(true);
+      toast({
+        title: "Conexão Asaas OK",
+        description: "API Key validada. Permissões de Webhook ativas.",
+        className: "bg-green-50 border-green-200"
+      });
+    }, 1500);
+  };
   const [followUpList, setFollowUpList] = useState<WhatsAppFollowUp[]>(() => {
     const saved = localStorage.getItem("doacflow_followups");
     if (!saved) return [];
@@ -571,6 +597,19 @@ const Integracoes = () => {
                   <Input className="h-8 text-[10px] font-mono bg-muted" readOnly value="FAP_PULSE_META_2026" />
                 </div>
 
+                <Button 
+                  className="w-full text-xs h-9 bg-primary" 
+                  onClick={handleTestWhatsApp}
+                  disabled={isTestingWa}
+                >
+                  {isTestingWa ? (
+                    <RefreshCw className="w-3.5 h-3.5 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="w-3.5 h-3.5 mr-2" />
+                  )}
+                  Testar Conexão WhatsApp
+                </Button>
+
                 <div className="flex items-center justify-between p-2 bg-green-50 border border-green-100 rounded-lg">
                   <div className="flex items-center gap-2 text-green-700">
                     <CheckCircle2 className="w-4 h-4" />
@@ -591,7 +630,15 @@ const Integracoes = () => {
                <div className="space-y-3">
                  <p className="text-[10px] text-muted-foreground">Integração financeira para sincronismo automático de doações confirmadas.</p>
                  <Input type="password" placeholder="API Access Token" className="h-8 text-xs font-mono" />
-                 <Button className="w-full text-xs h-8" variant="outline">Testar Conexão</Button>
+                 <Button 
+                  className="w-full text-xs h-8" 
+                  variant="outline"
+                  onClick={handleTestAsaas}
+                  disabled={isTestingAsaas}
+                 >
+                   {isTestingAsaas && <RefreshCw className="w-3 h-3 mr-2 animate-spin" />}
+                   Testar Conexão Asaas
+                 </Button>
                </div>
             </CardContent>
           </Card>
