@@ -120,5 +120,3 @@ const Telemarketing = () => {
 };
 
 export default Telemarketing;
-
-export default Telemarketing;
