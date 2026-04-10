@@ -18,6 +18,7 @@ import FollowUps from "./pages/FollowUps.tsx";
 import ApiAberta from "./pages/ApiAberta.tsx";
 import ApiDocumentation from "./pages/ApiDocumentation.tsx";
 import Pipeline from "./pages/Pipeline.tsx";
+import DonorForm from "./pages/DonorForm.tsx";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -36,6 +37,7 @@ const App = () => (
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="doadores" element={<Doadores />} />
+            <Route path="doadores/novo" element={<DonorForm />} />
             <Route path="kanbam" element={<Pipeline />} />
             <Route path="campanhas" element={<Campanhas />} />
             <Route path="telemarketing" element={<Telemarketing />} />

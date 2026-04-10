@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Heart, Search, Plus, Filter, MessageSquare, Upload, FileDown, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ const typeBadgeStyle = (type: string) => {
 };
 
 const Doadores = () => {
+  const navigate = useNavigate();
   const { donors, addDonation, isLoading: donorsLoading } = useDonors();
   const { campaigns, isLoading: campaignsLoading } = useCampaigns();
   const [searchTerm, setSearchTerm] = useState("");
@@ -188,7 +190,7 @@ const Doadores = () => {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          <Button className="bg-primary shadow-glow">
+          <Button className="bg-primary shadow-glow" onClick={() => navigate("/dashboard/doadores/novo")}>
             <Plus className="w-4 h-4 mr-2" />
             Novo Doador
           </Button>
