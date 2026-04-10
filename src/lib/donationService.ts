@@ -1,13 +1,14 @@
-import { addDays, isAfter, subMonths } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { addDays } from "date-fns";
 
 export type DonorType = "unico" | "esporadico" | "recorrente";
 
 export interface Donation {
   id: string;
-  donorId: number;
+  donor_id: number;
   amount: number;
-  date: Date;
-  campaign: string;
+  donation_date: string;
+  campaign_id?: string;
 }
 
 export interface Donor {
@@ -16,26 +17,18 @@ export interface Donor {
   email: string;
   phone: string;
   type: DonorType;
-  totalDonated: number;
-  lastDonationDate: Date;
-  donationCount: number;
-  donations: Donation[];
+  total_donated: number;
+  last_donation_date: string;
+  donation_count: number;
 }
 
 export interface FollowUp {
   id: number;
-  donorId: number;
-  donorName: string;
-  dueDate: Date;
+  donor_id: number;
+  due_date: string;
   status: "pendente" | "agendado" | "enviado";
-  classification: DonorType;
+  note?: string;
 }
-
-const CLASSIFICATION_RULES = {
-  unico: { days: 90, label: "Único" },
-  esporadico: { days: 60, label: "Esporádico" },
-  recorrente: { days: 30, label: "Recorrente" },
-};
 
 export const typeLabel: Record<DonorType, string> = { 
   unico: "Único", 
@@ -44,63 +37,93 @@ export const typeLabel: Record<DonorType, string> = {
 };
 
 /**
- * Classifies a donor based on their donation history.
- * - Recorrente: 3+ donations in the last 3 months.
- * - Esporádico: 2+ donations in the last 6 months.
- * - Único: 1 donation total.
+ * Fetches all donors from Supabase.
  */
-export const classifyDonor = (donations: Donation[]): DonorType => {
-  const now = new Date();
-  const threeMonthsAgo = subMonths(now, 3);
-  const sixMonthsAgo = subMonths(now, 6);
+export const getDonors = async (): Promise<Donor[]> => {
+  const { data, error } = await supabase
+    .from('donors')
+    .select('*')
+    .order('name', { ascending: true });
 
-  const donationsLast3Months = donations.filter(d => isAfter(new Date(d.date), threeMonthsAgo)).length;
-  const donationsLast6Months = donations.filter(d => isAfter(new Date(d.date), sixMonthsAgo)).length;
+  if (error) {
+    console.error('Error fetching donors:', error);
+    throw error;
+  }
 
-  if (donationsLast3Months >= 3) return "recorrente";
-  if (donationsLast6Months >= 2) return "esporadico";
-  return "unico";
+  return data.map(d => ({
+    id: d.id,
+    name: d.name,
+    email: d.email,
+    phone: d.phone,
+    type: d.type,
+    totalDonated: d.total_donated,
+    lastDonationDate: new Date(d.last_donation_date),
+    donation_count: d.donation_count
+  })) as unknown as Donor[];
 };
 
 /**
- * Calculates the next follow-up date based on donor type and last donation.
+ * Fetches a single donor with their donations.
  */
-export const calculateNextFollowUpDate = (lastDonationDate: Date, type: DonorType): Date => {
-  const days = CLASSIFICATION_RULES[type].days;
-  return addDays(lastDonationDate, days);
+export const getDonorDetails = async (donorId: number) => {
+  const { data, error } = await supabase
+    .from('donors')
+    .select('*, donations(*)')
+    .eq('id', donorId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching donor details:', error);
+    throw error;
+  }
+
+  return data;
 };
 
 /**
- * Core function to handle a new donation and automate classification/follow-up.
+ * Registers a new donation. 
+ * The SQL Trigger tr_after_donation_inserted will handle:
+ * - Updating donor total_donated and donation_count
+ * - Recalculating donor type
+ * - Scheduling next follow-up
  */
-export const processNewDonation = (
-  donor: Donor,
+export const registerDonation = async (
+  donorId: number,
   amount: number,
-  campaign: string
-): { updatedDonor: Donor; nextFollowUp: Date } => {
-  const newDonation: Donation = {
-    id: Math.random().toString(36).substr(2, 9),
-    donorId: donor.id,
-    amount,
-    date: new Date(),
-    campaign,
-  };
+  campaignId?: string
+) => {
+  const { data, error } = await supabase
+    .from('donations')
+    .insert([{
+      donor_id: donorId,
+      amount,
+      campaign_id: campaignId,
+      status: 'pago'
+    }])
+    .select()
+    .single();
 
-  const updatedDonations = [...donor.donations, newDonation];
-  const newType = classifyDonor(updatedDonations);
-  const newTotal = donor.totalDonated + amount;
-  const newLastDate = newDonation.date;
+  if (error) {
+    console.error('Error registering donation:', error);
+    throw error;
+  }
 
-  const updatedDonor: Donor = {
-    ...donor,
-    donations: updatedDonations,
-    type: newType,
-    totalDonated: newTotal,
-    lastDonationDate: newLastDate,
-    donationCount: updatedDonations.length,
-  };
+  return data;
+};
 
-  const nextFollowUp = calculateNextFollowUpDate(newLastDate, newType);
+/**
+ * Fetches upcoming follow-ups.
+ */
+export const getFollowUps = async () => {
+  const { data, error } = await supabase
+    .from('follow_ups')
+    .select('*, donors(name)')
+    .order('due_date', { ascending: true });
 
-  return { updatedDonor, nextFollowUp };
+  if (error) {
+    console.error('Error fetching follow-ups:', error);
+    throw error;
+  }
+
+  return data;
 };

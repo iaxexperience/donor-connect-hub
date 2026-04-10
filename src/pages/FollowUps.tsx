@@ -128,34 +128,34 @@ const statusColor: Record<FollowUpStatus, string> = { pendente: "bg-amber-100 te
 const channelIcon: Record<FollowUpChannel, typeof Phone> = { telefone: Phone, whatsapp: MessageSquare, email: Mail };
 const logStatusColor: Record<string, string> = { enviado: "bg-green-100 text-green-800", falha: "bg-red-100 text-red-800", aguardando: "bg-amber-100 text-amber-800" };
 
+import { useFollowUps } from "@/hooks/useFollowUps";
+
 const FollowUps = () => {
-  const [followUpList, setFollowUpList] = useState<FollowUp[]>(() => {
-    const saved = localStorage.getItem("doacflow_followups");
-    if (!saved) return [];
-    return JSON.parse(saved).map((f: any) => ({
-      ...f,
-      dueDate: new Date(f.dueDate).toISOString().split('T')[0],
-      // Map classification to donorType for the UI
-      donorType: f.classification || "unico",
-      lastDonation: f.lastDonation || new Date().toISOString().split('T')[0],
-      lastContact: f.lastContact || new Date().toISOString().split('T')[0],
-      channel: f.channel || "whatsapp"
-    }));
-  });
+  const { followUps, isLoading, updateFollowUp } = useFollowUps();
 
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [selectedFollowUp, setSelectedFollowUp] = useState<FollowUp | null>(null);
+  const [selectedFollowUp, setSelectedFollowUp] = useState<any | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [automationRules, setAutomationRules] = useState(initialAutomationRules);
   const [automationGlobal, setAutomationGlobal] = useState(true);
   const { toast } = useToast();
+
+  const followUpList = followUps.map(f => ({
+    ...f,
+    dueDate: new Date(f.due_date).toISOString().split('T')[0],
+    donorType: (f as any).donorType || "unico",
+    lastDonation: new Date().toISOString().split('T')[0], // Placeholder or map from donor
+    lastContact: new Date().toISOString().split('T')[0],
+    channel: "whatsapp"
+  }));
 
   const filtered = followUpList.filter((f) => {
     if (filterType !== "all" && f.donorType !== filterType) return false;
     if (filterStatus !== "all" && f.status !== filterStatus) return false;
     return true;
   });
+
 
   const completionRate = followUpList.length > 0 ? Math.round(
     (followUpList.filter(f => f.status === "concluido").length / followUpList.length) * 100

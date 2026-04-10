@@ -37,6 +37,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useDonors } from "@/hooks/useDonors";
+import { useCampaigns } from "@/hooks/useCampaigns";
+import { useFollowUps } from "@/hooks/useFollowUps";
 
 // --- Mock Data ---
 
@@ -93,28 +95,24 @@ const item = {
 };
 
 export default function Dashboard() {
-  const { donors } = useDonors();
-
-  const totalReceivedToday = donors.reduce((acc, d) => {
-    const isToday = new Date(d.lastDonationDate).toDateString() === new Date().toDateString();
-    return isToday ? acc + d.totalDonated : acc;
-  }, 0);
+  const { donors, isLoading: donorsLoading } = useDonors();
+  const { campaigns, isLoading: campaignsLoading } = useCampaigns();
+  const { followUps, isLoading: followUpsLoading } = useFollowUps();
 
   const stats = {
     today: donors.reduce((acc, d) => {
        const today = new Date().toDateString();
        const dDate = new Date(d.lastDonationDate).toDateString();
        if (today === dDate) {
-         // Simple heuristic for "today" donations in our mock setup:
-         // since we only track totalDonated, we'll use a portion or assuming single donations for today
-         return acc + (d.donationCount > 0 ? d.totalDonated / d.donationCount : 0); 
+         return acc + (d.totalDonated / (d.donation_count || 1)); 
        }
        return acc;
     }, 0),
     recorrentes: donors.filter(d => d.type === "recorrente").length,
     unicos: donors.filter(d => d.type === "unico").length,
     esporadicos: donors.filter(d => d.type === "esporadico").length,
-    totalBalance: donors.reduce((acc, d) => acc + d.totalDonated, 0)
+    totalBalance: donors.reduce((acc, d) => acc + d.totalDonated, 0),
+    pendingFollowUps: followUps.filter(f => f.status === "pendente").length
   };
 
   return (
@@ -168,7 +166,7 @@ export default function Dashboard() {
         <StatCard title="Recorrentes" value={stats.recorrentes.toString()} change="+4.2%" trend="up" icon={Users} color="teal" />
         <StatCard title="Doadores Únicos" value={stats.unicos.toString()} change="-2.1%" trend="down" icon={Activity} color="green" />
         <StatCard title="Esporádicos" value={stats.esporadicos.toString()} change="+8.7%" trend="up" icon={Heart} color="red" />
-        <StatCard title="Follow-ups Pendentes" value="28" badge="Alta" color="blue" icon={Phone} />
+        <StatCard title="Follow-ups Pendentes" value={stats.pendingFollowUps.toString()} badge="Alta" color="blue" icon={Phone} />
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -22,8 +22,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
 import { useDonors } from "@/hooks/useDonors";
+import { useCampaigns } from "@/hooks/useCampaigns";
 import { typeLabel } from "@/lib/donationService";
 
 // INITIAL_DONORS moved to hook
@@ -37,13 +37,14 @@ const typeBadgeStyle = (type: string) => {
 };
 
 const Doadores = () => {
-  const { donors, addDonation } = useDonors();
+  const { donors, addDonation, isLoading: donorsLoading } = useDonors();
+  const { campaigns, isLoading: campaignsLoading } = useCampaigns();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDonorId, setSelectedDonorId] = useState<string>("");
   const [donationAmount, setDonationAmount] = useState<string>("");
-  const [campaign, setCampaign] = useState("Natal Solidário");
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
   const { toast } = useToast();
 
   const handleRegisterDonation = () => {
@@ -52,15 +53,16 @@ const Doadores = () => {
       return;
     }
 
-    addDonation(parseInt(selectedDonorId), parseFloat(donationAmount), campaign);
+    addDonation(parseInt(selectedDonorId), parseFloat(donationAmount), selectedCampaignId || undefined);
 
     toast({
       title: "Doação Registrada!",
-      description: `O registro foi atualizado e um follow-up foi agendado.`,
+      description: `O registro está sendo processado e o dashboard será atualizado.`,
     });
 
     setIsDialogOpen(false);
     setDonationAmount("");
+    setSelectedCampaignId("");
   };
 
   const filteredDonors = donors.filter(d => {
@@ -118,14 +120,14 @@ const Doadores = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Campanha</Label>
-                    <Select defaultValue={campaign} onValueChange={setCampaign}>
+                    <Select onValueChange={setSelectedCampaignId}>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Selecione uma campanha" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Natal Solidário">Natal Solidário</SelectItem>
-                        <SelectItem value="Educação para Todos">Educação para Todos</SelectItem>
-                        <SelectItem value="Reconstrução Sul">Reconstrução Sul</SelectItem>
+                        {campaigns.map(c => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

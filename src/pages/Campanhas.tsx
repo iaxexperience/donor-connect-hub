@@ -36,12 +36,10 @@ const statusColor = (status: string) => {
   }
 };
 
+import { useCampaigns } from "@/hooks/useCampaigns";
+
 const Campanhas = () => {
-  const [campaigns, setCampaigns] = useState(() => {
-    const saved = localStorage.getItem("fappulse_campaigns");
-    return saved ? JSON.parse(saved) : INITIAL_CAMPAIGNS;
-  });
-  
+  const { campaigns, isLoading, createCampaign, deleteCampaign } = useCampaigns();
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -53,10 +51,6 @@ const Campanhas = () => {
   const [newDescription, setNewDescription] = useState("");
   const [newStatus, setNewStatus] = useState("Ativa");
 
-  useEffect(() => {
-    localStorage.setItem("fappulse_campaigns", JSON.stringify(campaigns));
-  }, [campaigns]);
-
   const handleCreateCampaign = () => {
     if (!newName || !newGoal || !newEndDate) {
       toast({
@@ -67,44 +61,29 @@ const Campanhas = () => {
       return;
     }
 
-    const newCampaign = {
-      id: Date.now(),
+    createCampaign({
       name: newName,
-      goal: parseFloat(newGoal),
-      raised: 0,
-      donors: 0,
-      status: newStatus,
-      endDate: newEndDate,
+      goal_amount: parseFloat(newGoal),
+      end_date: newEndDate,
       description: newDescription,
-    };
+      is_active: newStatus === "Ativa",
+    });
 
-    setCampaigns([newCampaign, ...campaigns]);
     setIsDialogOpen(false);
     resetForm();
 
     toast({
       title: "Campanha Criada!",
-      description: `A campanha "${newName}" foi cadastrada com sucesso.`,
+      description: `A campanha "${newName}" foi sincronizada com o banco de dados.`,
     });
   };
 
-  const handleDeleteCampaign = (id: number) => {
-    setCampaigns(campaigns.filter((c: any) => c.id !== id));
+  const handleDeleteCampaign = (id: string) => {
+    deleteCampaign(id);
     toast({
       title: "Campanha Excluída",
-      description: "A campanha foi removida com sucesso.",
+      description: "A campanha foi removida do banco de dados.",
     });
-  };
-
-  const handleClearAll = () => {
-    if (window.confirm("Tem certeza que deseja excluir TODAS as campanhas?")) {
-      setCampaigns([]);
-      localStorage.removeItem("fappulse_campaigns");
-      toast({
-        title: "Lista Limpa",
-        description: "Todas as campanhas foram excluídas.",
-      });
-    }
   };
 
   const resetForm = () => {
@@ -233,8 +212,10 @@ const Campanhas = () => {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {filteredCampaigns.map((campaign: any) => {
-          const pct = campaign.goal > 0 ? Math.round((campaign.raised / campaign.goal) * 100) : 0;
+        {isLoading ? (
+          <div className="col-span-full py-20 text-center text-muted-foreground italic">Carregando campanhas...</div>
+        ) : filteredCampaigns.map((campaign: any) => {
+          const pct = campaign.goal_amount > 0 ? Math.round((campaign.current_amount / campaign.goal_amount) * 100) : 0;
           return (
             <Card key={campaign.id} className="hover:shadow-md transition-all border-none shadow-soft group">
               <CardHeader className="pb-3 border-b border-muted/50">
@@ -244,8 +225,8 @@ const Campanhas = () => {
                     <CardDescription className="text-[10px] line-clamp-1">{campaign.description}</CardDescription>
                   </div>
                   <div className="flex items-start gap-2">
-                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 border-none ${statusColor(campaign.status)}`}>
-                      {campaign.status}
+                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 border-none ${campaign.is_active ? statusColor("Ativa") : statusColor("Concluída")}`}>
+                      {campaign.is_active ? "Ativa" : "Encerrada"}
                     </Badge>
                     <Button 
                       variant="ghost" 
@@ -268,11 +249,11 @@ const Campanhas = () => {
                   <div className="flex justify-between items-end mt-1">
                     <div className="space-y-0.5">
                       <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Arrecadado</p>
-                      <p className="text-sm font-bold">R$ {campaign.raised.toLocaleString("pt-BR")}</p>
+                      <p className="text-sm font-bold">R$ {(campaign.current_amount || 0).toLocaleString("pt-BR")}</p>
                     </div>
                     <div className="text-right space-y-0.5">
                       <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Meta</p>
-                      <p className="text-xs font-semibold text-muted-foreground">R$ {campaign.goal.toLocaleString("pt-BR")}</p>
+                      <p className="text-xs font-semibold text-muted-foreground">R$ {(campaign.goal_amount || 0).toLocaleString("pt-BR")}</p>
                     </div>
                   </div>
                 </div>
@@ -280,11 +261,11 @@ const Campanhas = () => {
                 <div className="pt-3 border-t border-muted/50 flex items-center justify-between text-[11px]">
                   <div className="flex items-center gap-1.5 text-muted-foreground">
                     <Target className="w-3.5 h-3.5 text-primary" />
-                    <span>{campaign.donors} doadores</span>
+                    <span>Em execução</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-muted-foreground">
                     <Calendar className="w-3.5 h-3.5" />
-                    <span>Até {new Date(campaign.endDate).toLocaleDateString("pt-BR")}</span>
+                    <span>Até {new Date(campaign.end_date).toLocaleDateString("pt-BR")}</span>
                   </div>
                 </div>
               </CardContent>
@@ -292,6 +273,7 @@ const Campanhas = () => {
           );
         })}
       </div>
+
     </div>
   );
 };
