@@ -137,11 +137,11 @@ export default function Dashboard() {
 
       {/* MAIN KPIs */}
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard title="Recebidos Hoje" value="R$ 14.250" change="+12.5%" trend="up" icon={DollarSign} color="success" />
-        <StatCard title="Recorrentes" value="842" change="+4.2%" trend="up" icon={Users} color="info" />
-        <StatCard title="Doadores Únicos" value="1.560" change="-2.1%" trend="down" icon={Activity} color="warning" />
-        <StatCard title="Esporádicos" value="432" change="+8.7%" trend="up" icon={Heart} color="info" />
-        <StatCard title="Follow-ups Pendentes" value="28" badge="Alta" color="warning" icon={Phone} />
+        <StatCard title="Recebidos Hoje" value="R$ 14.250" change="+12.5%" trend="up" icon={DollarSign} color="orange" />
+        <StatCard title="Recorrentes" value="842" change="+4.2%" trend="up" icon={Users} color="teal" />
+        <StatCard title="Doadores Únicos" value="1.560" change="-2.1%" trend="down" icon={Activity} color="green" />
+        <StatCard title="Esporádicos" value="432" change="+8.7%" trend="up" icon={Heart} color="red" />
+        <StatCard title="Follow-ups Pendentes" value="28" badge="Alta" color="blue" icon={Phone} />
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -414,30 +414,49 @@ export default function Dashboard() {
 // --- Sub-Components ---
 
 function StatCard({ title, value, change, trend, icon: Icon, color, badge }: any) {
-  const colors: any = {
-    primary: "text-primary bg-primary/10 border-primary/20",
-    success: "text-green-600 bg-green-50 border-green-200",
-    warning: "text-orange-600 bg-orange-50 border-orange-200",
-    info: "text-blue-600 bg-blue-50 border-blue-200",
+  const colorVariants: any = {
+    orange: "bg-[#f39c12] hover:bg-[#e67e22]",
+    teal: "bg-[#17a2b8] hover:bg-[#138496]",
+    green: "bg-[#28a745] hover:bg-[#218838]",
+    red: "bg-[#dc3545] hover:bg-[#c82333]",
+    blue: "bg-[#007bff] hover:bg-[#0069d9]",
+    purple: "bg-[#6f42c1] hover:bg-[#5a32a3]",
+    pink: "bg-[#e83e8c] hover:bg-[#d81b60]",
   };
 
   return (
-    <Card className="shadow-soft hover:shadow-elevated transition-all border-none bg-background">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className={`p-2 rounded-lg ${colors[color] || colors.primary} border`}>
-            <Icon className="h-4 w-4" />
-          </div>
-          {change && (
-            <div className={`flex items-center gap-0.5 text-[10px] font-bold ${trend === "up" ? "text-green-600" : "text-red-500"}`}>
-              {trend === "up" ? <ArrowUpRight className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-              {change}
+    <Card className={`relative overflow-hidden border-none shadow-lg transition-all duration-300 ${colorVariants[color] || colorVariants.blue} text-white group`}>
+      <CardContent className="p-0">
+        <div className="p-5 relative z-10">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-3xl font-bold font-heading mb-1">{value}</p>
+              <p className="text-sm font-medium opacity-90 leading-tight pr-8">{title}</p>
             </div>
-          )}
-          {badge && <Badge variant="destructive" className="text-[8px] px-1 py-0">{badge}</Badge>}
+            {change && (
+              <div className="bg-white/20 backdrop-blur-sm rounded px-1.5 py-0.5 text-[10px] font-bold flex items-center gap-0.5">
+                {trend === "up" ? <ArrowUpRight className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                {change}
+              </div>
+            )}
+            {badge && (
+              <Badge className="bg-white text-destructive hover:bg-white/90 text-[10px] px-1.5 py-0 font-bold">
+                {badge}
+              </Badge>
+            )}
+          </div>
+          
+          {/* Background Icon */}
+          <div className="absolute top-4 right-4 opacity-20 pointer-events-none group-hover:scale-110 transition-transform duration-500">
+            <Icon className="h-16 w-16" />
+          </div>
         </div>
-        <p className="text-xl font-bold font-heading">{value}</p>
-        <p className="text-[10px] text-muted-foreground mt-0.5 font-medium uppercase tracking-tight">{title}</p>
+
+        {/* Footer info bar */}
+        <div className="bg-black/10 py-1.5 px-5 flex items-center justify-center gap-1.5 cursor-pointer hover:bg-black/20 transition-colors">
+          <span className="text-[10px] font-medium uppercase tracking-wider">mais informações</span>
+          <ArrowUpRight className="h-3 w-3 opacity-50" />
+        </div>
       </CardContent>
     </Card>
   );
