@@ -55,7 +55,7 @@ interface WhatsAppFollowUp {
   lastPayload?: string;
 }
 
-const templateRepository = [
+const INITIAL_TEMPLATES = [
   {
     name: "boas_vindas_doador",
     category: "MARKETING",
@@ -191,7 +191,7 @@ const Integracoes = () => {
   }, [followUpList]);
 
   const generateMetaPayload = (f: WhatsAppFollowUp) => {
-    const template = templateRepository.find(t => t.name === f.template) || templateRepository[2];
+    const template = templates.find(t => t.name === f.template) || templates[2];
     
     const payload = {
       messaging_product: "whatsapp",
@@ -446,8 +446,76 @@ const Integracoes = () => {
             </TabsContent>
 
             <TabsContent value="templates" className="space-y-6">
+               <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold">Gerenciador de Templates</h3>
+                  <p className="text-xs text-muted-foreground">Crie e gerencie templates oficiais da Meta Cloud API.</p>
+                </div>
+                <Dialog open={isAddingTemplate} onOpenChange={setIsAddingTemplate}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-primary shadow-glow">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Novo Template
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <FileText className="w-5 h-5" /> Novo Template WhatsApp
+                      </DialogTitle>
+                      <DialogDescription>
+                        Templates devem ser aprovados pela Meta antes do uso.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Nome do Template</Label>
+                          <Input 
+                            placeholder="ex: boas_vindas_promo" 
+                            className="bg-muted/50"
+                            value={newTemplate.name}
+                            onChange={(e) => setNewTemplate({...newTemplate, name: e.target.value})}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Categoria</Label>
+                          <Select 
+                            value={newTemplate.category}
+                            onValueChange={(v) => setNewTemplate({...newTemplate, category: v})}
+                          >
+                            <SelectTrigger className="bg-muted/50">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="MARKETING">Marketing</SelectItem>
+                              <SelectItem value="UTILITY">Utilidade</SelectItem>
+                              <SelectItem value="AUTHENTICATION">Autenticação</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Corpo da Mensagem</Label>
+                        <Textarea 
+                          placeholder="Olá {{1}}! Use o código {{2}} para ganhar desconto." 
+                          className="min-h-[120px] bg-muted/20 font-sans"
+                          value={newTemplate.body}
+                          onChange={(e) => setNewTemplate({...newTemplate, body: e.target.value})}
+                        />
+                        <p className="text-[10px] text-muted-foreground italic">Use {`{{1}}, {{2}}`} para representar variáveis dinâmicas.</p>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsAddingTemplate(false)}>Cancelar</Button>
+                      <Button onClick={handleCreateTemplate}>Criar e Enviar para Análise</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {templateRepository.map((tpl) => (
+                {templates.map((tpl) => (
                   <Card key={tpl.name} className="border-none shadow-soft hover:shadow-md transition-shadow relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-3">
                       <Badge variant="secondary" className="bg-blue-50 text-blue-600 text-[10px] border-none">Oficial</Badge>
