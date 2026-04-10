@@ -13,11 +13,11 @@ import {
 } from "@/components/ui/table";
 
 const mockUsers = [
-  { id: 1, name: "Admin Sistema", email: "admin@doacflow.com", role: "Administrador", status: "Ativo", lastAccess: "08/04/2026" },
-  { id: 2, name: "Carla Mendes", email: "carla@doacflow.com", role: "Gestor de Campanha", status: "Ativo", lastAccess: "07/04/2026" },
-  { id: 3, name: "Rafael Torres", email: "rafael@doacflow.com", role: "Operador de Telemarketing", status: "Ativo", lastAccess: "08/04/2026" },
-  { id: 4, name: "Juliana Reis", email: "juliana@doacflow.com", role: "Visualizador", status: "Ativo", lastAccess: "05/04/2026" },
-  { id: 5, name: "Bruno Martins", email: "bruno@doacflow.com", role: "Operador de Telemarketing", status: "Inativo", lastAccess: "12/03/2026" },
+  { id: 1, name: "Admin Sistema", email: "admin@pulsedoacoes.com", role: "Administrador", status: "Ativo", lastAccess: "08/04/2026" },
+  { id: 2, name: "Carla Mendes", email: "carla@pulsedoacoes.com", role: "Gestor de Campanha", status: "Ativo", lastAccess: "07/04/2026" },
+  { id: 3, name: "Rafael Torres", email: "rafael@pulsedoacoes.com", role: "Operador de Telemarketing", status: "Ativo", lastAccess: "08/04/2026" },
+  { id: 4, name: "Juliana Reis", email: "juliana@pulsedoacoes.com", role: "Visualizador", status: "Ativo", lastAccess: "05/04/2026" },
+  { id: 5, name: "Bruno Martins", email: "bruno@pulsedoacoes.com", role: "Operador de Telemarketing", status: "Inativo", lastAccess: "12/03/2026" },
 ];
 
 const roleColor = (role: string) => {

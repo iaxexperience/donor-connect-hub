@@ -34,12 +34,12 @@ const ContactSection = () => {
               Fale com nosso time
             </h2>
             <p className="text-muted-foreground mb-8">
-              Quer saber como a DoacFlow pode ajudar sua organização? Entre em contato para uma demonstração personalizada.
+              Quer saber como a Pulse Doações pode ajudar sua organização? Entre em contato para uma demonstração personalizada.
             </p>
 
             <div className="space-y-4">
               {[
-                { icon: Mail, label: "contato@doacflow.com.br" },
+                { icon: Mail, label: "contato@pulsedoacoes.com.br" },
                 { icon: Phone, label: "+55 (11) 99999-9999" },
                 { icon: MapPin, label: "São Paulo, SP — Brasil" },
               ].map((item) => (

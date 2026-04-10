@@ -98,7 +98,7 @@ const Register = () => {
             <Heart className="w-8 h-8 text-accent" />
           </div>
           <h2 className="font-heading font-bold text-3xl text-primary-foreground mb-4">
-            DoacFlow
+            Pulse Doações
           </h2>
           <p className="text-primary-foreground/70 leading-relaxed">
             Crie sua conta e comece a transformar a gestão de doadores da sua organização.
@@ -126,7 +126,7 @@ const Register = () => {
             <div className="w-9 h-9 rounded-lg bg-gradient-hero flex items-center justify-center">
               <Heart className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="font-heading font-bold text-xl text-foreground">DoacFlow</span>
+            <span className="font-heading font-bold text-xl text-foreground">Pulse Doações</span>
           </div>
 
           <h1 className="font-heading font-bold text-2xl text-foreground mb-1">
