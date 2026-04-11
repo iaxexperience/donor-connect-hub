@@ -12,6 +12,8 @@ export interface FollowUp {
     phone: string;
     email: string;
     type: string;
+    total_donated: number;
+    last_donation_date: string;
   };
 }
 
@@ -23,7 +25,7 @@ export const useFollowUps = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('follow_ups')
-        .select('*, donors(name, phone, email, type)')
+        .select('*, donors(name, phone, email, type, total_donated, last_donation_date)')
         .order('due_date', { ascending: true });
       if (error) throw error;
       
@@ -33,6 +35,8 @@ export const useFollowUps = () => {
         phone: f.donors?.phone,
         email: f.donors?.email,
         donorType: f.donors?.type,
+        totalDonations: f.donors?.total_donated || 0,
+        lastDonation: f.donors?.last_donation_date || null,
       })) as unknown as FollowUp[];
     },
   });

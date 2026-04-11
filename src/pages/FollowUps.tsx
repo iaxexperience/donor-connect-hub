@@ -110,29 +110,7 @@ const automationLogs: AutomationLog[] = [
   { id: 7, donorName: "Fernanda Costa", donorType: "recorrente", channel: "whatsapp", template: "follow_up_fidelizacao", sentAt: "2026-04-03 09:00", status: "enviado", retryCount: 0 },
 ];
 
-const stats = [
-  { label: "Pendentes", value: followUps.filter(f => f.status === "pendente").length, icon: Clock, color: "text-amber-600" },
-  { label: "Agendados", value: followUps.filter(f => f.status === "agendado").length, icon: CalendarClock, color: "text-primary" },
-  { label: "Atrasados", value: followUps.filter(f => f.status === "atrasado").length, icon: AlertTriangle, color: "text-destructive" },
-  { label: "Concluídos", value: followUps.filter(f => f.status === "concluido").length, icon: CheckCircle2, color: "text-green-600" },
-];
-
-const donorTypeLabel: Record<DonorType, string> = { unico: "Único", esporadico: "Esporádico", recorrente: "Recorrente" };
-const donorTypeBadge: Record<DonorType, string> = { 
-  unico: "bg-blue-100 text-blue-700 border-blue-200", 
-  esporadico: "bg-orange-100 text-orange-700 border-orange-200", 
-  recorrente: "bg-green-100 text-green-700 border-green-200" 
-};
-const statusLabel: Record<FollowUpStatus, string> = { pendente: "Pendente", agendado: "Agendado", concluido: "Concluído", atrasado: "Atrasado" };
-const statusColor: Record<FollowUpStatus, string> = { pendente: "bg-amber-100 text-amber-800", agendado: "bg-blue-100 text-blue-800", concluido: "bg-green-100 text-green-800", atrasado: "bg-red-100 text-red-800" };
-const channelIcon: Record<FollowUpChannel, typeof Phone> = { telefone: Phone, whatsapp: MessageSquare, email: Mail };
-const logStatusColor: Record<string, string> = { enviado: "bg-green-100 text-green-800", falha: "bg-red-100 text-red-800", aguardando: "bg-amber-100 text-amber-800" };
-
-import { useFollowUps } from "@/hooks/useFollowUps";
-
-const FollowUps = () => {
-  const { followUps, isLoading, updateFollowUp } = useFollowUps();
-
+  const { followUps: dbFollowUps, isLoading, updateFollowUp } = useFollowUps();
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedFollowUp, setSelectedFollowUp] = useState<any | null>(null);
@@ -141,13 +119,22 @@ const FollowUps = () => {
   const [automationGlobal, setAutomationGlobal] = useState(true);
   const { toast } = useToast();
 
-  const followUpList = followUps.map(f => ({
+  const realStats = [
+    { label: "Pendentes", value: dbFollowUps.filter(f => f.status === "pendente").length, icon: Clock, color: "text-amber-600" },
+    { label: "Agendados", value: dbFollowUps.filter(f => f.status === "agendado").length, icon: CalendarClock, color: "text-primary" },
+    { label: "Atrasados", value: dbFollowUps.filter(f => f.status === "atrasado").length, icon: AlertTriangle, color: "text-destructive" },
+    { label: "Concluídos", value: dbFollowUps.filter(f => f.status === "concluido").length, icon: CheckCircle2, color: "text-green-600" },
+  ];
+
+  const followUpList = dbFollowUps.map(f => ({
     ...f,
-    dueDate: new Date(f.due_date).toISOString().split('T')[0],
+    dueDate: f.due_date,
     donorType: (f as any).donorType || "unico",
-    lastDonation: new Date().toISOString().split('T')[0], // Placeholder or map from donor
-    lastContact: new Date().toISOString().split('T')[0],
-    channel: "whatsapp"
+    lastDonation: (f as any).lastDonation || "Nunca",
+    lastContact: (f as any).last_date || "Sem contato",
+    channel: "whatsapp",
+    totalDonations: (f as any).totalDonations || 0,
+    campaign: (f as any).campaign || "Geral"
   }));
 
   const filtered = followUpList.filter((f) => {
@@ -197,7 +184,7 @@ const FollowUps = () => {
 
       {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((s) => (
+        {realStats.map((s) => (
           <Card key={s.label}>
             <CardContent className="flex items-center gap-4 pt-6">
               <div className={`p-2 rounded-lg bg-muted ${s.color}`}>

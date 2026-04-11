@@ -32,10 +32,9 @@ export const useCampaigns = () => {
       const { data, error } = await supabase
         .from('campaigns')
         .insert([newCampaign])
-        .select()
-        .single();
+        .select();
       if (error) throw error;
-      return data;
+      return data?.[0];
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
