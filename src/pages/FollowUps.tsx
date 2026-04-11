@@ -285,8 +285,8 @@ const FollowUps = () => {
                       <TableRow key={f.id}>
                         <TableCell>
                           <div>
-                            <p className="font-medium">{f.donorName}</p>
-                            <p className="text-xs text-muted-foreground">{f.phone}</p>
+                            <p className="font-medium">{f.donors?.name || 'Desconhecido'}</p>
+                            <p className="text-xs text-muted-foreground">{f.donors?.phone || ''}</p>
                           </div>
                         </TableCell>
                         <TableCell>
