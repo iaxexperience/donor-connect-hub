@@ -110,6 +110,20 @@ const automationLogs: AutomationLog[] = [
   { id: 7, donorName: "Fernanda Costa", donorType: "recorrente", channel: "whatsapp", template: "follow_up_fidelizacao", sentAt: "2026-04-03 09:00", status: "enviado", retryCount: 0 },
 ];
 
+const donorTypeLabel: Record<string, string> = { unico: "Único", esporadico: "Esporádico", recorrente: "Recorrente" };
+const donorTypeBadge: Record<string, string> = { 
+  unico: "bg-blue-100 text-blue-700 border-blue-200", 
+  esporadico: "bg-orange-100 text-orange-700 border-orange-200", 
+  recorrente: "bg-green-100 text-green-700 border-green-200" 
+};
+const statusLabel: Record<string, string> = { pendente: "Pendente", agendado: "Agendado", concluido: "Concluído", atrasado: "Atrasado" };
+const statusColor: Record<string, string> = { pendente: "bg-amber-100 text-amber-800", agendado: "bg-blue-100 text-blue-800", concluido: "bg-green-100 text-green-800", atrasado: "bg-red-100 text-red-800" };
+const channelIcon: Record<string, any> = { telefone: Phone, whatsapp: MessageSquare, email: Mail };
+const logStatusColor: Record<string, string> = { enviado: "bg-green-100 text-green-800", falha: "bg-red-100 text-red-800", aguardando: "bg-amber-100 text-amber-800" };
+
+import { useFollowUps } from "@/hooks/useFollowUps";
+
+const FollowUps = () => {
   const { followUps: dbFollowUps, isLoading, updateFollowUp } = useFollowUps();
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
