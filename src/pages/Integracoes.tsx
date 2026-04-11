@@ -103,7 +103,13 @@ const Integracoes = () => {
   const [isTestingWa, setIsTestingWa] = useState(false);
   const [isTestingAsaas, setIsTestingAsaas] = useState(false);
   const { toast } = useToast();
-  const { findDonorByEmailOrPhone, registerNewDonor, addDonation } = useDonors();
+  const { donors, registerNewDonor, addDonation } = useDonors();
+
+  const findDonorByEmailOrPhone = (email?: string, phone?: string) => {
+    return donors.find(d => 
+      (email && d.email === email) || (phone && d.phone === phone)
+    );
+  };
 
   const [whatsappLogs, setWhatsappLogs] = useState<any[]>([]);
   const [asaasLogs, setAsaasLogs] = useState<any[]>([]);
@@ -134,7 +140,7 @@ const Integracoes = () => {
     await handleAsaasDonation(
       mockEvent,
       findDonorByEmailOrPhone,
-      registerNewDonor,
+      (name, email, phone) => registerNewDonor({ name, email, phone }) as any,
       addDonation
     );
   };
