@@ -73,9 +73,9 @@ export default function Dashboard() {
   const stats = {
     today: donors.reduce((acc, d) => {
        const today = new Date().toDateString();
-       const dDate = d.lastDonationDate ? new Date(d.lastDonationDate).toDateString() : "";
+       const dDate = d.last_donation_date ? new Date(d.last_donation_date).toDateString() : "";
        if (today === dDate) {
-         return acc + (d.totalDonated / (d.donation_count || 1)); 
+         return acc + ((d.total_donated || 0) / (d.donation_count || 1)); 
        }
        return acc;
     }, 0),

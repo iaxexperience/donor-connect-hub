@@ -85,11 +85,11 @@ export const useDashboard = () => {
   // 4. Maiores Doadores
   const getTopDonors = () => {
     return [...donors]
-      .sort((a, b) => b.totalDonated - a.totalDonated)
+      .sort((a, b) => (b.total_donated || 0) - (a.total_donated || 0))
       .slice(0, 4)
       .map(d => ({
         name: d.name,
-        total: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(d.totalDonated),
+        total: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(d.total_donated || 0),
         type: d.type === 'recorrente' ? 'Recorrente' : d.type === 'unico' ? 'Único' : 'Esporádico'
       }));
   };
