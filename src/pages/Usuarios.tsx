@@ -1,4 +1,5 @@
-import { Plus, Search, Shield } from "lucide-react";
+import { useState } from "react";
+import { Plus, Search, Shield, User, Mail, UserPlus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -11,26 +12,83 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { useProfiles } from "@/hooks/useProfiles";
 
-const mockUsers = [
-  { id: 1, name: "Admin Sistema", email: "admin@pulsedoacoes.com", role: "Administrador", status: "Ativo", lastAccess: "08/04/2026" },
-  { id: 2, name: "Carla Mendes", email: "carla@pulsedoacoes.com", role: "Gestor de Campanha", status: "Ativo", lastAccess: "07/04/2026" },
-  { id: 3, name: "Rafael Torres", email: "rafael@pulsedoacoes.com", role: "Operador de Telemarketing", status: "Ativo", lastAccess: "08/04/2026" },
-  { id: 4, name: "Juliana Reis", email: "juliana@pulsedoacoes.com", role: "Visualizador", status: "Ativo", lastAccess: "05/04/2026" },
-  { id: 5, name: "Bruno Martins", email: "bruno@pulsedoacoes.com", role: "Operador de Telemarketing", status: "Inativo", lastAccess: "12/03/2026" },
-];
-
-const roleColor = (role: string) => {
-  switch (role) {
-    case "Administrador": return "destructive";
-    case "Gestor de Campanha": return "default";
-    case "Operador de Telemarketing": return "secondary";
-    case "Visualizador": return "outline";
-    default: return "outline";
-  }
+const roleMapping: Record<string, { label: string, color: string }> = {
+  "admin": { label: "Administrador", color: "destructive" },
+  "gestor": { label: "Gestor de Campanha", color: "default" },
+  "operador": { label: "Operador de Telemarketing", color: "secondary" },
+  "visualizador": { label: "Visualizador", color: "outline" },
 };
 
 const Usuarios = () => {
+  const { profiles, isLoading, createProfile } = useProfiles();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const { toast } = useToast();
+
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newRole, setNewRole] = useState<any>("");
+
+  const handleCreateUser = async () => {
+    if (!newName || !newEmail || !newRole) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Preencha todos os campos para cadastrar o usuário.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await createProfile({
+        name: newName,
+        email: newEmail,
+        role: newRole,
+      });
+
+      setIsDialogOpen(false);
+      setNewName("");
+      setNewEmail("");
+      setNewRole("");
+
+      toast({
+        title: "Usuário Cadastrado!",
+        description: `O perfil de ${newName} foi criado com sucesso.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao cadastrar",
+        description: error.message || "Não foi possível sincronizar com o banco de dados.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const filteredUsers = profiles.filter((user) =>
+    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -38,20 +96,87 @@ const Usuarios = () => {
           <h1 className="font-heading font-bold text-2xl text-foreground">Usuários</h1>
           <p className="text-muted-foreground text-sm">Gerencie os usuários e permissões do sistema.</p>
         </div>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Novo Usuário
-        </Button>
+
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-primary hover:bg-primary/90 shadow-glow transition-all">
+              <Plus className="w-4 h-4 mr-2" />
+              Novo Usuário
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-primary" />
+                Cadastrar Novo Usuário
+              </DialogTitle>
+              <DialogDescription>
+                Crie um novo perfil de acesso para a plataforma Donor Connect.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome Completo</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    id="name" 
+                    placeholder="Ex: João Silva" 
+                    className="pl-9"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">E-mail</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    id="email" 
+                    type="email" 
+                    placeholder="email@exemplo.com" 
+                    className="pl-9"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="role">Papel / Nível de Acesso</Label>
+                <Select value={newRole} onValueChange={setNewRole}>
+                  <SelectTrigger id="role">
+                    <SelectValue placeholder="Selecione o papel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                    <SelectItem value="gestor">Gestor de Campanha</SelectItem>
+                    <SelectItem value="operador">Operador de Telemarketing</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+              <Button onClick={handleCreateUser}>Salvar Usuário</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="Buscar usuário..." className="pl-9" />
+        <Input 
+          placeholder="Buscar usuário..." 
+          className="pl-9" 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
 
-      <div className="rounded-lg border bg-card">
+      <div className="rounded-lg border bg-card overflow-hidden shadow-soft">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-muted/50">
             <TableRow>
               <TableHead>Usuário</TableHead>
               <TableHead>E-mail</TableHead>
@@ -61,30 +186,54 @@ const Usuarios = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockUsers.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="text-xs bg-muted">
-                        {user.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="font-medium">{user.name}</span>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-48 text-center text-muted-foreground">
+                  <div className="flex flex-col items-center gap-2 justify-center">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    <span>Carregando usuários...</span>
                   </div>
                 </TableCell>
-                <TableCell>{user.email}</TableCell>
-                <TableCell>
-                  <Badge variant={roleColor(user.role) as any}>{user.role}</Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={user.status === "Ativo" ? "default" : "outline"}>
-                    {user.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground">{user.lastAccess}</TableCell>
               </TableRow>
-            ))}
+            ) : filteredUsers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-48 text-center text-muted-foreground italic">
+                  Nenhum usuário encontrado.
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredUsers.map((user) => {
+                const roleData = roleMapping[user.role] || { label: user.role, color: "outline" };
+                return (
+                  <TableRow key={user.id} className="hover:bg-muted/30 transition-colors">
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9 border-2 border-background shadow-sm">
+                          <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
+                            {user.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="font-semibold text-foreground/90">{user.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                    <TableCell>
+                      <Badge variant={roleData.color as any} className="font-medium">
+                        {roleData.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={user.status === "Ativo" ? "default" : "outline"} className="px-2 py-0 h-5">
+                        {user.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs">
+                      {user.last_access ? new Date(user.last_access).toLocaleDateString("pt-BR") : "Nunca"}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
           </TableBody>
         </Table>
       </div>
