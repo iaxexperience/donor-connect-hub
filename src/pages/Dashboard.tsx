@@ -67,24 +67,19 @@ export default function Dashboard() {
     recentDonations, 
     totalDonations, 
     avgTicket,
+    todayTotal,
     isLoading: dashboardLoading 
   } = useDashboard();
 
   const stats = {
-    today: donors.reduce((acc, d) => {
-       const today = new Date().toDateString();
-       const dDate = d.last_donation_date ? new Date(d.last_donation_date).toDateString() : "";
-       if (today === dDate) {
-         return acc + ((d.total_donated || 0) / (d.donation_count || 1)); 
-       }
-       return acc;
-    }, 0),
+    today: todayTotal,
     recorrentes: donors.filter(d => d.type === "recorrente").length,
     unicos: donors.filter(d => d.type === "unico").length,
     esporadicos: donors.filter(d => d.type === "esporadico").length,
     totalBalance: totalDonations,
     pendingFollowUps: followUps.filter(f => f.status === "pendente").length
   };
+
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="p-1 space-y-6 pb-10">

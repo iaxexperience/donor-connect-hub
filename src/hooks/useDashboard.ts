@@ -13,7 +13,7 @@ export const useDashboard = () => {
       const { data, error } = await supabase
         .from('donations')
         .select('*, donors(name, type)')
-        .order('created_at', { ascending: false });
+        .order('donation_date', { ascending: false });
 
       if (error) throw error;
       return data;
@@ -31,7 +31,7 @@ export const useDashboard = () => {
       const monthLabel = months[d.getMonth()];
       const total = donations
         .filter(don => {
-          const donDate = new Date(don.created_at);
+          const donDate = new Date(don.donation_date);
           return donDate.getMonth() === d.getMonth() && donDate.getFullYear() === d.getFullYear();
         })
         .reduce((acc, don) => acc + (don.amount || 0), 0);
@@ -72,7 +72,7 @@ export const useDashboard = () => {
       
       const total = donations
         .filter(don => {
-          const donDate = new Date(don.created_at);
+          const donDate = new Date(don.donation_date);
           return donDate.toDateString() === d.toDateString();
         })
         .reduce((acc, don) => acc + (don.amount || 0), 0);
@@ -99,10 +99,15 @@ export const useDashboard = () => {
     return donations.slice(0, 4).map(d => ({
       name: d.donors?.name || "Anônimo",
       amount: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(d.amount),
-      time: new Date(d.created_at).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' }),
+      time: new Date(d.donation_date).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' }),
       status: d.status || "Confirmado"
     }));
   };
+
+  const today = new Date().toDateString();
+  const todayTotal = donations
+    .filter(d => new Date(d.donation_date).toDateString() === today)
+    .reduce((acc, d) => acc + (d.amount || 0), 0);
 
   return {
     isLoading: donationsLoading,
@@ -111,8 +116,10 @@ export const useDashboard = () => {
     evolutionData: getEvolutionData(),
     topDonors: getTopDonors(),
     recentDonations: getRecentDonations(),
+    todayTotal,
     totalDonations: donations.reduce((acc, d) => acc + (d.amount || 0), 0),
     avgTicket: donations.length > 0 ? donations.reduce((acc, d) => acc + (d.amount || 0), 0) / donations.length : 0,
     donationsCount: donations.length
   };
+
 };
