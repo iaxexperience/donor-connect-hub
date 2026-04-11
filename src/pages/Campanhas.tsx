@@ -74,6 +74,7 @@ const Campanhas = () => {
       await createCampaign({
         name: newName,
         goal_amount: parseFloat(newGoal),
+        start_date: new Date().toISOString().split('T')[0],
         end_date: newEndDate,
         description: newDescription,
         is_active: newStatus === "Ativa",

@@ -54,7 +54,7 @@ export const useCampaigns = () => {
   return {
     campaigns,
     isLoading,
-    createCampaign: createCampaignMutation.mutate,
+    createCampaign: createCampaignMutation.mutateAsync,
     deleteCampaign: deleteCampaignMutation.mutate,
   };
 };
