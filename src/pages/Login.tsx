@@ -26,9 +26,17 @@ const Login = () => {
       });
 
       if (error) {
+        let description = "E-mail ou senha incorretos. Verifique suas credenciais.";
+        
+        if (error.message.includes("Email not confirmed")) {
+          description = "Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada ou desative a confirmação no Supabase.";
+        } else if (error.message.includes("is prohibited")) {
+          description = "Este usuário foi bloqueado ou as credenciais estão inválidas.";
+        }
+
         toast({
           title: "Erro no acesso",
-          description: "E-mail ou senha incorretos. Verifique suas credenciais.",
+          description: description,
           variant: "destructive",
         });
         setLoading(false);
