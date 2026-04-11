@@ -107,29 +107,72 @@ export const getDonorDetails = async (donorId: number) => {
  * - Recalculating donor type
  * - Scheduling next follow-up
  */
+/**
+ * Registers a new donation. 
+ * Includes manual fallback to update donor stats in case SQL triggers are not active.
+ */
 export const registerDonation = async (
   donorId: number,
   amount: number,
   campaignId?: string
 ) => {
-  const { data, error } = await supabase
+  // 1. Insert the donation
+  const { data: donation, error: donationError } = await supabase
     .from('donations')
     .insert([{
       donor_id: donorId,
       amount,
       campaign_id: campaignId,
-      status: 'pago'
+      status: 'pago',
+      donation_date: new Date().toISOString()
     }])
     .select()
     .single();
 
-  if (error) {
-    console.error('Error registering donation:', error);
-    throw error;
+  if (donationError) {
+    console.error('Error registering donation:', donationError);
+    throw donationError;
   }
 
-  return data;
+  // 2. Manual fallback: Update donor totals and classification
+  // In a production environment with triggers, this part would be handled by the database
+  try {
+    const { data: donor } = await supabase
+      .from('donors')
+      .select('total_donated, donation_count, type')
+      .eq('id', donorId)
+      .single();
+
+    if (donor) {
+      const newCount = (donor.donation_count || 0) + 1;
+      const newTotal = (donor.total_donated || 0) + amount;
+      let newType = donor.type;
+
+      // Classification logic: Lead -> Único -> Esporádico
+      if (newType === 'lead') {
+        newType = 'unico';
+      } else if (newType === 'unico' && newCount >= 2) {
+        newType = 'esporadico';
+      }
+
+      await supabase
+        .from('donors')
+        .update({
+          total_donated: newTotal,
+          donation_count: newCount,
+          last_donation_date: new Date().toISOString(),
+          type: newType
+        })
+        .eq('id', donorId);
+    }
+  } catch (err) {
+    console.error('Error updating donor stats manually:', err);
+    // We don't throw here to ensure the donation registration itself is considered successful
+  }
+
+  return donation;
 };
+
 
 /**
  * Fetches upcoming follow-ups.
