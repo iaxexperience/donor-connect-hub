@@ -216,7 +216,8 @@ const Campanhas = () => {
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
               <Button onClick={handleCreateCampaign}>Cadastrar Campanha</Button>
             </DialogFooter>
-          </DialogContent>
+          </Dialog>
+        </Dialog>
       </div>
 
       <div className="relative max-w-sm">
@@ -232,6 +233,10 @@ const Campanhas = () => {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {isLoading ? (
           <div className="col-span-full py-20 text-center text-muted-foreground italic">Carregando campanhas...</div>
+        ) : filteredCampaigns.length === 0 ? (
+          <div className="col-span-full py-20 text-center text-muted-foreground">
+            Nenhuma campanha encontrada. Comece criando uma nova!
+          </div>
         ) : filteredCampaigns.map((campaign: any) => {
           const pct = campaign.goal_amount > 0 ? Math.round((campaign.current_amount / campaign.goal_amount) * 100) : 0;
           return (
