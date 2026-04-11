@@ -216,7 +216,7 @@ const Campanhas = () => {
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
               <Button onClick={handleCreateCampaign}>Cadastrar Campanha</Button>
             </DialogFooter>
-          </Dialog>
+          </DialogContent>
         </Dialog>
       </div>
 
