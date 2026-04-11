@@ -39,6 +39,7 @@ const Doadores = () => {
   const [selectedDonorId, setSelectedDonorId] = useState<string>("");
   const [donationAmount, setDonationAmount] = useState<string>("");
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
+  const [paymentMethod, setPaymentMethod] = useState<string>("Pix");
   const { toast } = useToast();
 
   const handleRegisterDonation = () => {
@@ -47,7 +48,7 @@ const Doadores = () => {
       return;
     }
 
-    addDonation(parseInt(selectedDonorId), parseFloat(donationAmount), selectedCampaignId || undefined);
+    addDonation(parseInt(selectedDonorId), parseFloat(donationAmount), selectedCampaignId || undefined, paymentMethod);
 
     toast({
       title: "Doação Registrada!",
@@ -124,6 +125,21 @@ const Doadores = () => {
                         {campaigns.map(c => (
                           <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Método de Pagamento</Label>
+                    <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o método" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Pix">Pix</SelectItem>
+                        <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                        <SelectItem value="Cartão">Cartão</SelectItem>
+                        <SelectItem value="Boleto">Boleto</SelectItem>
+                        <SelectItem value="Manual">Manual (Outros)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
