@@ -4,11 +4,13 @@ import { Outlet } from "react-router-dom";
 import { Bell, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AsaasAutomationWorker } from "../automation/AsaasAutomationWorker";
+import { FollowUpAutomationWorker } from "@/components/automation/FollowUpAutomationWorker";
 
 export function DashboardLayout() {
   return (
     <SidebarProvider>
       <AsaasAutomationWorker />
+      <FollowUpAutomationWorker />
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col">

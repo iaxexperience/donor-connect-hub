@@ -11,28 +11,12 @@ export const AsaasAutomationWorker = () => {
     if (!isEnabled) return;
 
     console.log("Asaas Automation Worker Started (Simulated)");
+    
+    // We removed the automatic interval simulation to avoid "phantom" donations.
+    // Events can still be triggered manually from the Integrações page.
 
-    const findDonorByEmailOrPhone = (email?: string, phone?: string) => {
-      return donors.find(d => 
-        (email && d.email === email) || (phone && d.phone === phone)
-      );
-    };
+    return () => {};
 
-    const interval = setInterval(async () => {
-      if (Math.random() < 0.05) {
-        console.log("Simulating Inbound Asaas Donation...");
-        const mockEvent = generateMockAsaasEvent();
-        
-        await handleAsaasDonation(
-          mockEvent,
-          findDonorByEmailOrPhone,
-          (name, email, phone) => registerNewDonor({ name, email, phone }) as any,
-          addDonation
-        );
-      }
-    }, 30000);
-
-    return () => clearInterval(interval);
   }, [donors, registerNewDonor, addDonation]);
 
   return null; // This is a background worker

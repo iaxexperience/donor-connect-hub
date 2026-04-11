@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getDonors, registerDonation, updateDonorType, updateDonor, Donor, DonorType } from "@/lib/donationService";
 import { supabase } from "@/integrations/supabase/client";
+import { sendWhatsAppThankYou } from "@/lib/whatsappService";
+
 
 export const useDonors = () => {
   const queryClient = useQueryClient();
@@ -15,10 +17,21 @@ export const useDonors = () => {
   const donationMutation = useMutation({
     mutationFn: ({ donorId, amount, campaignId, paymentMethod }: { donorId: number; amount: number; campaignId?: string; paymentMethod?: string }) => 
       registerDonation(donorId, amount, campaignId, paymentMethod),
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       // Invalidate queries to refresh data (totals, counts, and classification happen on DB side)
       queryClient.invalidateQueries({ queryKey: ['donors'] });
       queryClient.invalidateQueries({ queryKey: ['followups'] });
+      
+      // Auto-send WhatsApp Thank You message
+      const donor = donors.find(d => d.id === variables.donorId);
+      if (donor && donor.phone) {
+        sendWhatsAppThankYou(
+          donor.name, 
+          variables.amount, 
+          donor.phone, 
+          variables.campaignId || "Doação Geral"
+        );
+      }
     },
   });
 

@@ -123,8 +123,12 @@ const FollowUps = () => {
   const [selectedFollowUp, setSelectedFollowUp] = useState<any | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [automationRules, setAutomationRules] = useState(initialAutomationRules);
-  const [automationGlobal, setAutomationGlobal] = useState(true);
+  const [automationGlobal, setAutomationGlobal] = useState(() => localStorage.getItem("automation_global") === "true");
   const { toast } = useToast();
+
+  useEffect(() => {
+    localStorage.setItem("automation_global", automationGlobal.toString());
+  }, [automationGlobal]);
 
   const realStats = [
     { label: "Pendentes", value: dbFollowUps.filter(f => f.status === "pendente").length, icon: Clock, color: "text-amber-600" },
