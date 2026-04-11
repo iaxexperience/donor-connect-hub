@@ -296,7 +296,6 @@ const Campanhas = () => {
           );
         })}
       </div>
-
     </div>
   );
 };
