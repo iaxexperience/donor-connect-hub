@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const DonorForm = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const isEditMode = !!id;
   const { registerNewDonor, updateDonor, donors, isRegistering } = useDonors();
   const { toast } = useToast();
