@@ -51,7 +51,19 @@ const Campanhas = () => {
   const [newDescription, setNewDescription] = useState("");
   const [newStatus, setNewStatus] = useState("Ativa");
 
-  const handleCreateCampaign = () => {
+  const handleClearAll = async () => {
+    if (confirm("Tem certeza que deseja excluir todas as campanhas?")) {
+      for (const campaign of campaigns) {
+        deleteCampaign(campaign.id);
+      }
+      toast({
+        title: "Limpeza concluída",
+        description: "Todas as campanhas foram removidas.",
+      });
+    }
+  };
+
+  const handleCreateCampaign = async () => {
     if (!newName || !newGoal || !newEndDate) {
       toast({
         title: "Campos obrigatórios",
@@ -61,21 +73,29 @@ const Campanhas = () => {
       return;
     }
 
-    createCampaign({
-      name: newName,
-      goal_amount: parseFloat(newGoal),
-      end_date: newEndDate,
-      description: newDescription,
-      is_active: newStatus === "Ativa",
-    });
+    try {
+      await createCampaign({
+        name: newName,
+        goal_amount: parseFloat(newGoal),
+        end_date: newEndDate,
+        description: newDescription,
+        is_active: newStatus === "Ativa",
+      });
 
-    setIsDialogOpen(false);
-    resetForm();
+      setIsDialogOpen(false);
+      resetForm();
 
-    toast({
-      title: "Campanha Criada!",
-      description: `A campanha "${newName}" foi sincronizada com o banco de dados.`,
-    });
+      toast({
+        title: "Campanha Criada!",
+        description: `A campanha "${newName}" foi sincronizada com o banco de dados.`,
+      });
+    } catch (error) {
+       toast({
+        title: "Erro ao criar",
+        description: "Não foi possível salvar a campanha no banco de dados.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDeleteCampaign = (id: string) => {
