@@ -5,6 +5,7 @@ import { Heart, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -14,14 +15,41 @@ const Login = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Placeholder — navigate to dashboard for now
-    setTimeout(() => {
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast({
+          title: "Erro no acesso",
+          description: "E-mail ou senha incorretos. Verifique suas credenciais.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (data.session) {
+        toast({
+          title: "Bem-vindo!",
+          description: "Acesso autorizado com sucesso.",
+        });
+        navigate("/dashboard");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro inesperado",
+        description: "Não foi possível conectar ao servidor de segurança.",
+        variant: "destructive",
+      });
       setLoading(false);
-      navigate("/dashboard");
-    }, 600);
+    }
   };
 
   return (

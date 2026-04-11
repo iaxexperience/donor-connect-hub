@@ -13,7 +13,8 @@ import {
   GitMerge,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Sidebar,
   SidebarContent,
@@ -48,7 +49,27 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const navigate = useNavigate();
+  const { role, signOut } = useAuth();
   const currentPath = location.pathname;
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
+  };
+
+  // Filtragem baseada em Role
+  const filteredMainItems = mainItems.filter(item => {
+    if (item.title === "Usuários") return role === "admin";
+    if (item.title === "Relatórios") return role === "admin" || role === "gestor";
+    return true;
+  });
+
+  const filteredConfigItems = configItems.filter(item => {
+    if (role === "operador" || role === "visualizador") return false;
+    if (item.title === "Configurações") return role === "admin" || role === "gestor";
+    return true;
+  });
 
   const isActive = (path: string) => currentPath === path;
 
@@ -77,7 +98,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainItems.map((item) => (
+              {filteredMainItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
                     <NavLink
@@ -100,7 +121,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Sistema</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {configItems.map((item) => (
+              {filteredConfigItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
                     <NavLink
@@ -123,11 +144,9 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <NavLink to="/login" className="text-destructive hover:bg-destructive/10">
-                <LogOut className="mr-2 h-4 w-4" />
-                {!collapsed && <span>Sair</span>}
-              </NavLink>
+            <SidebarMenuButton onClick={handleSignOut} className="text-destructive hover:bg-destructive/10">
+              <LogOut className="mr-2 h-4 w-4" />
+              {!collapsed && <span>Sair</span>}
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
