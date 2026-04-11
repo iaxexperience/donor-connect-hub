@@ -1,0 +1,118 @@
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useDonors } from "./useDonors";
+import { useCampaigns } from "./useCampaigns";
+
+export const useDashboard = () => {
+  const { donors } = useDonors();
+  const { campaigns } = useCampaigns();
+
+  const { data: donations = [], isLoading: donationsLoading } = useQuery({
+    queryKey: ['donations-full'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('donations')
+        .select('*, donors(name, type)')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // 1. Recebimentos Mensais (Últimos 6 meses)
+  const getMonthlyData = () => {
+    const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    const now = new Date();
+    const result = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthLabel = months[d.getMonth()];
+      const total = donations
+        .filter(don => {
+          const donDate = new Date(don.created_at);
+          return donDate.getMonth() === d.getMonth() && donDate.getFullYear() === d.getFullYear();
+        })
+        .reduce((acc, don) => acc + (don.amount || 0), 0);
+
+      result.push({ name: monthLabel, total });
+    }
+    return result;
+  };
+
+  // 2. Mix por Campanha
+  const getCampaignMix = () => {
+    if (campaigns.length === 0) return [{ name: "Sem Campanhas", value: 100, color: "#999999" }];
+
+    const totalsByCampaign = campaigns.map(c => {
+      const total = donations
+        .filter(d => d.campaign_id === c.id)
+        .reduce((acc, d) => acc + (d.amount || 0), 0);
+      return { name: c.name, value: total, color: "#0066CC" }; // Simplificado para cor azul por enquanto
+    });
+
+    const totalCollected = totalsByCampaign.reduce((acc, c) => acc + c.value, 0);
+    if (totalCollected === 0) return campaigns.map(c => ({ name: c.name, value: 0, color: "#0066CC" }));
+
+    return totalsByCampaign.map(c => ({
+      ...c,
+      value: Math.round((c.value / totalCollected) * 100)
+    }));
+  };
+
+  // 3. Evolução de Doações (Últimos 30 dias)
+  const getEvolutionData = () => {
+    const result = [];
+    const now = new Date();
+    for (let i = 30; i >= 0; i -= 5) {
+      const d = new Date();
+      d.setDate(now.getDate() - i);
+      const dayLabel = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+      
+      const total = donations
+        .filter(don => {
+          const donDate = new Date(don.created_at);
+          return donDate.toDateString() === d.toDateString();
+        })
+        .reduce((acc, don) => acc + (don.amount || 0), 0);
+
+      result.push({ day: dayLabel, value: total });
+    }
+    return result;
+  };
+
+  // 4. Maiores Doadores
+  const getTopDonors = () => {
+    return [...donors]
+      .sort((a, b) => b.totalDonated - a.totalDonated)
+      .slice(0, 4)
+      .map(d => ({
+        name: d.name,
+        total: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(d.totalDonated),
+        type: d.type === 'recorrente' ? 'Recorrente' : d.type === 'unico' ? 'Único' : 'Esporádico'
+      }));
+  };
+
+  // 5. Doações Recentes
+  const getRecentDonations = () => {
+    return donations.slice(0, 4).map(d => ({
+      name: d.donors?.name || "Anônimo",
+      amount: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(d.amount),
+      time: new Date(d.created_at).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' }),
+      status: d.status || "Confirmado"
+    }));
+  };
+
+  return {
+    isLoading: donationsLoading,
+    monthlyData: getMonthlyData(),
+    campaignData: getCampaignMix(),
+    evolutionData: getEvolutionData(),
+    topDonors: getTopDonors(),
+    recentDonations: getRecentDonations(),
+    totalDonations: donations.reduce((acc, d) => acc + (d.amount || 0), 0),
+    avgTicket: donations.length > 0 ? donations.reduce((acc, d) => acc + (d.amount || 0), 0) / donations.length : 0,
+    donationsCount: donations.length
+  };
+};

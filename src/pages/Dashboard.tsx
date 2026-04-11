@@ -39,50 +39,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useDonors } from "@/hooks/useDonors";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { useFollowUps } from "@/hooks/useFollowUps";
+import { useDashboard } from "@/hooks/useDashboard";
 
 // --- Mock Data ---
 
 const COLORS = ["#007bff", "#28a745", "#f39c12", "#dc3545", "#17a2b8", "#6f42c1", "#e83e8c"];
-
-const monthlyData = [
-  { name: "Jan", total: 45000 },
-  { name: "Fev", total: 52000 },
-  { name: "Mar", total: 48000 },
-  { name: "Abr", total: 61000 },
-  { name: "Mai", total: 55000 },
-  { name: "Jun", total: 67000 },
-];
-
-const campaignData = [
-  { name: "Solidária 2026", value: 45, color: "#0066CC" },
-  { name: "Natal 2025", value: 25, color: "#FF9933" },
-  { name: "Educação", value: 20, color: "#33CC66" },
-  { name: "Outras", value: 10, color: "#999999" },
-];
-
-const evolutionData = [
-  { day: "01/06", value: 1200 },
-  { day: "05/06", value: 3400 },
-  { day: "10/06", value: 2100 },
-  { day: "15/06", value: 4500 },
-  { day: "20/06", value: 3800 },
-  { day: "25/06", value: 5200 },
-  { day: "30/06", value: 6100 },
-];
-
-const topDonors = [
-  { name: "Indústrias Matarazzo", total: "R$ 45.000", type: "Corporativo" },
-  { name: "Ricardo Almeida", total: "R$ 12.400", type: "Recorrente" },
-  { name: "Fundação Bradesco", total: "R$ 8.900", type: "Parceiro" },
-  { name: "Marina Silva", total: "R$ 5.200", type: "Único" },
-];
-
-const recentDonations = [
-  { name: "Carlos Magno", amount: "R$ 250", time: "14:32", status: "Confirmado" },
-  { name: "Beatriz Ferraz", amount: "R$ 1.200", time: "13:10", status: "Confirmado" },
-  { name: "Anônimo", amount: "R$ 50", time: "11:45", status: "Pendente" },
-  { name: "Sérgio Ramos", amount: "R$ 300", time: "10:20", status: "Confirmado" },
-];
 
 const container = {
   hidden: { opacity: 0 },
@@ -98,11 +59,21 @@ export default function Dashboard() {
   const { donors, isLoading: donorsLoading } = useDonors();
   const { campaigns, isLoading: campaignsLoading } = useCampaigns();
   const { followUps, isLoading: followUpsLoading } = useFollowUps();
+  const { 
+    monthlyData, 
+    campaignData, 
+    evolutionData, 
+    topDonors, 
+    recentDonations, 
+    totalDonations, 
+    avgTicket,
+    isLoading: dashboardLoading 
+  } = useDashboard();
 
   const stats = {
     today: donors.reduce((acc, d) => {
        const today = new Date().toDateString();
-       const dDate = new Date(d.lastDonationDate).toDateString();
+       const dDate = d.lastDonationDate ? new Date(d.lastDonationDate).toDateString() : "";
        if (today === dDate) {
          return acc + (d.totalDonated / (d.donation_count || 1)); 
        }
@@ -111,7 +82,7 @@ export default function Dashboard() {
     recorrentes: donors.filter(d => d.type === "recorrente").length,
     unicos: donors.filter(d => d.type === "unico").length,
     esporadicos: donors.filter(d => d.type === "esporadico").length,
-    totalBalance: donors.reduce((acc, d) => acc + d.totalDonated, 0),
+    totalBalance: totalDonations,
     pendingFollowUps: followUps.filter(f => f.status === "pendente").length
   };
 
@@ -357,16 +328,16 @@ export default function Dashboard() {
               <div className="space-y-1">
                 <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground font-medium">Ticket Médio</span>
-                  <span className="text-primary font-bold">R$ 142,50</span>
+                  <span className="text-primary font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(avgTicket)}</span>
                 </div>
               </div>
               <div className="pt-4 border-t border-muted">
-                <p className="text-[10px] text-muted-foreground uppercase font-bold mb-2">Previsão Mensal (IA)</p>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold mb-2">Previsão Mensal (Estimada)</p>
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-green-500" />
-                  <span className="text-xl font-bold">R$ 178.400</span>
+                  <span className="text-xl font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalDonations * 1.12)}</span>
                 </div>
-                <p className="text-[10px] text-muted-foreground">+12% vs mês anterior</p>
+                <p className="text-[10px] text-muted-foreground">Projeção baseada na média histórica</p>
               </div>
             </CardContent>
           </Card>
