@@ -61,13 +61,22 @@ export const useDonors = () => {
     return donationMutation.mutate({ donorId, amount, campaignId });
   };
 
+  const cleanData = (data: any) => {
+    const cleaned: any = {};
+    Object.keys(data).forEach(key => {
+      cleaned[key] = data[key] === "" ? null : data[key];
+    });
+    return cleaned;
+  };
+
   const registerNewDonor = async (donorData: any) => {
     // Map cpf_cnpj from form to document_id for DB
     const { cpf_cnpj, ...rest } = donorData;
+    const cleaned = cleanData(rest);
     
     return await addDonorMutation.mutateAsync({ 
-      ...rest,
-      document_id: cpf_cnpj,
+      ...cleaned,
+      document_id: cpf_cnpj === "" ? null : cpf_cnpj,
       phone: donorData.phone?.replace(/\D/g, ""),
       type: donorData.type || 'lead',
       total_donated: 0,
@@ -77,11 +86,13 @@ export const useDonors = () => {
 
   const handleUpdateDonor = async (id: number, donorData: any) => {
     const { cpf_cnpj, ...rest } = donorData;
+    const cleaned = cleanData(rest);
+    
     return await updateDonorMutation.mutateAsync({ 
       id, 
       data: {
-        ...rest,
-        document_id: cpf_cnpj,
+        ...cleaned,
+        document_id: cpf_cnpj === "" ? null : cpf_cnpj,
         phone: donorData.phone?.replace(/\D/g, "")
       } 
     });

@@ -137,11 +137,11 @@ const DonorForm = () => {
       }
       
       navigate("/dashboard/doadores");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao salvar:", error);
       toast({
         title: "Erro ao Salvar",
-        description: "Ocorreu um erro ao salvar o doador no banco de dados.",
+        description: error.message || "Ocorreu um erro ao salvar o doador no banco de dados.",
         variant: "destructive"
       });
     }
