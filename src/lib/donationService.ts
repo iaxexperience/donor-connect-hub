@@ -114,7 +114,8 @@ export const getDonorDetails = async (donorId: number) => {
 export const registerDonation = async (
   donorId: number,
   amount: number,
-  campaignId?: string
+  campaignId?: string,
+  paymentMethod: string = "Manual"
 ) => {
   // 1. Insert the donation
   const { data: donation, error: donationError } = await supabase
@@ -124,10 +125,12 @@ export const registerDonation = async (
       amount,
       campaign_id: campaignId,
       status: 'pago',
+      payment_method: paymentMethod,
       donation_date: new Date().toISOString()
     }])
     .select()
     .single();
+
 
   if (donationError) {
     console.error('Error registering donation:', donationError);
