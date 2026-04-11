@@ -1,70 +1,102 @@
+import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
-import Login from "./pages/Login.tsx";
-import Register from "./pages/Register.tsx";
-import Dashboard from "./pages/Dashboard.tsx";
-import Doadores from "./pages/Doadores.tsx";
-import Campanhas from "./pages/Campanhas.tsx";
-import Telemarketing from "./pages/Telemarketing.tsx";
-import Usuarios from "./pages/Usuarios.tsx";
-import Relatorios from "./pages/Relatorios.tsx";
-import Configuracoes from "./pages/Configuracoes.tsx";
-import Integracoes from "./pages/Integracoes.tsx";
-import FollowUps from "./pages/FollowUps.tsx";
-import ApiAberta from "./pages/ApiAberta.tsx";
-import ApiDocumentation from "./pages/ApiDocumentation.tsx";
-import Pipeline from "./pages/Pipeline.tsx";
-import DonorForm from "./pages/DonorForm.tsx";
-import { DashboardLayout } from "./components/dashboard/DashboardLayout.tsx";
+import Index from "./pages/Index";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import Doadores from "./pages/Doadores";
+import Campanhas from "./pages/Campanhas";
+import Telemarketing from "./pages/Telemarketing";
+import Usuarios from "./pages/Usuarios";
+import Relatorios from "./pages/Relatorios";
+import Configuracoes from "./pages/Configuracoes";
+import Integracoes from "./pages/Integracoes";
+import FollowUps from "./pages/FollowUps";
+import ApiAberta from "./pages/ApiAberta";
+import ApiDocumentation from "./pages/ApiDocumentation";
+import Pipeline from "./pages/Pipeline";
+import DonorForm from "./pages/DonorForm";
+import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
-import NotFound from "./pages/NotFound.tsx";
+import NotFound from "./pages/NotFound";
+
+// Simple Error Boundary to catch crashes
+class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-10 bg-red-50 text-red-900 min-h-screen">
+          <h1 className="text-2xl font-bold mb-4">Oops! Algo deu errado.</h1>
+          <pre className="p-4 bg-white border border-red-200 rounded text-xs overflow-auto">
+            {this.state.error?.toString()}
+          </pre>
+          <button 
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded"
+            onClick={() => window.location.reload()}
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/cadastro" element={<Register />} />
-            
-            {/* Protected Routes */}
-            <Route path="/dashboard" element={<ProtectedRoute />}>
-              <Route element={<DashboardLayout />}>
-                <Route index element={<Dashboard />} />
-                <Route path="doadores" element={<Doadores />} />
-                <Route path="doadores/novo" element={<DonorForm />} />
-                <Route path="doadores/editar/:id" element={<DonorForm />} />
-                <Route path="kanbam" element={<Pipeline />} />
-                <Route path="campanhas" element={<Campanhas />} />
-                <Route path="telemarketing" element={<Telemarketing />} />
-                <Route path="followups" element={<FollowUps />} />
-                <Route path="usuarios" element={<Usuarios />} />
-                <Route path="relatorios" element={<Relatorios />} />
-                <Route path="configuracoes" element={<Configuracoes />} />
-                <Route path="integracoes" element={<Integracoes />} />
-                <Route path="api-aberta" element={<ApiAberta />} />
-                <Route path="api-documentacao" element={<ApiDocumentation />} />
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/cadastro" element={<Register />} />
+              
+              {/* Rota Protegida do Dashboard */}
+              <Route path="/dashboard" element={<ProtectedRoute />}>
+                <Route element={<DashboardLayout />}>
+                  <Route index element={<Dashboard />} />
+                  <Route path="doadores" element={<Doadores />} />
+                  <Route path="doadores/novo" element={<DonorForm />} />
+                  <Route path="doadores/editar/:id" element={<DonorForm />} />
+                  <Route path="kanbam" element={<Pipeline />} />
+                  <Route path="campanhas" element={<Campanhas />} />
+                  <Route path="telemarketing" element={<Telemarketing />} />
+                  <Route path="followups" element={<FollowUps />} />
+                  <Route path="usuarios" element={<Usuarios />} />
+                  <Route path="relatorios" element={<Relatorios />} />
+                  <Route path="configuracoes" element={<Configuracoes />} />
+                  <Route path="integracoes" element={<Integracoes />} />
+                  <Route path="api-aberta" element={<ApiAberta />} />
+                  <Route path="api-documentacao" element={<ApiDocumentation />} />
+                </Route>
               </Route>
-            </Route>
 
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

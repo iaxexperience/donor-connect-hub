@@ -49,20 +49,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchRole = async (userId: string) => {
     try {
+      setLoading(true); // Ensure loading is true while fetching
       const { data, error } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', userId)
-        .single();
+        .maybeSingle(); // Better than .single() for robustness
       
       if (error) {
         console.error('Error fetching role:', error);
-        setRole(null);
+        setRole('visualizador'); // Default guest role if error
+      } else if (data) {
+        setRole(data.role as UserRole);
       } else {
-        setRole(data?.role as UserRole);
+        setRole('visualizador');
       }
     } catch (err) {
       console.error('Unexpected error fetching role:', err);
+      setRole('visualizador');
     } finally {
       setLoading(false);
     }

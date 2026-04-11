@@ -102,6 +102,15 @@ export const useDonors = () => {
     return updateTypeMutation.mutate({ donorId, newType });
   };
 
+  const findDonorByEmailOrPhone = (query: string) => {
+    const cleanQuery = query.toLowerCase().replace(/\D/g, "");
+    return donors.find(d => 
+      d.email?.toLowerCase() === query.toLowerCase() || 
+      d.phone?.replace(/\D/g, "") === cleanQuery ||
+      d.document_id?.replace(/\D/g, "") === cleanQuery
+    );
+  };
+
   return {
     donors,
     isLoading,
@@ -110,6 +119,7 @@ export const useDonors = () => {
     registerNewDonor,
     updateDonor: handleUpdateDonor,
     updateType,
+    findDonorByEmailOrPhone,
     isRegistering: donationMutation.isPending || addDonorMutation.isPending || updateTypeMutation.isPending || updateDonorMutation.isPending,
   };
 };
