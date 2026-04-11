@@ -147,7 +147,21 @@ const Doadores = () => {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-                <Button onClick={handleRegisterDonation}>Confirmar Doação</Button>
+                <Button 
+                  onClick={handleRegisterDonation} 
+                  disabled={isDonationPending}
+                  className="gap-2 shrink-0"
+                >
+                  {isDonationPending ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                      Registrando...
+                    </>
+                  ) : (
+                    "Confirmar Doação"
+                  )}
+                </Button>
+
               </DialogFooter>
             </DialogContent>
           </Dialog>

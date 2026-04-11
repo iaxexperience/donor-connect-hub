@@ -134,5 +134,7 @@ export const useDonors = () => {
     updateType,
     findDonorByEmailOrPhone,
     isRegistering: donationMutation.isPending || addDonorMutation.isPending || updateTypeMutation.isPending || updateDonorMutation.isPending,
+    isDonationPending: donationMutation.isPending
   };
 };
+
