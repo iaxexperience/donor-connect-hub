@@ -24,8 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-
-const INITIAL_CAMPAIGNS = [];
+import { useCampaigns } from "@/hooks/useCampaigns";
 
 const statusColor = (status: string) => {
   switch (status) {
@@ -35,8 +34,6 @@ const statusColor = (status: string) => {
     default: return "bg-gray-100 text-gray-700 border-gray-200";
   }
 };
-
-import { useCampaigns } from "@/hooks/useCampaigns";
 
 const Campanhas = () => {
   const { campaigns, isLoading, createCampaign, deleteCampaign } = useCampaigns();
@@ -135,89 +132,90 @@ const Campanhas = () => {
           )}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90 shadow-glow transition-all">
-              <Plus className="w-4 h-4 mr-2" />
-              Nova Campanha
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Cadastrar Nova Campanha</DialogTitle>
-              <DialogDescription>
-                Preencha os dados abaixo para iniciar uma nova jornada de arrecadação.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome da Campanha</Label>
-                <Input 
-                  id="name" 
-                  placeholder="Ex: Natal Solidário 2026" 
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
+              <Button className="bg-primary hover:bg-primary/90 shadow-glow transition-all">
+                <Plus className="w-4 h-4 mr-2" />
+                Nova Campanha
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Cadastrar Nova Campanha</DialogTitle>
+                <DialogDescription>
+                  Preencha os dados abaixo para iniciar uma nova jornada de arrecadação.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="goal">Meta (R$)</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input 
-                      id="goal" 
-                      type="number" 
-                      className="pl-8" 
-                      placeholder="0.00"
-                      value={newGoal}
-                      onChange={(e) => setNewGoal(e.target.value)}
-                    />
+                  <Label htmlFor="name">Nome da Campanha</Label>
+                  <Input 
+                    id="name" 
+                    placeholder="Ex: Natal Solidário 2026" 
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="goal">Meta (R$)</Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input 
+                        id="goal" 
+                        type="number" 
+                        className="pl-8" 
+                        placeholder="0.00"
+                        value={newGoal}
+                        onChange={(e) => setNewGoal(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="endDate">Data de Término</Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input 
+                        id="endDate" 
+                        type="date" 
+                        className="pl-8"
+                        value={newEndDate}
+                        onChange={(e) => setNewEndDate(e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="endDate">Data de Término</Label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input 
-                      id="endDate" 
-                      type="date" 
-                      className="pl-8"
-                      value={newEndDate}
-                      onChange={(e) => setNewEndDate(e.target.value)}
-                    />
-                  </div>
+                  <Label htmlFor="status">Status Inicial</Label>
+                  <Select value={newStatus} onValueChange={setNewStatus}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Ativa">Ativa</SelectItem>
+                      <SelectItem value="Planejada">Planejada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descrição</Label>
+                  <Textarea 
+                    id="description" 
+                    placeholder="Breve resumo do objetivo da campanha..." 
+                    className="resize-none h-20"
+                    value={newDescription}
+                    onChange={(e) => setNewDescription(e.target.value)}
+                  />
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="status">Status Inicial</Label>
-                <Select value={newStatus} onValueChange={setNewStatus}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Ativa">Ativa</SelectItem>
-                    <SelectItem value="Planejada">Planejada</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição</Label>
-                <Textarea 
-                  id="description" 
-                  placeholder="Breve resumo do objetivo da campanha..." 
-                  className="resize-none h-20"
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={handleCreateCampaign}>Cadastrar Campanha</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+                <Button onClick={handleCreateCampaign}>Cadastrar Campanha</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="relative max-w-sm">
@@ -237,64 +235,66 @@ const Campanhas = () => {
           <div className="col-span-full py-20 text-center text-muted-foreground">
             Nenhuma campanha encontrada. Comece criando uma nova!
           </div>
-        ) : filteredCampaigns.map((campaign: any) => {
-          const pct = campaign.goal_amount > 0 ? Math.round((campaign.current_amount / campaign.goal_amount) * 100) : 0;
-          return (
-            <Card key={campaign.id} className="hover:shadow-md transition-all border-none shadow-soft group">
-              <CardHeader className="pb-3 border-b border-muted/50">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="text-base group-hover:text-primary transition-colors">{campaign.name}</CardTitle>
-                    <CardDescription className="text-[10px] line-clamp-1">{campaign.description}</CardDescription>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 border-none ${campaign.is_active ? statusColor("Ativa") : statusColor("Concluída")}`}>
-                      {campaign.is_active ? "Ativa" : "Encerrada"}
-                    </Badge>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-6 w-6 text-muted-foreground hover:text-destructive group-hover:opacity-100 transition-opacity"
-                      onClick={() => handleDeleteCampaign(campaign.id)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-muted-foreground font-medium">Progresso da Arrecadação</span>
-                    <span className="font-bold text-primary">{pct}%</span>
-                  </div>
-                  <Progress value={pct} className="h-1.5" />
-                  <div className="flex justify-between items-end mt-1">
-                    <div className="space-y-0.5">
-                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Arrecadado</p>
-                      <p className="text-sm font-bold">R$ {(campaign.current_amount || 0).toLocaleString("pt-BR")}</p>
+        ) : (
+          filteredCampaigns.map((campaign: any) => {
+            const pct = campaign.goal_amount > 0 ? Math.round((campaign.current_amount / campaign.goal_amount) * 100) : 0;
+            return (
+              <Card key={campaign.id} className="hover:shadow-md transition-all border-none shadow-soft group">
+                <CardHeader className="pb-3 border-b border-muted/50">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="text-base group-hover:text-primary transition-colors">{campaign.name}</CardTitle>
+                      <CardDescription className="text-[10px] line-clamp-1">{campaign.description}</CardDescription>
                     </div>
-                    <div className="text-right space-y-0.5">
-                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Meta</p>
-                      <p className="text-xs font-semibold text-muted-foreground">R$ {(campaign.goal_amount || 0).toLocaleString("pt-BR")}</p>
+                    <div className="flex items-start gap-2">
+                      <Badge variant="outline" className={`text-[10px] px-1.5 py-0 border-none ${campaign.is_active ? statusColor("Ativa") : statusColor("Concluída")}`}>
+                        {campaign.is_active ? "Ativa" : "Encerrada"}
+                      </Badge>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleDeleteCampaign(campaign.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </div>
-                </div>
+                </CardHeader>
+                <CardContent className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-muted-foreground font-medium">Progresso da Arrecadação</span>
+                      <span className="font-bold text-primary">{pct}%</span>
+                    </div>
+                    <Progress value={pct} className="h-1.5" />
+                    <div className="flex justify-between items-end mt-1">
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Arrecadado</p>
+                        <p className="text-sm font-bold">R$ {(campaign.current_amount || 0).toLocaleString("pt-BR")}</p>
+                      </div>
+                      <div className="text-right space-y-0.5">
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Meta</p>
+                        <p className="text-xs font-semibold text-muted-foreground">R$ {(campaign.goal_amount || 0).toLocaleString("pt-BR")}</p>
+                      </div>
+                    </div>
+                  </div>
 
-                <div className="pt-3 border-t border-muted/50 flex items-center justify-between text-[11px]">
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <Target className="w-3.5 h-3.5 text-primary" />
-                    <span>Em execução</span>
+                  <div className="pt-3 border-t border-muted/50 flex items-center justify-between text-[11px]">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Target className="w-3.5 h-3.5 text-primary" />
+                      <span>Em execução</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>Até {new Date(campaign.end_date).toLocaleDateString("pt-BR")}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <Calendar className="w-3.5 h-3.5" />
-                    <span>Até {new Date(campaign.end_date).toLocaleDateString("pt-BR")}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
       </div>
     </div>
   );
