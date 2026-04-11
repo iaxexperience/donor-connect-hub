@@ -13,8 +13,8 @@ export const useDonors = () => {
 
   // Mutation to add a donation
   const donationMutation = useMutation({
-    mutationFn: ({ donorId, amount, campaignId }: { donorId: number; amount: number; campaignId?: string }) => 
-      registerDonation(donorId, amount, campaignId),
+    mutationFn: ({ donorId, amount, campaignId, paymentMethod }: { donorId: number; amount: number; campaignId?: string; paymentMethod?: string }) => 
+      registerDonation(donorId, amount, campaignId, paymentMethod),
     onSuccess: () => {
       // Invalidate queries to refresh data (totals, counts, and classification happen on DB side)
       queryClient.invalidateQueries({ queryKey: ['donors'] });
@@ -57,8 +57,8 @@ export const useDonors = () => {
     },
   });
 
-  const addDonation = (donorId: number, amount: number, campaignId?: string) => {
-    return donationMutation.mutate({ donorId, amount, campaignId });
+  const addDonation = (donorId: number, amount: number, campaignId?: string, paymentMethod?: string) => {
+    return donationMutation.mutate({ donorId, amount, campaignId, paymentMethod });
   };
 
   const cleanData = (data: any) => {
