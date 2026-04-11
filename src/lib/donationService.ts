@@ -174,15 +174,14 @@ export const updateDonor = async (donorId: number, updateData: Partial<Donor>) =
     .from('donors')
     .update(updateData)
     .eq('id', donorId)
-    .select()
-    .single();
+    .select();
 
   if (error) {
     console.error('Error updating donor:', error);
     throw error;
   }
 
-  return data;
+  return data?.[0];
 };
 
 /**
