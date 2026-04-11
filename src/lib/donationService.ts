@@ -118,6 +118,8 @@ export const registerDonation = async (
   paymentMethod: string = "Manual"
 ) => {
   // 1. Insert the donation
+  // The database trigger 'tr_after_donation_inserted' will automatically 
+  // update donor totals and classification.
   const { data: donation, error: donationError } = await supabase
     .from('donations')
     .insert([{
@@ -131,50 +133,14 @@ export const registerDonation = async (
     .select()
     .single();
 
-
   if (donationError) {
     console.error('Error registering donation:', donationError);
     throw donationError;
   }
 
-  // 2. Manual fallback: Update donor totals and classification
-  // In a production environment with triggers, this part would be handled by the database
-  try {
-    const { data: donor } = await supabase
-      .from('donors')
-      .select('total_donated, donation_count, type')
-      .eq('id', donorId)
-      .single();
-
-    if (donor) {
-      const newCount = (donor.donation_count || 0) + 1;
-      const newTotal = (donor.total_donated || 0) + amount;
-      let newType = donor.type;
-
-      // Classification logic: Lead -> Único -> Esporádico
-      if (newType === 'lead') {
-        newType = 'unico';
-      } else if (newType === 'unico' && newCount >= 2) {
-        newType = 'esporadico';
-      }
-
-      await supabase
-        .from('donors')
-        .update({
-          total_donated: newTotal,
-          donation_count: newCount,
-          last_donation_date: new Date().toISOString(),
-          type: newType
-        })
-        .eq('id', donorId);
-    }
-  } catch (err) {
-    console.error('Error updating donor stats manually:', err);
-    // We don't throw here to ensure the donation registration itself is considered successful
-  }
-
   return donation;
 };
+
 
 
 /**
