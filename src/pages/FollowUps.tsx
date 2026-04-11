@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useFollowUpLogs } from "@/hooks/useFollowUpLogs";
 import {
   CalendarClock,
   UserCheck,
@@ -177,8 +178,8 @@ const FollowUps = () => {
   };
 
   const activeRulesCount = automationRules.filter(r => r.enabled).length;
-  const totalSent = automationLogs.filter(l => l.status === "enviado").length;
-  const totalFailed = automationLogs.filter(l => l.status === "falha").length;
+  const totalSent = dbLogs.filter(l => l.status === "enviado").length;
+  const totalFailed = dbLogs.filter(l => l.status === "falha").length;
 
   return (
     <div className="space-y-6">
