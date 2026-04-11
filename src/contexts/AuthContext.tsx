@@ -26,7 +26,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchRole(session.user.id);
+        fetchRole(session.user.email!, session.user.id);
       } else {
         setLoading(false);
       }
@@ -37,7 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchRole(session.user.id);
+        fetchRole(session.user.email!, session.user.id);
       } else {
         setRole(null);
         setLoading(false);
@@ -47,18 +47,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchRole = async (userId: string) => {
+  const fetchRole = async (userEmail: string, userId: string) => {
     try {
-      setLoading(true); // Ensure loading is true while fetching
-      const { data, error } = await supabase
+      setLoading(true);
+      
+      // Primeiro tentamos pelo ID (forma oficial)
+      let { data, error } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', userId)
-        .maybeSingle(); // Better than .single() for robustness
+        .maybeSingle();
+      
+      // Se não achar pelo ID, buscamos pelo e-mail e vinculamos o ID novo
+      if (!data && !error) {
+        const { data: emailData, error: emailError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('email', userEmail)
+          .maybeSingle();
+          
+        if (emailData && !emailError) {
+          data = emailData;
+          // Aproveitamos para vincular o ID novo do Supabase Auth ao perfil existente
+          await supabase.from('profiles').update({ id: userId }).eq('email', userEmail);
+        }
+      }
       
       if (error) {
         console.error('Error fetching role:', error);
-        setRole('visualizador'); // Default guest role if error
+        setRole('visualizador');
       } else if (data) {
         setRole(data.role as UserRole);
       } else {
