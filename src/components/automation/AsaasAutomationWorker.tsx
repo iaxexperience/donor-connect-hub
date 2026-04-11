@@ -4,18 +4,21 @@ import { handleAsaasDonation, generateMockAsaasEvent } from "@/lib/asaasIntegrat
 import { toast } from "sonner";
 
 export const AsaasAutomationWorker = () => {
-  const { findDonorByEmailOrPhone, registerNewDonor, addDonation } = useDonors();
+  const { donors, registerNewDonor, addDonation } = useDonors();
 
   useEffect(() => {
-    // Check if automation is enabled in localStorage
     const isEnabled = localStorage.getItem("asaas_automation_enabled") !== "false";
-    
     if (!isEnabled) return;
 
     console.log("Asaas Automation Worker Started (Simulated)");
 
+    const findDonorByEmailOrPhone = (email?: string, phone?: string) => {
+      return donors.find(d => 
+        (email && d.email === email) || (phone && d.phone === phone)
+      );
+    };
+
     const interval = setInterval(async () => {
-      // 5% chance of a new donation every 30 seconds for simulation purposes
       if (Math.random() < 0.05) {
         console.log("Simulating Inbound Asaas Donation...");
         const mockEvent = generateMockAsaasEvent();
@@ -23,14 +26,14 @@ export const AsaasAutomationWorker = () => {
         await handleAsaasDonation(
           mockEvent,
           findDonorByEmailOrPhone,
-          registerNewDonor,
+          (name, email, phone) => registerNewDonor({ name, email, phone }) as any,
           addDonation
         );
       }
-    }, 30000); // 30 seconds
+    }, 30000);
 
     return () => clearInterval(interval);
-  }, [findDonorByEmailOrPhone, registerNewDonor, addDonation]);
+  }, [donors, registerNewDonor, addDonation]);
 
   return null; // This is a background worker
 };
