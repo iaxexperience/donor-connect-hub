@@ -100,16 +100,6 @@ const initialAutomationRules: AutomationRule[] = [
   { type: "recorrente", label: "Recorrente", rule: "3+ doações em 3 meses", followUpDays: 30, enabled: true, channel: "whatsapp", template: "follow_up_fidelizacao", color: "text-green-600", bg: "bg-green-100", icon: UserCheck, maxRetries: 1, sendHour: "09:00" },
 ];
 
-const automationLogs: AutomationLog[] = [
-  { id: 1, donorName: "Maria Silva", donorType: "recorrente", channel: "whatsapp", template: "follow_up_fidelizacao", sentAt: "2026-04-10 09:00", status: "enviado", retryCount: 0 },
-  { id: 2, donorName: "Carlos Mendes", donorType: "recorrente", channel: "whatsapp", template: "follow_up_fidelizacao", sentAt: "2026-04-10 09:01", status: "enviado", retryCount: 0 },
-  { id: 3, donorName: "Ana Oliveira", donorType: "esporadico", channel: "whatsapp", template: "follow_up_engajamento", sentAt: "2026-04-05 14:00", status: "falha", retryCount: 2 },
-  { id: 4, donorName: "João Santos", donorType: "unico", channel: "whatsapp", template: "follow_up_primeiro_doador", sentAt: "2026-04-09 10:00", status: "aguardando", retryCount: 0 },
-  { id: 5, donorName: "Patrícia Lima", donorType: "unico", channel: "whatsapp", template: "follow_up_primeiro_doador", sentAt: "2026-03-20 10:00", status: "falha", retryCount: 2 },
-  { id: 6, donorName: "Roberto Alves", donorType: "esporadico", channel: "whatsapp", template: "follow_up_engajamento", sentAt: "2026-04-08 14:00", status: "enviado", retryCount: 0 },
-  { id: 7, donorName: "Fernanda Costa", donorType: "recorrente", channel: "whatsapp", template: "follow_up_fidelizacao", sentAt: "2026-04-03 09:00", status: "enviado", retryCount: 0 },
-];
-
 const donorTypeLabel: Record<string, string> = { unico: "Único", esporadico: "Esporádico", recorrente: "Recorrente" };
 const donorTypeBadge: Record<string, string> = { 
   unico: "bg-blue-100 text-blue-700 border-blue-200", 
@@ -124,7 +114,9 @@ const logStatusColor: Record<string, string> = { enviado: "bg-green-100 text-gre
 import { useFollowUps } from "@/hooks/useFollowUps";
 
 const FollowUps = () => {
-  const { followUps: dbFollowUps, isLoading, updateFollowUp } = useFollowUps();
+  const { followUps: dbFollowUps, isLoading: loadingFollowUps, updateFollowUp } = useFollowUps();
+  const { logs: dbLogs, isLoading: loadingLogs } = useFollowUpLogs();
+  
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedFollowUp, setSelectedFollowUp] = useState<any | null>(null);
@@ -149,6 +141,12 @@ const FollowUps = () => {
     channel: "whatsapp",
     totalDonations: (f as any).totalDonations || 0,
     campaign: (f as any).campaign || "Geral"
+  }));
+
+  const automationLogs = dbLogs.map(log => ({
+    ...log,
+    retryCount: (log as any).retry_count, // map field name if different
+    sentAt: new Date(log.sentAt).toLocaleString("pt-BR")
   }));
 
   const filtered = followUpList.filter((f) => {
