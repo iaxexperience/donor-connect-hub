@@ -313,10 +313,19 @@ const Integracoes = () => {
             </div>
           </div>
           <Separator orientation="vertical" className="h-10 mx-2" />
-          <Button onClick={simulateAsaasDonation} className="bg-primary shadow-glow hover:scale-105 transition-all">
-            <Zap className="w-4 h-4 mr-2" />
-            Simular Doação Asaas
+          <Button 
+            onClick={simulateAsaasDonation} 
+            disabled={isDonationPending}
+            className="bg-primary shadow-glow hover:scale-105 transition-all gap-2"
+          >
+            {isDonationPending ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Zap className="w-4 h-4" />
+            )}
+            {isDonationPending ? "Processando..." : "Simular Doação Asaas"}
           </Button>
+
         </div>
       </div>
 

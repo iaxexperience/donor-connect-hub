@@ -12,6 +12,9 @@ import {
 } from "@/components/ui/select";
 import { useDonors } from "@/hooks/useDonors";
 import { DonorKanban } from "@/components/donors/DonorKanban";
+import { KpiCard } from "@/components/dashboard/KpiCard";
+import { Users, Target, Activity, Heart, GitMerge as GitMergeIcon, ShieldAlert } from "lucide-react";
+
 
 const Pipeline = () => {
   const navigate = useNavigate();
@@ -51,8 +54,48 @@ const Pipeline = () => {
           Ver Lista
         </Button>
       </div>
+      
+      {/* KPI Summary Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 shrink-0">
+        <KpiCard 
+          title="Total de Cadastros" 
+          value={donors.length} 
+          icon={Users} 
+          color="blue" 
+          delay={0.1}
+        />
+        <KpiCard 
+          title="Leads" 
+          value={donors.filter(d => d.type === 'lead').length} 
+          icon={Target} 
+          color="orange" 
+          delay={0.2}
+        />
+        <KpiCard 
+          title="Recorrentes" 
+          value={donors.filter(d => d.type === 'recorrente').length} 
+          icon={Activity} 
+          color="green" 
+          delay={0.3}
+        />
+        <KpiCard 
+          title="Únicos" 
+          value={donors.filter(d => d.type === 'unico').length} 
+          icon={Heart} 
+          color="red" 
+          delay={0.4}
+        />
+        <KpiCard 
+          title="Esporádicos" 
+          value={donors.filter(d => d.type === 'esporadico').length} 
+          icon={GitMergeIcon} 
+          color="purple" 
+          delay={0.5}
+        />
+      </div>
 
       <div className="flex items-center gap-3 shrink-0">
+
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input 

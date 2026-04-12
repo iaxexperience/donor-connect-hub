@@ -40,6 +40,8 @@ import { useDonors } from "@/hooks/useDonors";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { useFollowUps } from "@/hooks/useFollowUps";
 import { useDashboard } from "@/hooks/useDashboard";
+import { KpiCard } from "@/components/dashboard/KpiCard";
+
 
 // --- Mock Data ---
 
@@ -128,12 +130,13 @@ export default function Dashboard() {
 
       {/* MAIN KPIs */}
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard title="Recebidos Hoje" value={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.today)} change="+12.5%" trend="up" icon={DollarSign} color="orange" />
-        <StatCard title="Recorrentes" value={stats.recorrentes.toString()} change="+4.2%" trend="up" icon={Users} color="teal" />
-        <StatCard title="Doadores Únicos" value={stats.unicos.toString()} change="-2.1%" trend="down" icon={Activity} color="green" />
-        <StatCard title="Esporádicos" value={stats.esporadicos.toString()} change="+8.7%" trend="up" icon={Heart} color="red" />
-        <StatCard title="Follow-ups Pendentes" value={stats.pendingFollowUps.toString()} badge="Alta" color="blue" icon={Phone} />
+        <KpiCard title="Recebidos Hoje" value={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.today)} icon={DollarSign} color="orange" delay={0.1} />
+        <KpiCard title="Recorrentes" value={stats.recorrentes.toString()} icon={Users} color="teal" delay={0.2} />
+        <KpiCard title="Únicos" value={stats.unicos.toString()} icon={Activity} color="green" delay={0.3} />
+        <KpiCard title="Esporádicos" value={stats.esporadicos.toString()} icon={Heart} color="red" delay={0.4} />
+        <KpiCard title="Follow-ups Pendentes" value={stats.pendingFollowUps.toString()} color="blue" icon={Phone} delay={0.5} />
       </motion.div>
+
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         

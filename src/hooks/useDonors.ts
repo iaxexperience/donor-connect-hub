@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getDonors, registerDonation, updateDonorType, updateDonor, Donor, DonorType } from "@/lib/donationService";
+import { getDonors, registerDonation, updateDonorType, registerDonor, updateDonor, Donor, DonorType } from "@/lib/donationService";
 import { supabase } from "@/integrations/supabase/client";
 import { sendWhatsAppThankYou } from "@/lib/whatsappService";
+import { useRef } from "react";
 
 
 export const useDonors = () => {
@@ -70,9 +71,19 @@ export const useDonors = () => {
     },
   });
 
+  const lastDonationCall = useRef<number>(0);
+
   const addDonation = (donorId: number, amount: number, campaignId?: string, paymentMethod?: string) => {
+    const now = Date.now();
+    // Safety lock: prevent calls within 2 seconds of each other
+    if (now - lastDonationCall.current < 2000) {
+      console.warn("Duplicate donation call prevented by safety lock.");
+      return;
+    }
+    lastDonationCall.current = now;
     return donationMutation.mutate({ donorId, amount, campaignId, paymentMethod });
   };
+
 
   const cleanData = (data: any) => {
     const cleaned: any = {};
