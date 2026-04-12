@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useDonors } from "@/hooks/useDonors";
 import { handleAsaasDonation, generateMockAsaasEvent } from "@/lib/asaasIntegrationService";
 import { Progress } from "@/components/ui/progress";
+import { validateMetaCredentials, fetchMetaTemplates, createMetaTemplate } from "@/lib/whatsappService";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -71,11 +72,14 @@ const INITIAL_TEMPLATES = [
 ];
 
 const Integracoes = () => {
-  const [waConnected, setWaConnected] = useState(true);
-  const [asaasConnected, setAsaasConnected] = useState(true);
-  const [wabaId, setWabaId] = useState("1222137823202647");
-  const [phoneId, setPhoneId] = useState("903758466162084");
-  const [accessToken, setAccessToken] = useState("********************************************************************************************************************");
+  const [waConnected, setWaConnected] = useState(false);
+  const [asaasConnected, setAsaasConnected] = useState(false);
+  
+  // Meta Credentials with Persistence
+  const [wabaId, setWabaId] = useState(() => localStorage.getItem("meta_waba_id") || "1222137823202647");
+  const [phoneId, setPhoneId] = useState(() => localStorage.getItem("meta_phone_id") || "903758466162084");
+  const [accessToken, setAccessToken] = useState(() => localStorage.getItem("meta_access_token") || "");
+  
   const [webhookUrl, setWebhookUrl] = useState("https://...");
   const [isTestingWa, setIsTestingWa] = useState(false);
   const [isTestingAsaas, setIsTestingAsaas] = useState(false);
@@ -112,24 +116,79 @@ const Integracoes = () => {
     }
   });
 
-  const handleSyncTemplates = () => {
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [newTemplate, setNewTemplate] = useState({
+    name: "",
+    category: "MARKETING",
+    language: "pt_BR",
+    body: ""
+  });
+
+  const handleSyncTemplates = async () => {
     toast({ title: "Sincronizando...", description: "Buscando templates aprovados na Meta API." });
-    setTimeout(() => {
-      toast({ title: "Sincronizado", description: "Templates atualizados com sucesso." });
-    }, 1500);
+    try {
+      const updated = await fetchMetaTemplates();
+      setTemplates(updated);
+      toast({ title: "Sincronizado", description: `${updated.length} templates carregados da Meta.` });
+    } catch (e: any) {
+      toast({ 
+        title: "Erro na Sincronização", 
+        description: e.message, 
+        variant: "destructive" 
+      });
+    }
   };
 
-  const handleTestWhatsApp = () => {
+  const handleTestWhatsApp = async () => {
     setIsTestingWa(true);
-    setTimeout(() => {
-      setIsTestingWa(false);
+    const result = await validateMetaCredentials(wabaId, phoneId, accessToken);
+    setIsTestingWa(false);
+    
+    if (result.success) {
       setWaConnected(true);
       toast({
         title: "Conexão Meta Cloud OK",
         description: "Autenticação via System User Token validada com sucesso.",
         className: "bg-green-50 border-green-200"
       });
-    }, 1500);
+    } else {
+      setWaConnected(false);
+      toast({
+        title: "Erro na Conexão",
+        description: result.error,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSaveCredentials = () => {
+    localStorage.setItem("meta_waba_id", wabaId);
+    localStorage.setItem("meta_phone_id", phoneId);
+    localStorage.setItem("meta_access_token", accessToken);
+    toast({ title: "Salvo", description: "Credenciais Meta persistidas localmente." });
+  };
+
+  const handleCreateTemplate = async () => {
+    toast({ title: "Enviando...", description: "Submetendo template para aprovação na Meta." });
+    try {
+      const payload = {
+        name: newTemplate.name.toLowerCase().replace(/\s+/g, "_"),
+        category: newTemplate.category,
+        language: newTemplate.language,
+        components: [
+          {
+            type: "BODY",
+            text: newTemplate.body
+          }
+        ]
+      };
+      await createMetaTemplate(payload);
+      setIsCreateDialogOpen(false);
+      toast({ title: "Sucesso", description: "Template enviado para aprovação na Meta." });
+      handleSyncTemplates();
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    }
   };
 
   const handleTestAsaas = () => {
@@ -187,9 +246,75 @@ const Integracoes = () => {
               <Button variant="outline" size="sm" onClick={handleSyncTemplates} className="gap-2 rounded-lg border-slate-200">
                 <RefreshCw className="w-4 h-4" /> Sincronizar
               </Button>
-              <Button size="sm" className="bg-blue-500 hover:bg-blue-600 gap-2 rounded-lg shadow-sm">
-                <Plus className="w-4 h-4" /> Novo Template
-              </Button>
+              
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="bg-blue-500 hover:bg-blue-600 gap-2 rounded-lg shadow-sm">
+                    <Plus className="w-4 h-4" /> Novo Template
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[500px] rounded-[32px]">
+                  <DialogHeader>
+                    <DialogTitle>Criar Novo Template Meta</DialogTitle>
+                    <DialogDescription>
+                      Submeta um novo layout para aprovação. O processo pode levar até 24h.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>Nome do Template (Snake Case)</Label>
+                      <Input 
+                        placeholder="ex: agradecimento_pix"
+                        value={newTemplate.name}
+                        onChange={(e) => setNewTemplate({...newTemplate, name: e.target.value})}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Categoria</Label>
+                        <Select 
+                          value={newTemplate.category}
+                          onValueChange={(v) => setNewTemplate({...newTemplate, category: v})}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="MARKETING">Marketing</SelectItem>
+                            <SelectItem value="UTILITY">Utilidade</SelectItem>
+                            <SelectItem value="AUTHENTICATION">Autenticação</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Idioma</Label>
+                        <Select
+                          value={newTemplate.language}
+                          onValueChange={(v) => setNewTemplate({...newTemplate, language: v})}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pt_BR">Português (Brasil)</SelectItem>
+                            <SelectItem value="en_US">Inglês</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Corpo da Mensagem</Label>
+                      <Textarea 
+                        placeholder="Olá {{1}}! Recebemos sua doação."
+                        className="min-h-[120px] rounded-2xl"
+                        value={newTemplate.body}
+                        onChange={(e) => setNewTemplate({...newTemplate, body: e.target.value})}
+                      />
+                      <p className="text-[10px] text-slate-400 italic">Use {"{{1}}"}, {"{{2}}"} para variáveis que serão preenchidas no envio.</p>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleCreateTemplate} className="bg-blue-600">Enviar para Aprovação</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
 
@@ -542,10 +667,13 @@ const Integracoes = () => {
                     disabled={isTestingWa}
                     className="h-14 px-8 rounded-2xl border-slate-200 text-slate-600 font-bold hover:bg-slate-50 gap-2 transition-all active:scale-95 shadow-sm"
                    >
-                     {isTestingWa ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                      {isTestingWa ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                      Testar Conexão
                    </Button>
-                   <Button className="h-14 px-10 rounded-2xl bg-blue-600 hover:bg-blue-700 font-black tracking-tight gap-2 shadow-lg shadow-blue-200 transition-all active:scale-95">
+                   <Button 
+                     onClick={handleSaveCredentials}
+                     className="h-14 px-10 rounded-2xl bg-blue-600 hover:bg-blue-700 font-black tracking-tight gap-2 shadow-lg shadow-blue-200 transition-all active:scale-95"
+                   >
                      <Database className="w-4 h-4" /> Salvar Credenciais
                    </Button>
                 </div>
