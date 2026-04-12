@@ -28,21 +28,31 @@ const formatCPF = (value: string) => {
 };
 
 const formatPhone = (value: string) => {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 10) {
-    return digits
-      .replace(/(\d{2})(\d)/, "($1) $2")
-      .replace(/(\d{4})(\d)/, "$1-$2");
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 0) return "+55 ";
+  
+  let numbers = digits;
+  if (!digits.startsWith("55")) {
+    numbers = "55" + digits;
   }
-  return digits
-    .replace(/(\d{2})(\d)/, "($1) $2")
-    .replace(/(\d{5})(\d)/, "$1-$2");
+  
+  numbers = numbers.slice(0, 13);
+  
+  const country = numbers.slice(0, 2);
+  const ddd = numbers.slice(2, 4);
+  const firstPart = numbers.slice(4, 9);
+  const lastPart = numbers.slice(9);
+  
+  if (numbers.length <= 2) return `+${country}`;
+  if (numbers.length <= 4) return `+${country} (${ddd}`;
+  if (numbers.length <= 9) return `+${country} (${ddd}) ${firstPart}`;
+  return `+${country} (${ddd}) ${firstPart}-${lastPart}`;
 };
 
 const Register = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState("+55 ");
   const [cpf, setCpf] = useState("");
   const [role, setRole] = useState("");
   const [password, setPassword] = useState("");
@@ -182,11 +192,11 @@ const Register = () => {
                   Telefone
                 </label>
                 <Input
-                  placeholder="(00) 00000-0000"
+                  placeholder="+55 (00) 00000-0000"
                   value={phone}
                   onChange={(e) => setPhone(formatPhone(e.target.value))}
                   required
-                  maxLength={15}
+                  maxLength={20}
                 />
               </div>
             </div>

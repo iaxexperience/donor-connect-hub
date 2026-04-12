@@ -278,7 +278,7 @@ const DonorForm = () => {
               <Label htmlFor="phone">Telefone / WhatsApp *</Label>
               <Input 
                 id="phone" 
-                placeholder="(00) 00000-0000" 
+                placeholder="+55 (00) 00000-0000" 
                 value={formData.phone} 
                 onChange={(e) => setFormData({...formData, phone: formatPhone(e.target.value)})}
                 required

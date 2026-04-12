@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { supabase } from "./supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface WhatsAppPayload {
   messaging_product: string;

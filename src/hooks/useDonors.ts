@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getDonors, registerDonation, updateDonorType, registerDonor, updateDonor, Donor, DonorType } from "@/lib/donationService";
+import { getDonors, registerDonation, updateDonorType, updateDonor, Donor, DonorType } from "@/lib/donationService";
 import { supabase } from "@/integrations/supabase/client";
 import { sendWhatsAppThankYou } from "@/lib/whatsappService";
 import { useRef } from "react";
