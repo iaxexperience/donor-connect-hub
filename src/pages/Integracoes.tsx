@@ -18,7 +18,8 @@ import {
   validateMetaCredentials, 
   fetchMetaTemplates, 
   sendWhatsAppDirectMessage,
-  sendWhatsAppTemplate
+  sendWhatsAppTemplate,
+  createMetaTemplate
 } from "@/lib/whatsappService";
 import { 
   getWhatsAppSettings, 
@@ -35,6 +36,10 @@ import {
   Tabs, TabsContent, TabsList, TabsTrigger,
 } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 const INITIAL_TEMPLATES = [
   {
@@ -93,6 +98,15 @@ const Integracoes = () => {
   const [batchProgress, setBatchProgress] = useState(0);
   const [batchMode, setBatchMode] = useState<"individual" | "massa">("individual");
   const [selectedRecipientId, setSelectedRecipientId] = useState("");
+
+  // New Template Dialog States
+  const [isNewTemplateOpen, setIsNewTemplateOpen] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState("");
+  const [newTemplateCategory, setNewTemplateCategory] = useState("MARKETING");
+  const [newTemplateBody, setNewTemplateBody] = useState("");
+  const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
+
+  const { toast } = useToast();
 
   // Auto-scroll chat
   useEffect(() => {
@@ -200,6 +214,10 @@ const Integracoes = () => {
   }, [isSendingBatch, isSendingMessage]);
 
   const handleSyncTemplates = async () => {
+    if (!wabaId || !accessToken) {
+      toast({ title: "Credenciais não configuradas", description: "Configure e salve o WABA ID e Access Token na aba 'Configuração API' primeiro.", variant: "destructive" });
+      return;
+    }
     toast({ title: "Sincronizando...", description: "Buscando templates aprovados na Meta API." });
     try {
       const updated = await fetchMetaTemplates();
@@ -211,6 +229,51 @@ const Integracoes = () => {
     }
   };
 
+  const handleCreateTemplate = async () => {
+    if (!newTemplateName.trim()) {
+      toast({ title: "Erro", description: "Informe o nome do template.", variant: "destructive" });
+      return;
+    }
+    if (!newTemplateBody.trim()) {
+      toast({ title: "Erro", description: "Informe o corpo da mensagem.", variant: "destructive" });
+      return;
+    }
+    if (!wabaId || !accessToken) {
+      toast({ title: "Credenciais não configuradas", description: "Configure e salve o WABA ID e Access Token na aba 'Configuração API' primeiro.", variant: "destructive" });
+      return;
+    }
+    // Template name must be lowercase with underscores only
+    const safeName = newTemplateName.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_");
+    setIsCreatingTemplate(true);
+    try {
+      await createMetaTemplate({
+        name: safeName,
+        category: newTemplateCategory,
+        language: "pt_BR",
+        components: [
+          {
+            type: "BODY",
+            text: newTemplateBody.trim()
+          }
+        ]
+      });
+      toast({ title: "Template Criado!", description: `O template "${safeName}" foi enviado para aprovação da Meta.` });
+      // Add locally so user sees it immediately
+      const newTpl = { name: safeName, category: newTemplateCategory, status: "PENDING", body: newTemplateBody.trim(), variables: [] };
+      const updated = [...templates, newTpl];
+      setTemplates(updated);
+      localStorage.setItem("meta_templates", JSON.stringify(updated));
+      setIsNewTemplateOpen(false);
+      setNewTemplateName("");
+      setNewTemplateBody("");
+      setNewTemplateCategory("MARKETING");
+    } catch (e: any) {
+      toast({ title: "Erro ao Criar Template", description: e.message, variant: "destructive" });
+    } finally {
+      setIsCreatingTemplate(false);
+    }
+  };
+
   const handleSaveCredentials = async () => {
     try {
       await saveWhatsAppSettings({
@@ -219,12 +282,12 @@ const Integracoes = () => {
         access_token: accessToken,
         webhook_url: webhookUrl
       });
-      // Synchronize localStorage
+      // Synchronize localStorage so whatsappService picks them up immediately
       localStorage.setItem("meta_waba_id", wabaId);
       localStorage.setItem("meta_phone_id", phoneId);
       localStorage.setItem("meta_access_token", accessToken);
-      
-      toast({ title: "Configurações Salvas", description: "O chat usará as novas chaves instantaneamente." });
+      if (wabaId && phoneId && accessToken) setWaConnected(true);
+      toast({ title: "Configurações Salvas!", description: "Credenciais ativas. Agora você pode enviar mensagens e templates." });
     } catch (e: any) {
       toast({ title: "Erro ao Salvar", description: e.message, variant: "destructive" });
     }
@@ -320,6 +383,16 @@ const Integracoes = () => {
 
     if (targets.length === 0) {
       toast({ title: "Ops", description: "Nenhum doador elegível encontrado com estes filtros." });
+      return;
+    }
+
+    // Validate credentials before starting
+    if (!phoneId || !accessToken) {
+      toast({
+        title: "Credenciais não configuradas",
+        description: "Configure e salve o Phone ID e Access Token na aba 'Configuração API' antes de enviar.",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -505,29 +578,106 @@ const Integracoes = () => {
         {/* --- ABA DE TEMPLATES --- */}
         <TabsContent value="templates" className="space-y-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-slate-800 tracking-tight">Templates Registrados na Meta</h2>
-            <Button variant="outline" size="sm" onClick={handleSyncTemplates} className="gap-2 rounded-xl border-slate-200 font-bold hover:bg-slate-50 transition-all">
-              <RefreshCw className="w-4 h-4" /> Atualizar Catálogo
-            </Button>
+            <h2 className="text-xl font-bold text-slate-800 tracking-tight">Templates Aprovados</h2>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="sm" onClick={handleSyncTemplates} className="gap-2 rounded-xl border-slate-200 font-bold hover:bg-slate-50 transition-all">
+                <RefreshCw className="w-4 h-4" /> Sincronizar
+              </Button>
+              <Button size="sm" onClick={() => setIsNewTemplateOpen(true)} className="gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-100 transition-all hover:scale-105">
+                <Plus className="w-4 h-4" /> Novo Template
+              </Button>
+            </div>
           </div>
+
+          {!waConnected && (
+            <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-800 text-sm font-medium">
+              <AlertCircle className="w-5 h-5 shrink-0 text-amber-500" />
+              Você não está conectado à API da Meta. Configure as credenciais na aba <button onClick={() => setActiveTab("config")} className="underline font-bold">Configuração API</button> para criar e sincronizar templates.
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {templates.map((tpl: any) => (
               <Card key={tpl.name} className="border-slate-100 shadow-sm rounded-[28px] overflow-hidden hover:shadow-md transition-shadow">
                 <CardHeader className="pb-3 flex flex-row items-center justify-between">
                   <div className="space-y-1">
                     <CardTitle className="text-base font-bold text-slate-800">{tpl.name}</CardTitle>
-                    <Badge variant="outline" className="text-[9px] h-4 font-bold border-slate-100 opacity-60 uppercase">{tpl.category}</Badge>
+                    <Badge variant="outline" className="text-[9px] h-4 font-bold border-slate-100 opacity-60 uppercase">{tpl.category} | PT_BR</Badge>
                   </div>
-                  <Badge className="bg-emerald-50 text-emerald-600 border-none font-bold text-[10px]">{tpl.status}</Badge>
+                  <Badge className={`border-none font-bold text-[10px] ${
+                    tpl.status === "APPROVED" ? "bg-emerald-50 text-emerald-600" :
+                    tpl.status === "PENDING" ? "bg-amber-50 text-amber-600" :
+                    "bg-red-50 text-red-600"
+                  }`}>{tpl.status}</Badge>
                 </CardHeader>
                 <CardContent>
-                  <div className="bg-slate-50/70 p-5 rounded-2xl min-h-[100px] border border-slate-100/50">
-                    <p className="text-slate-600 text-sm italic leading-relaxed font-medium">"{tpl.body}"</p>
+                  <div className="bg-slate-50/70 p-5 rounded-2xl min-h-[80px] border border-slate-100/50">
+                    <p className="text-slate-600 text-sm italic leading-relaxed font-medium">{tpl.body}</p>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
+
+          {/* --- DIALOG: NOVO TEMPLATE --- */}
+          <Dialog open={isNewTemplateOpen} onOpenChange={setIsNewTemplateOpen}>
+            <DialogContent className="sm:max-w-[540px] rounded-3xl p-0 overflow-hidden">
+              <DialogHeader className="px-10 pt-10 pb-6 bg-blue-600 text-white">
+                <DialogTitle className="text-2xl font-black tracking-tight">Novo Template</DialogTitle>
+                <DialogDescription className="text-blue-100 font-medium mt-1">
+                  Crie um template de mensagem que será submetido para aprovação da Meta.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="px-10 py-8 space-y-6">
+                <div className="space-y-2">
+                  <Label className="font-bold text-slate-700">Nome do Template</Label>
+                  <Input
+                    value={newTemplateName}
+                    onChange={(e) => setNewTemplateName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))}
+                    placeholder="ex: boas_vindas_doador"
+                    className="h-12 rounded-2xl bg-slate-50 border-slate-200 font-mono"
+                  />
+                  <p className="text-[11px] text-slate-400">Apenas letras minúsculas, números e underscores.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-bold text-slate-700">Categoria</Label>
+                  <Select value={newTemplateCategory} onValueChange={setNewTemplateCategory}>
+                    <SelectTrigger className="h-12 rounded-2xl bg-slate-50 border-slate-200 font-bold">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MARKETING">MARKETING</SelectItem>
+                      <SelectItem value="UTILITY">UTILITY</SelectItem>
+                      <SelectItem value="AUTHENTICATION">AUTHENTICATION</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-bold text-slate-700">Corpo da Mensagem</Label>
+                  <Textarea
+                    value={newTemplateBody}
+                    onChange={(e) => setNewTemplateBody(e.target.value)}
+                    placeholder="Use {{1}}, {{2}} para variáveis dinâmicas. Ex: Olá {{1}}, sua doação de {{2}} foi recebida!"
+                    className="min-h-[120px] rounded-2xl bg-slate-50 border-slate-200 resize-none"
+                  />
+                  <p className="text-[11px] text-slate-400">Use {"{{1}}", "{{2}}"} etc. para inserir variáveis dinâmicas.</p>
+                </div>
+              </div>
+              <DialogFooter className="px-10 pb-10 flex gap-3">
+                <Button variant="outline" onClick={() => setIsNewTemplateOpen(false)} className="flex-1 h-12 rounded-2xl font-bold">
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleCreateTemplate}
+                  disabled={isCreatingTemplate}
+                  className="flex-1 h-12 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold gap-2 shadow-lg shadow-blue-100"
+                >
+                  {isCreatingTemplate ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  {isCreatingTemplate ? "Criando..." : "Criar Template"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         {/* --- ABA DE CONFIGURAÇÃO --- */}
