@@ -42,10 +42,10 @@ serve(async (req) => {
         return new Response('Apenas mensagens de texto são suportadas no momento', { status: 200 });
       }
 
-      // Inicializar Cliente Supabase com Service Role para bypassar RLS
+      // Inicializar Cliente Supabase usando a chave Anonícia ou de Serviço (garantia de funcionamento)
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
       );
 
       // Limpar número para busca (Tratar variações de +55 / 9 digito)
@@ -65,14 +65,27 @@ serve(async (req) => {
         return new Response('Doador não identificado', { status: 200 });
       }
 
-      // Encontrar primeiro doador que dê match no telefone ignorando parenteses, traços, etc
+      // Encontrar primeiro doador que dê match (lidando com formatações e nono dígito do Brasil)
       const donor = donors.find((d: any) => {
         if (!d.phone) return false;
         const dbPhoneClean = d.phone.replace(/\D/g, "");
-        return dbPhoneClean === cleanPhone || 
-               dbPhoneClean === shortPhone || 
-               cleanPhone.endsWith(dbPhoneClean) || 
-               shortPhone.endsWith(dbPhoneClean);
+        
+        // Match exato
+        if (dbPhoneClean === cleanPhone || dbPhoneClean === shortPhone) return true;
+        
+        // Se ambos terminarem com o mesmo número ex: ultimos 8 digitos (ignora nono digito e DDD se falhar tudo)
+        const last8DB = dbPhoneClean.slice(-8);
+        const last8Meta = cleanPhone.slice(-8);
+
+        // Checar se o código de área bate (assumindo formato brasileiro)
+        const dddDB = dbPhoneClean.length >= 10 ? dbPhoneClean.slice(-10, -8) : "";
+        const dddMeta = shortPhone.length >= 10 ? shortPhone.slice(0, 2) : "";
+
+        if (last8DB === last8Meta && dddDB && dddMeta && dddDB === dddMeta) {
+          return true;
+        }
+
+        return cleanPhone.endsWith(dbPhoneClean) || shortPhone.endsWith(dbPhoneClean);
       });
 
       if (!donor) {
