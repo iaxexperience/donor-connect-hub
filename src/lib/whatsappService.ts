@@ -195,7 +195,8 @@ export const sendWhatsAppDirectMessage = async (
   to: string, 
   message: string, 
   credentials: { phoneId: string, token: string },
-  donorId?: string | number
+  donorId?: string | number,
+  metadata: any = {}
 ) => {
   const cleanPhone = to.replace(/\D/g, "");
   const { phoneId, token } = credentials;
@@ -235,7 +236,10 @@ export const sendWhatsAppDirectMessage = async (
           sender_id: 'me',
           text: message,
           status: 'sent',
-          metadata: { waba_message_id: data.messages?.[0]?.id }
+          metadata: { 
+            waba_message_id: data.messages?.[0]?.id,
+            ...metadata 
+          }
         }]);
       
       if (dbError) console.error("Erro ao salvar mensagem no banco:", dbError);
@@ -244,6 +248,70 @@ export const sendWhatsAppDirectMessage = async (
     return data;
   } catch (error: any) {
     console.error("Meta API Direct Message Error:", error);
+    throw error;
+  }
+};
+
+export const sendWhatsAppTemplate = async (
+  to: string, 
+  templateName: string, 
+  languageCode: string = "pt_BR",
+  components: any[],
+  credentials: { phoneId: string, token: string },
+  donorId?: string | number,
+  metadata: any = {}
+) => {
+  const cleanPhone = to.replace(/\D/g, "");
+  const { phoneId, token } = credentials;
+
+  if (!token || !phoneId) {
+    throw new Error("WhatsApp não configurado. Verifique as credenciais na aba de configurações.");
+  }
+
+  const payload = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: cleanPhone,
+    type: "template",
+    template: {
+      name: templateName,
+      language: { code: languageCode },
+      components: components
+    }
+  };
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v19.0/${phoneId}/messages`, {
+      method: "POST",
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+
+    if (donorId) {
+      await supabase
+        .from('whatsapp_messages')
+        .insert([{
+          donor_id: donorId,
+          sender_id: 'me',
+          text: `Template: ${templateName}`,
+          status: 'sent',
+          metadata: { 
+            waba_message_id: data.messages?.[0]?.id,
+            template_name: templateName,
+            ...metadata 
+          }
+        }]);
+    }
+
+    return data;
+  } catch (error: any) {
+    console.error("Meta API Template Message Error:", error);
     throw error;
   }
 };

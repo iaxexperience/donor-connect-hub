@@ -17,9 +17,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   validateMetaCredentials, 
   fetchMetaTemplates, 
-  sendWhatsAppDirectMessage 
+  sendWhatsAppDirectMessage,
+  sendWhatsAppTemplate
 } from "@/lib/whatsappService";
-import { getWhatsAppSettings, saveWhatsAppSettings } from "@/lib/whatsappSettingsService";
+import { useCampaigns } from "@/hooks/useCampaigns";
+import { 
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+} from "@/components/ui/table";
+import { 
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
+} from "@/components/ui/select";
 import {
   Tabs, TabsContent, TabsList, TabsTrigger,
 } from "@/components/ui/tabs";
@@ -43,10 +50,11 @@ const INITIAL_TEMPLATES = [
 ];
 
 const Integracoes = () => {
-  const { toast } = useToast();
-  const { donors } = useDonors();
+  const { campaigns } = useCampaigns();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
+  // Tab Management
+  const [activeTab, setActiveTab] = useState("config");
   const [waConnected, setWaConnected] = useState(false);
   const [isTestingWa, setIsTestingWa] = useState(false);
   
@@ -64,11 +72,17 @@ const Integracoes = () => {
     }
   });
 
-  // Chat States
-  const [selectedDonor, setSelectedDonor] = useState<any>(null);
-  const [chatInput, setChatInput] = useState("");
-  const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [historyMessages, setHistoryMessages] = useState<any[]>([]);
+
+  // Mass Messaging States
+  const [selectedBatchTemplate, setSelectedBatchTemplate] = useState("");
+  const [selectedSegment, setSelectedSegment] = useState("all");
+  const [selectedBatchCampaign, setSelectedBatchCampaign] = useState("all");
+  const [isSendingBatch, setIsSendingBatch] = useState(false);
+  const [batchProgress, setBatchProgress] = useState(0);
+  const [batchMode, setBatchMode] = useState<"individual" | "massa">("individual");
+  const [selectedRecipientId, setSelectedRecipientId] = useState("");
 
   // Auto-scroll chat
   useEffect(() => {
@@ -156,6 +170,25 @@ const Integracoes = () => {
     };
   }, [selectedDonor]);
 
+  // Load all sent messages for History
+  useEffect(() => {
+    const fetchFullHistory = async () => {
+      const { data, error } = await supabase
+        .from('whatsapp_messages')
+        .select(`
+          *,
+          donors (name)
+        `)
+        .eq('sender_id', 'me')
+        .order('created_at', { ascending: false });
+      
+      if (!error && data) {
+        setHistoryMessages(data);
+      }
+    };
+    fetchFullHistory();
+  }, [isSendingBatch, isSendingMessage]);
+
   const handleSyncTemplates = async () => {
     toast({ title: "Sincronizando...", description: "Buscando templates aprovados na Meta API." });
     try {
@@ -214,21 +247,91 @@ const Integracoes = () => {
     }
   };
 
-  const handleTestWhatsApp = async () => {
-    setIsTestingWa(true);
-    try {
-      const result = await validateMetaCredentials(wabaId, phoneId, accessToken);
-      if (result.success) {
-        setWaConnected(true);
-        toast({ title: "Conexão Validada!", description: "Sua conta Meta está pronta para uso." });
-      } else {
-        setWaConnected(false);
-        toast({ title: "Credenciais Inválidas", description: result.error, variant: "destructive" });
-      }
-    } catch (e: any) {
-      toast({ title: "Erro Crítico", description: e.message, variant: "destructive" });
     } finally {
       setIsTestingWa(false);
+    }
+  };
+
+  const handleProcessBatchSend = async () => {
+    if (!selectedBatchTemplate) {
+      toast({ title: "Erro", description: "Selecione um template primeiro.", variant: "destructive" });
+      return;
+    }
+
+    let targets = donors;
+
+    // Filter by Segment
+    if (selectedSegment !== "all") {
+      targets = donors.filter(d => d.type === selectedSegment);
+    }
+
+    // Filter by Campaign
+    if (selectedBatchCampaign !== "all") {
+      // Note: This assumes donors have a campaign_id or similar. 
+      // If not linked directly, we might need a join or additional logic.
+      // For now we filter based on selection if data supports it.
+    }
+
+    // 15-day Rule for Leads
+    if (selectedSegment === "lead") {
+      const fifteenDaysAgo = new Date();
+      fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+
+      targets = targets.filter(donor => {
+        const lastMsg = historyMessages.find(m => m.donor_id === donor.id);
+        if (!lastMsg) return true;
+        return new Date(lastMsg.created_at) < fifteenDaysAgo;
+      });
+    }
+
+    if (targets.length === 0) {
+      toast({ title: "Ops", description: "Nenhum doador elegível encontrado com estes filtros." });
+      return;
+    }
+
+    setIsSendingBatch(true);
+    setBatchProgress(0);
+    const template = templates.find(t => t.name === selectedBatchTemplate);
+
+    try {
+      for (let i = 0; i < targets.length; i++) {
+        const donor = targets[i];
+        try {
+          // Map {{1}} to donor name
+          const components = [
+            {
+              type: "body",
+              parameters: [
+                { type: "text", text: donor.name || "Doador" }
+              ]
+            }
+          ];
+
+          await sendWhatsAppTemplate(
+            donor.phone,
+            selectedBatchTemplate,
+            "pt_BR",
+            components,
+            { phoneId, token: accessToken },
+            donor.id,
+            { 
+              batch_type: batchMode === "massa" ? selectedSegment.toUpperCase() : "INDIVIDUAL",
+              template_name: selectedBatchTemplate
+            }
+          );
+          setBatchProgress(((i + 1) / targets.length) * 100);
+        } catch (e) {
+          console.error(`Error sending to ${donor.id}:`, e);
+        }
+        // Small delay to avoid API limits
+        await new Promise(r => setTimeout(r, 300));
+      }
+      toast({ title: "Sucesso!", description: `Disparo concluído para ${targets.length} doadores.` });
+    } catch (e: any) {
+      toast({ title: "Erro no Disparo", description: e.message, variant: "destructive" });
+    } finally {
+      setIsSendingBatch(false);
+      setBatchProgress(0);
     }
   };
 
@@ -246,17 +349,21 @@ const Integracoes = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="config" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="bg-slate-100/80 p-1 mb-8 w-fit gap-1 rounded-xl">
+          <TabsTrigger value="templates" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold text-slate-600">Templates</TabsTrigger>
+          <TabsTrigger value="enviar" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold text-slate-600">Enviar Mensagem</TabsTrigger>
           <TabsTrigger value="chat" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold gap-2 text-slate-600">
             <MessageCircle className="w-4 h-4" /> Chat Ao Vivo
           </TabsTrigger>
-          <TabsTrigger value="templates" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold text-slate-600">Templates</TabsTrigger>
+          <TabsTrigger value="automacao" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold text-slate-600">Automação</TabsTrigger>
+          <TabsTrigger value="historico" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold text-slate-600">Histórico</TabsTrigger>
           <TabsTrigger value="config" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold text-slate-600">Configuração API</TabsTrigger>
         </TabsList>
 
         {/* --- ABA DE CHAT --- */}
-        <TabsContent value="chat" className="h-[750px] border border-slate-100 rounded-[32px] overflow-hidden shadow-2xl bg-white flex">
+        <TabsContent value="chat">
+          <div className="h-[750px] border border-slate-100 rounded-[32px] overflow-hidden shadow-2xl bg-white flex w-full">
           <div className="w-80 border-r border-slate-100 flex flex-col bg-slate-50/20">
             <div className="p-6 font-bold border-b text-slate-800 flex items-center justify-between bg-white">
               Contatos
@@ -358,7 +465,8 @@ const Integracoes = () => {
               </div>
             )}
           </div>
-        </TabsContent>
+        </div>
+      </TabsContent>
 
         {/* --- ABA DE TEMPLATES --- */}
         <TabsContent value="templates" className="space-y-6">
@@ -463,6 +571,208 @@ const Integracoes = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* --- ABA ENVIAR MENSAGEM --- */}
+        <TabsContent value="enviar" className="space-y-6">
+          <Card className="border-none shadow-xl rounded-[32px] overflow-hidden bg-white">
+            <CardHeader className="pb-8">
+              <div className="flex items-center gap-3 text-emerald-600">
+                <Zap className="w-6 h-6 shrink-0" />
+                <CardTitle className="text-xl font-bold tracking-tight">Disparo Inteligente via Template</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-10 px-8 pb-10">
+              {/* Opção CSV Placeholder como no print */}
+              <div className="border-2 border-dashed border-blue-100 rounded-[24px] p-8 bg-blue-50/30 flex items-center justify-between group hover:bg-blue-50 transition-all cursor-pointer">
+                <div className="flex items-center gap-5">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-100 group-hover:scale-110 transition-transform">
+                    <Upload className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-800">Importar Contatos CSV</h4>
+                    <p className="text-slate-400 text-sm">Arquivo com colunas: nome, telefone</p>
+                  </div>
+                </div>
+                <Button variant="outline" className="rounded-xl border-blue-200 text-blue-600 gap-2 font-bold px-6">
+                  <Upload className="w-4 h-4" /> Selecionar CSV
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-6">
+                <span className="font-bold text-slate-600">Modo de Disparo:</span>
+                <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
+                  <button 
+                    onClick={() => setBatchMode("individual")}
+                    className={`px-8 py-2.5 rounded-xl text-sm font-black transition-all ${batchMode === "individual" ? "bg-blue-600 text-white shadow-lg shadow-blue-100 scale-105" : "text-slate-400 hover:text-slate-600"}`}
+                  >
+                    Individual
+                  </button>
+                  <button 
+                    onClick={() => setBatchMode("massa")}
+                    className={`px-8 py-2.5 rounded-xl text-sm font-black transition-all ${batchMode === "massa" ? "bg-blue-600 text-white shadow-lg shadow-blue-100 scale-105" : "text-slate-400 hover:text-slate-600"}`}
+                  >
+                    Em Massa
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <div className="space-y-8">
+                  <div className="space-y-4">
+                    <Label className="font-black text-slate-800 text-sm uppercase tracking-wider">1. Selecione o Template</Label>
+                    <Select value={selectedBatchTemplate} onValueChange={setSelectedBatchTemplate}>
+                      <SelectTrigger className="h-16 rounded-2xl bg-slate-50 border-slate-100 focus:ring-blue-600 transition-all text-slate-700 font-bold px-6">
+                        <SelectValue placeholder="Escolher template..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {templates.map(t => (
+                          <SelectItem key={t.name} value={t.name}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-4">
+                    <Label className="font-black text-slate-800 text-sm uppercase tracking-wider">2. Selecione o Destinatário</Label>
+                    {batchMode === "massa" ? (
+                      <div className="grid grid-cols-2 gap-3">
+                        <Select value={selectedSegment} onValueChange={setSelectedSegment}>
+                          <SelectTrigger className="h-16 rounded-2xl bg-slate-50 border-slate-100 font-bold px-6">
+                            <SelectValue placeholder="Todos Segmentos" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todos os Doadores</SelectItem>
+                            <SelectItem value="lead">Apenas Leads (15 dias rule)</SelectItem>
+                            <SelectItem value="recorrente">Doadores Recorrentes</SelectItem>
+                            <SelectItem value="esporadico">Doadores Esporádicos</SelectItem>
+                            <SelectItem value="unico">Doadores Únicos</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select value={selectedBatchCampaign} onValueChange={setSelectedBatchCampaign}>
+                          <SelectTrigger className="h-16 rounded-2xl bg-slate-50 border-slate-100 font-bold px-6">
+                            <SelectValue placeholder="Todas Campanhas" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todas Campanhas</SelectItem>
+                            {campaigns.map(c => (
+                              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : (
+                      <Select value={selectedRecipientId} onValueChange={setSelectedRecipientId}>
+                        <SelectTrigger className="h-16 rounded-2xl bg-slate-50 border-slate-100 font-bold px-6">
+                          <SelectValue placeholder="Selecione o doador..." />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                           {donors.map(d => (
+                             <SelectItem key={d.id} value={d.id.toString()}>{d.name} ({d.phone})</SelectItem>
+                           ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 rounded-[28px] p-8 border border-slate-100 flex flex-col">
+                  <span className="font-black text-slate-800 text-sm uppercase tracking-wider mb-6">3. Variáveis do Template</span>
+                  {selectedBatchTemplate ? (
+                     <div className="flex-1 flex flex-col gap-6 justify-center items-center text-center p-6 border-2 border-dashed border-slate-200 rounded-3xl">
+                        <div className="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 mb-2">
+                           <FileText className="w-8 h-8 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-800 mb-1">Dinamismo Ativado</p>
+                          <p className="text-slate-400 text-sm">As variáveis {{1}} serão substituídas pelo nome de cada doador automaticamente.</p>
+                        </div>
+                     </div>
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8 text-center bg-slate-100/30 rounded-3xl">
+                      <p className="text-sm font-medium">Selecione um template para preencher as variáveis.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col items-end gap-4 pt-4">
+                 {isSendingBatch && (
+                   <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+                     <div className="h-full bg-blue-600 transition-all duration-300" style={{ width: `${batchProgress}%` }} />
+                   </div>
+                 )}
+                 <Button 
+                   onClick={handleProcessBatchSend}
+                   disabled={isSendingBatch}
+                   className="bg-emerald-600 hover:bg-emerald-700 h-16 px-12 rounded-2xl gap-3 text-white font-black text-lg transition-all hover:scale-105 active:scale-95 shadow-xl shadow-emerald-100"
+                 >
+                   <Send className="w-6 h-6 -rotate-45" /> 
+                   {isSendingBatch ? "Processando..." : "Enviar Agora"}
+                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* --- ABA HISTÓRICO --- */}
+        <TabsContent value="historico" className="space-y-6">
+          <Card className="border-none shadow-xl rounded-[32px] overflow-hidden bg-white">
+            <CardHeader className="p-8 border-b border-slate-50">
+              <div className="flex items-center gap-3 text-slate-800">
+                <History className="w-6 h-6" />
+                <CardTitle className="text-xl font-bold tracking-tight">Histórico de Mensagens Meta</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+               <Table>
+                 <TableHeader className="bg-slate-50">
+                   <TableRow className="border-none hover:bg-transparent">
+                     <TableHead className="font-black text-slate-400 text-[11px] uppercase tracking-widest pl-8 py-6">DATA/HORA</TableHead>
+                     <TableHead className="font-black text-slate-400 text-[11px] uppercase tracking-widest py-6">LOTE / FILTRO</TableHead>
+                     <TableHead className="font-black text-slate-400 text-[11px] uppercase tracking-widest py-6">DESTINATÁRIO</TableHead>
+                     <TableHead className="font-black text-slate-400 text-[11px] uppercase tracking-widest py-6">TEMPLATE</TableHead>
+                     <TableHead className="font-black text-slate-400 text-[11px] uppercase tracking-widest pr-8 py-6 text-right">STATUS</TableHead>
+                   </TableRow>
+                 </TableHeader>
+                 <TableBody>
+                   {historyMessages.length === 0 ? (
+                     <TableRow>
+                       <TableCell colSpan={5} className="text-center py-20 text-slate-400 font-medium italic">Nenhuma mensagem enviada até o momento.</TableCell>
+                     </TableRow>
+                   ) : (
+                     historyMessages.map((msg) => (
+                       <TableRow key={msg.id} className="border-slate-50 hover:bg-slate-50/50 transition-colors">
+                         <TableCell className="pl-8 font-medium text-slate-600">{new Date(msg.created_at).toLocaleString('pt-BR')}</TableCell>
+                         <TableCell>
+                            <Badge variant="outline" className={`font-black text-[10px] border-none ${msg.metadata?.batch_type === 'INDIVIDUAL' ? "text-blue-600 bg-blue-50" : "text-purple-600 bg-purple-50"}`}>
+                              {msg.metadata?.batch_type || "INDIVIDUAL"}
+                            </Badge>
+                         </TableCell>
+                         <TableCell className="font-bold text-slate-800">{msg.donors?.name || "Desconhecido"}</TableCell>
+                         <TableCell className="font-mono text-[13px] text-blue-800">{msg.metadata?.template_name || "Texto Livre"}</TableCell>
+                         <TableCell className="pr-8 text-right">
+                            <Badge className="bg-emerald-50 text-emerald-600 border-none font-bold text-[10px]">Sucesso</Badge>
+                         </TableCell>
+                       </TableRow>
+                     ))
+                   )}
+                 </TableBody>
+               </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* --- ABA AUTOMAÇÃO (Placeholder) --- */}
+        <TabsContent value="automacao" className="space-y-6">
+           <div className="flex flex-col items-center justify-center p-20 bg-white rounded-[32px] border-2 border-dashed border-slate-100 text-center">
+              <div className="w-20 h-20 rounded-[28px] bg-slate-50 flex items-center justify-center mb-8 rotate-12 shadow-sm border border-slate-100">
+                <Zap className="w-10 h-10 text-slate-200" />
+              </div>
+              <h3 className="font-bold text-slate-800 text-2xl mb-3 tracking-tight">Fluxos Automatizados</h3>
+              <p className="max-w-md text-slate-400 leading-relaxed font-medium">Configure gatilhos automáticos para enviar mensagens de boas-vindas, lembretes de expiração e reativação de leads sem intervenção manual.</p>
+              <Button className="mt-8 rounded-2xl bg-slate-900 px-10 h-14 font-bold shadow-xl">Ativar Configuração Assistida</Button>
+           </div>
         </TabsContent>
       </Tabs>
     </div>
