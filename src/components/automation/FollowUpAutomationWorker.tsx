@@ -20,7 +20,7 @@ export const FollowUpAutomationWorker = () => {
       // Fetch pending follow-ups due today or earlier
       const { data: followUps, error } = await supabase
         .from('follow_ups')
-        .select('*, donors(name, phone, last_donation_amount, last_donation_campaign)')
+        .select('*, donors(name, phone)')
         .eq('status', 'pendente')
         .lte('due_date', today);
 
@@ -47,9 +47,9 @@ export const FollowUpAutomationWorker = () => {
           // Send the message (this uses our WhatsApp simulation service)
           await sendWhatsAppThankYou(
             donor.name, 
-            donor.last_donation_amount || 0, 
+            0, 
             donor.phone, 
-            donor.last_donation_campaign || "Follow-up"
+            "Follow-up"
           );
 
           // Update status in database
