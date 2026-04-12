@@ -55,16 +55,28 @@ serve(async (req) => {
 
       console.log(`Buscando doador para o telefone: ${cleanPhone} ou ${shortPhone}`);
 
-      // Buscar doador
-      const { data: donor, error: donorError } = await supabase
+      // Buscar doadores e fazer match ignorando formatação
+      const { data: donors, error: donorError } = await supabase
         .from('donors')
-        .select('id, name')
-        .or(`phone.like.%${shortPhone}%,phone.like.%${cleanPhone}%`)
-        .single();
+        .select('id, name, phone');
 
-      if (donorError || !donor) {
-        console.warn('Doador não encontrado para este telefone:', cleanPhone);
-        // Opcional: Salvar como mensagem de contato desconhecido ou ignorar
+      if (donorError || !donors || donors.length === 0) {
+        console.warn('Erro ao buscar doadores ou lista vazia.');
+        return new Response('Doador não identificado', { status: 200 });
+      }
+
+      // Encontrar primeiro doador que dê match no telefone ignorando parenteses, traços, etc
+      const donor = donors.find((d: any) => {
+        if (!d.phone) return false;
+        const dbPhoneClean = d.phone.replace(/\D/g, "");
+        return dbPhoneClean === cleanPhone || 
+               dbPhoneClean === shortPhone || 
+               cleanPhone.endsWith(dbPhoneClean) || 
+               shortPhone.endsWith(dbPhoneClean);
+      });
+
+      if (!donor) {
+        console.warn('Nenhum doador encontrado para este telefone:', cleanPhone);
         return new Response('Doador não identificado', { status: 200 });
       }
 
