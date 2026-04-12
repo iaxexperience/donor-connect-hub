@@ -280,8 +280,11 @@ export const sendWhatsAppTemplate = async (
     }
   };
 
+  console.log(`[Meta API] Enviando template "${templateName}" para ${cleanPhone} via phoneId ${phoneId}`);
+  console.log(`[Meta API] Payload:`, JSON.stringify(payload, null, 2));
+
   try {
-    const response = await fetch(`https://graph.facebook.com/v19.0/${phoneId}/messages`, {
+    const response = await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
       method: "POST",
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -291,10 +294,14 @@ export const sendWhatsAppTemplate = async (
     });
 
     const data = await response.json();
-    if (data.error) throw new Error(data.error.message);
+    console.log(`[Meta API] Resposta:`, JSON.stringify(data, null, 2));
+
+    if (data.error) {
+      throw new Error(`Meta API Error ${data.error.code}: ${data.error.message}`);
+    }
 
     if (donorId) {
-      await supabase
+      const { error: dbError } = await supabase
         .from('whatsapp_messages')
         .insert([{
           donor_id: donorId,
@@ -307,11 +314,13 @@ export const sendWhatsAppTemplate = async (
             ...metadata 
           }
         }]);
+
+      if (dbError) console.error("Erro ao salvar no banco:", dbError);
     }
 
     return data;
   } catch (error: any) {
-    console.error("Meta API Template Message Error:", error);
+    console.error("[Meta API] Erro no template:", error.message);
     throw error;
   }
 };

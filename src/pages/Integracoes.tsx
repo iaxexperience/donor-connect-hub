@@ -398,13 +398,26 @@ const Integracoes = () => {
 
     setIsSendingBatch(true);
     setBatchProgress(0);
-    const template = templates.find(t => t.name === selectedBatchTemplate);
+
+    // Track results
+    let successCount = 0;
+    let failedCount = 0;
+    let lastError = "";
 
     try {
       for (let i = 0; i < targets.length; i++) {
         const donor = targets[i];
         try {
-          // Map {{1}} to donor name
+          if (!donor.phone) {
+            throw new Error(`Doador "${donor.name}" não possui telefone cadastrado.`);
+          }
+
+          // Clean phone: remove non-digits, ensure starts with country code
+          const cleanPhone = donor.phone.replace(/\D/g, "");
+          if (cleanPhone.length < 10) {
+            throw new Error(`Telefone inválido para "${donor.name}": ${donor.phone}`);
+          }
+
           const components = [
             {
               type: "body",
@@ -414,8 +427,8 @@ const Integracoes = () => {
             }
           ];
 
-          await sendWhatsAppTemplate(
-            donor.phone,
+          const result = await sendWhatsAppTemplate(
+            cleanPhone,
             selectedBatchTemplate,
             "pt_BR",
             components,
@@ -426,14 +439,35 @@ const Integracoes = () => {
               template_name: selectedBatchTemplate
             }
           );
+
+          console.log(`[WhatsApp] Enviado para ${donor.name} (${cleanPhone}):`, result);
+          successCount++;
           setBatchProgress(((i + 1) / targets.length) * 100);
-        } catch (e) {
-          console.error(`Error sending to ${donor.id}:`, e);
+        } catch (e: any) {
+          failedCount++;
+          lastError = e.message;
+          console.error(`[WhatsApp] Falha ao enviar para ${donor.name} (${donor.phone}):`, e.message);
         }
         // Small delay to avoid API limits
         await new Promise(r => setTimeout(r, 300));
       }
-      toast({ title: "Sucesso!", description: `Disparo concluído para ${targets.length} doadores.` });
+
+      // Show detailed result
+      if (successCount > 0 && failedCount === 0) {
+        toast({ title: "Sucesso!", description: `${successCount} mensagem(ns) enviada(s) com sucesso via Meta API.` });
+      } else if (successCount > 0 && failedCount > 0) {
+        toast({
+          title: `${successCount} enviado(s), ${failedCount} falhou`,
+          description: `Último erro: ${lastError}`,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Falha no Envio",
+          description: lastError || "A Meta API rejeitou o template. Verifique se o template está aprovado e as credenciais estão corretas.",
+          variant: "destructive"
+        });
+      }
     } catch (e: any) {
       toast({ title: "Erro no Disparo", description: e.message, variant: "destructive" });
     } finally {
