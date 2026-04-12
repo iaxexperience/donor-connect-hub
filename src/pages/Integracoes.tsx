@@ -135,61 +135,54 @@ const Integracoes = () => {
     loadSettings();
   }, []);
 
-  // Fetch History and Subscribe Realtime
+  // Fetch History and Subscribe Realtime + Polling
   useEffect(() => {
     if (!selectedDonor) return;
 
-    // 1. Buscar histórico inicial
+    // 1. Buscar histórico
     const fetchHistory = async () => {
-      console.log(`[Chat Debug] Buscando histórico para o doador ID: ${selectedDonor.id}`);
       const { data, error } = await supabase
         .from('whatsapp_messages')
         .select('*')
         .eq('donor_id', selectedDonor.id)
         .order('created_at', { ascending: true });
       
-      if (error) {
-        console.error(`[Chat Debug] Erro ao buscar histórico:`, error);
-      } else if (data) {
-        console.log(`[Chat Debug] ${data.length} mensagens carregadas do histórico.`);
+      if (!error && data) {
         setChatMessages(data);
       }
     };
 
     fetchHistory();
 
-    // 2. Assinar Realtime de forma global e simples (Estilo Pulse)
+    // 2. Polling a cada 5 segundos para garantir mensagens recebidas
+    const poll = setInterval(fetchHistory, 5000);
+
+    // 3. Realtime subscription para mensagens instantâneas
     const channel = supabase
-      .channel('whatsapp_realtime_v2')
+      .channel(`whatsapp_chat_${selectedDonor.id}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'whatsapp_messages'
+          table: 'whatsapp_messages',
+          filter: `donor_id=eq.${selectedDonor.id}`
         },
         (payload) => {
-          const newMessage = payload.new;
-          
-          // Debug para ver TUDO que entra no banco
-          console.log("[Chat Realtime] Novo registro detectado:", newMessage);
-
-          // Se a mensagem for para o doador selecionado, adiciona na tela
-          if (newMessage.donor_id === selectedDonor.id) {
-            console.log("[Chat Realtime] Mensagem vinculada ao doador atual. Atualizando UI.");
-            setChatMessages(prev => {
-              // Evitar duplicatas caso o banco envie o evento e o fetch aconteça ao mesmo tempo
-              if (prev.some(m => m.id === newMessage.id)) return prev;
-              return [...prev, newMessage];
-            });
-          }
+          const newMessage = payload.new as any;
+          console.log("[Chat Realtime] Nova mensagem:", newMessage);
+          setChatMessages(prev => {
+            if (prev.some(m => m.id === newMessage.id)) return prev;
+            return [...prev, newMessage];
+          });
         }
       )
       .subscribe((status) => {
-        console.log(`[Chat Realtime] Status da conexão: ${status}`);
+        console.log(`[Chat Realtime] Status: ${status}`);
       });
 
     return () => {
+      clearInterval(poll);
       supabase.removeChannel(channel);
     };
   }, [selectedDonor]);
@@ -781,13 +774,33 @@ const Integracoes = () => {
               </div>
               
               <div className="space-y-4 pt-4">
-                <Label className="font-bold text-slate-700 text-base">Webhook URL (Opcional)</Label>
-                <Input 
-                  value={webhookUrl} 
-                  onChange={(e) => setWebhookUrl(e.target.value)} 
-                  className="h-16 rounded-2xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all text-slate-700 font-medium px-6" 
-                  placeholder="https://seu-dominio.com/api/whatsapp-webhook"
-                />
+                <Label className="font-bold text-slate-700 text-base">Webhook URL para Meta Developer</Label>
+                <div className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                  <Code className="w-4 h-4 text-blue-500 shrink-0" />
+                  <code className="text-xs text-blue-700 font-mono flex-1 break-all select-all">
+                    https://zljlhlfbtnzbmeaglkll.supabase.co/functions/v1/whatsapp-webhook
+                  </code>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 px-3 rounded-xl"
+                    onClick={() => {
+                      navigator.clipboard.writeText("https://zljlhlfbtnzbmeaglkll.supabase.co/functions/v1/whatsapp-webhook");
+                      toast({ title: "URL Copiada!", description: "Cole no campo Callback URL do Meta Developer." });
+                    }}
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+                <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-100 rounded-2xl">
+                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                  <div className="text-xs text-amber-800 leading-relaxed">
+                    <strong>Para receber mensagens no chat:</strong> Registre a URL acima como Callback URL no{" "}
+                    <a href="https://developers.facebook.com" target="_blank" rel="noreferrer" className="underline font-bold">Meta Developer Portal</a>{" "}
+                    e configure o Verify Token como <code className="font-mono bg-amber-100 px-1 rounded">pulse_verify_token</code>.
+                    Assine o campo <code className="font-mono bg-amber-100 px-1 rounded">messages</code> no Webhook.
+                  </div>
+                </div>
               </div>
 
               <div className="flex justify-end gap-4 pt-8 border-t border-slate-100">
