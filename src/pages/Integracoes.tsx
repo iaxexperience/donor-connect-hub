@@ -71,12 +71,11 @@ const Integracoes = () => {
   const [phoneId, setPhoneId] = useState("903758466162084");
   const [accessToken, setAccessToken] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("https://...");
-  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
 
   const [whatsappLogs, setWhatsappLogs] = useState<any[]>([]);
   const [asaasLogs, setAsaasLogs] = useState<any[]>([]);
 
-  const [templates, setTemplates] = useState(() => {
+  const [templates, setTemplates] = useState<any[]>(() => {
     try {
       const saved = localStorage.getItem("meta_templates");
       const parsed = saved ? JSON.parse(saved) : null;
@@ -94,21 +93,19 @@ const Integracoes = () => {
     body: ""
   });
 
+  // Background Load Settings
   useEffect(() => {
     const loadSettings = async () => {
-      setIsLoadingSettings(true);
       try {
         const settings = await getWhatsAppSettings();
         if (settings) {
-          setWabaId(settings.waba_id || "");
-          setPhoneId(settings.phone_number_id || "");
-          setAccessToken(settings.access_token || "");
-          setWebhookUrl(settings.webhook_url || "");
+          if (settings.waba_id) setWabaId(settings.waba_id);
+          if (settings.phone_number_id) setPhoneId(settings.phone_number_id);
+          if (settings.access_token) setAccessToken(settings.access_token);
+          if (settings.webhook_url) setWebhookUrl(settings.webhook_url);
         }
       } catch (err) {
-        console.error("Erro ao carregar do Supabase:", err);
-      } finally {
-        setIsLoadingSettings(false);
+        console.error("Erro background load:", err);
       }
     };
     loadSettings();
@@ -172,7 +169,7 @@ const Integracoes = () => {
       localStorage.setItem("meta_waba_id", wabaId);
       localStorage.setItem("meta_phone_id", phoneId);
       localStorage.setItem("meta_access_token", accessToken);
-      toast({ title: "Salvo com sucesso", description: "Configurações sincronizadas no banco de dados." });
+      toast({ title: "Salvo", description: "Configurações sincronizadas no banco de dados." });
     } catch (e: any) {
       toast({ title: "Erro ao Salvar", description: e.message, variant: "destructive" });
     }
@@ -387,18 +384,15 @@ const Integracoes = () => {
                 <CardTitle className="text-xl font-bold text-slate-800">Credenciais Meta Developer</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="p-10 space-y-10 bg-white min-h-[400px]">
+            <CardContent className="p-10 space-y-10 bg-white">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-3">
-                  <Label className="font-bold text-slate-700 flex items-center gap-2">
-                    WhatsApp Business Account ID (WABA_ID)
-                    {isLoadingSettings && <RefreshCw className="animate-spin w-4 h-4 text-slate-300" />}
-                  </Label>
+                  <Label className="font-bold text-slate-700">WhatsApp Business Account ID (WABA_ID)</Label>
                   <Input 
                     value={wabaId} 
                     onChange={(e) => setWabaId(e.target.value)} 
                     className="h-14 rounded-2xl bg-slate-50/50 border-slate-100 focus:bg-white transition-all text-slate-700" 
-                    placeholder="ID da conta WABA"
+                    placeholder="ID da conta"
                   />
                 </div>
                 <div className="space-y-3">
@@ -407,7 +401,7 @@ const Integracoes = () => {
                     value={phoneId} 
                     onChange={(e) => setPhoneId(e.target.value)} 
                     className="h-14 rounded-2xl bg-slate-50/50 border-slate-100 focus:bg-white transition-all text-slate-700" 
-                    placeholder="ID do número de telefone"
+                    placeholder="ID do telefone"
                   />
                 </div>
               </div>
@@ -418,7 +412,7 @@ const Integracoes = () => {
                   value={accessToken} 
                   onChange={(e) => setAccessToken(e.target.value)} 
                   className="h-14 rounded-2xl bg-slate-50/50 border-slate-100 focus:bg-white transition-all text-slate-700 font-mono" 
-                  placeholder="Seu token de acesso permanente"
+                  placeholder="Seu token de acesso"
                 />
               </div>
               <div className="space-y-3">
@@ -428,7 +422,7 @@ const Integracoes = () => {
                     value={webhookUrl} 
                     onChange={(e) => setWebhookUrl(e.target.value)} 
                     className="h-14 rounded-2xl bg-slate-50/50 border-slate-100 text-slate-400 font-mono pr-12" 
-                    placeholder="https://sua-url-webhook.com"
+                    placeholder="https://..."
                   />
                   <Button variant="ghost" size="icon" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300">
                     <Copy className="w-4 h-4" />
@@ -439,7 +433,7 @@ const Integracoes = () => {
                  <Button 
                    variant="outline" 
                    onClick={handleTestWhatsApp} 
-                   disabled={isTestingWa || isLoadingSettings} 
+                   disabled={isTestingWa} 
                    className="h-14 px-8 rounded-2xl gap-2 font-bold text-slate-600 border-slate-200 hover:bg-slate-50"
                  >
                    {isTestingWa ? <RefreshCw className="animate-spin w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />} 
@@ -447,7 +441,6 @@ const Integracoes = () => {
                  </Button>
                  <Button 
                    onClick={handleSaveCredentials} 
-                   disabled={isLoadingSettings}
                    className="h-14 px-10 rounded-2xl bg-blue-600 hover:bg-blue-700 font-bold gap-2 text-white shadow-lg shadow-blue-200"
                  >
                    <Save className="w-4 h-4" /> Salvar Credenciais
