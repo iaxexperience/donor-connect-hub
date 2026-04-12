@@ -44,6 +44,9 @@ serve(async (req) => {
     const baseUrl = isSandbox
       ? 'https://api.sandbox.bb.com.br'
       : 'https://api.bb.com.br';
+      
+    const appKey = Deno.env.get('BB_APP_KEY');
+    if (!appKey) throw new Error('BB_APP_KEY is required but not configured.');
 
     // 3. Fetch transactions from BB API
     const params = new URLSearchParams({
@@ -61,6 +64,7 @@ serve(async (req) => {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
+            'gw-dev-app-key': appKey
           },
         });
         break;
