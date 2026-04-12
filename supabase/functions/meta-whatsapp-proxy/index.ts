@@ -226,6 +226,26 @@ serve(async (req) => {
       });
     }
 
+    if (action === 'create_template') {
+      const { waba_id, access_token } = config;
+      const url = `https://graph.facebook.com/v22.0/${waba_id}/message_templates`;
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+      return new Response(JSON.stringify(data), { 
+        status: response.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     return new Response(JSON.stringify({ error: 'Ação não reconhecida' }), { status: 400 });
 
   } catch (err: any) {
