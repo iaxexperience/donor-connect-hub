@@ -149,7 +149,11 @@ serve(async (req) => {
 
       // If successful sending, Log it
       if (payload.messaging_product === 'whatsapp') {
-        const textBody = payload.text?.body || (action === 'send_template' ? `Template: ${payload.template?.name}` : '');
+        let textBody = '';
+        if (payload.type === 'text') textBody = payload.text?.body || '';
+        else if (payload.type === 'image') textBody = `Arquivo de Imagem: ${payload.image?.link || 'Media ID'}`;
+        else if (payload.type === 'video') textBody = `Arquivo de Vídeo: ${payload.video?.link || 'Media ID'}`;
+        else if (action === 'send_template') textBody = `Template: ${payload.template?.name}`;
         const toRaw = payload.to;
         const toNormalized = normalizePhone(toRaw);
         const messageId = metaResult.messages?.[0]?.id;
