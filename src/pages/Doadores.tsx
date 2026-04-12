@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Heart, Search, Plus, Filter, MessageSquare, Upload, FileDown, CheckCircle2, GitMerge, Edit } from "lucide-react";
+import { Heart, Search, Plus, Filter, MessageSquare, Upload, FileDown, CheckCircle2, GitMerge, Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,14 +24,27 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useDonors } from "@/hooks/useDonors";
+import { useAuth } from "@/contexts/AuthContext";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { typeLabel, typeBadgeStyle } from "@/lib/donationService";
 
 // INITIAL_DONORS moved to hook
 const Doadores = () => {
   const navigate = useNavigate();
-  const { donors, addDonation, isDonationPending, isLoading: donorsLoading } = useDonors();
+  const { role } = useAuth();
+  const { donors, addDonation, deleteDonor, isDonationPending, isLoading: donorsLoading } = useDonors();
   const { campaigns, isLoading: campaignsLoading } = useCampaigns();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
@@ -58,6 +71,22 @@ const Doadores = () => {
     setIsDialogOpen(false);
     setDonationAmount("");
     setSelectedCampaignId("");
+  };
+
+  const handleDeleteDonor = async (id: number) => {
+    try {
+      await deleteDonor(id);
+      toast({
+        title: "Doador Excluído",
+        description: "O registro foi removido com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao Excluir",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   const filteredDonors = donors.filter(d => {
@@ -297,14 +326,47 @@ const Doadores = () => {
                   </TableCell>
                   <TableCell>{donor.last_donation_date ? new Date(donor.last_donation_date).toLocaleDateString("pt-BR") : "Nunca"}</TableCell>
                   <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-muted-foreground hover:text-primary"
-                      onClick={() => navigate(`/dashboard/doadores/editar/${donor.id}`)}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-muted-foreground hover:text-primary"
+                        onClick={() => navigate(`/dashboard/doadores/editar/${donor.id}`)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+
+                      {role === 'admin' && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir Doador</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja excluir <strong>{donor.name}</strong>? Esta ação não pode ser desfeita e removerá todos os registros relacionados.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleDeleteDonor(donor.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

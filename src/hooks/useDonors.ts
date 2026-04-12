@@ -70,6 +70,23 @@ export const useDonors = () => {
       queryClient.invalidateQueries({ queryKey: ['donors'] });
     },
   });
+  
+  // Mutation to delete a donor
+  const deleteDonorMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const { error } = await supabase
+        .from('donors')
+        .delete()
+        .eq('id', id);
+        
+      if (error) throw error;
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['donors'] });
+      queryClient.invalidateQueries({ queryKey: ['followups'] });
+    },
+  });
 
   const lastDonationCall = useRef<number>(0);
 
@@ -142,9 +159,10 @@ export const useDonors = () => {
     addDonation,
     registerNewDonor,
     updateDonor: handleUpdateDonor,
+    deleteDonor: deleteDonorMutation.mutateAsync,
     updateType,
     findDonorByEmailOrPhone,
-    isRegistering: donationMutation.isPending || addDonorMutation.isPending || updateTypeMutation.isPending || updateDonorMutation.isPending,
+    isRegistering: donationMutation.isPending || addDonorMutation.isPending || updateTypeMutation.isPending || updateDonorMutation.isPending || deleteDonorMutation.isPending,
     isDonationPending: donationMutation.isPending
   };
 };
