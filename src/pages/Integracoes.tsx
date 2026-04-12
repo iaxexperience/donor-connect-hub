@@ -19,6 +19,7 @@ import { useDonors } from "@/hooks/useDonors";
 import { handleAsaasDonation, generateMockAsaasEvent } from "@/lib/asaasIntegrationService";
 import { Progress } from "@/components/ui/progress";
 import { validateMetaCredentials, fetchMetaTemplates, createMetaTemplate } from "@/lib/whatsappService";
+import { getWhatsAppSettings, saveWhatsAppSettings } from "@/lib/whatsappSettingsService";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -68,10 +69,12 @@ const Integracoes = () => {
   const [isTestingAsaas, setIsTestingAsaas] = useState(false);
   
   // Meta Credentials with Persistence
-  const [wabaId, setWabaId] = useState(() => localStorage.getItem("meta_waba_id") || "1222137823202647");
-  const [phoneId, setPhoneId] = useState(() => localStorage.getItem("meta_phone_id") || "903758466162084");
-  const [accessToken, setAccessToken] = useState(() => localStorage.getItem("meta_access_token") || "");
+  // Meta Credentials
+  const [wabaId, setWabaId] = useState("1222137823202647");
+  const [phoneId, setPhoneId] = useState("903758466162084");
+  const [accessToken, setAccessToken] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("https://...");
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
 
   const [whatsappLogs, setWhatsappLogs] = useState<any[]>([]);
   const [asaasLogs, setAsaasLogs] = useState<any[]>([]);
@@ -95,6 +98,22 @@ const Integracoes = () => {
     language: "pt_BR",
     body: ""
   });
+
+  // Load Settings from Supabase
+  useEffect(() => {
+    const loadSettings = async () => {
+      setIsLoadingSettings(true);
+      const settings = await getWhatsAppSettings();
+      if (settings) {
+        setWabaId(settings.waba_id);
+        setPhoneId(settings.phone_number_id);
+        setAccessToken(settings.access_token);
+        setWebhookUrl(settings.webhook_url);
+      }
+      setIsLoadingSettings(false);
+    };
+    loadSettings();
+  }, []);
 
   useEffect(() => {
     const loadLogs = () => {
@@ -143,11 +162,23 @@ const Integracoes = () => {
     }
   };
 
-  const handleSaveCredentials = () => {
-    localStorage.setItem("meta_waba_id", wabaId);
-    localStorage.setItem("meta_phone_id", phoneId);
-    localStorage.setItem("meta_access_token", accessToken);
-    toast({ title: "Salvo", description: "Credenciais Meta persistidas localmente." });
+  const handleSaveCredentials = async () => {
+    try {
+      await saveWhatsAppSettings({
+        waba_id: wabaId,
+        phone_number_id: phoneId,
+        access_token: accessToken,
+        webhook_url: webhookUrl
+      });
+      // Also keep in localStorage for immediate service availability without refresh
+      localStorage.setItem("meta_waba_id", wabaId);
+      localStorage.setItem("meta_phone_id", phoneId);
+      localStorage.setItem("meta_access_token", accessToken);
+      
+      toast({ title: "Salvo no Banco de Dados", description: "Credenciais Meta sincronizadas com o Supabase." });
+    } catch (e: any) {
+      toast({ title: "Erro ao Salvar", description: e.message, variant: "destructive" });
+    }
   };
 
   const handleCreateTemplate = async () => {
@@ -360,19 +391,21 @@ const Integracoes = () => {
               </div>
             </CardHeader>
             <CardContent className="p-10 space-y-10">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              <div className={`grid grid-cols-1 md:grid-cols-2 gap-10 transition-opacity ${isLoadingSettings ? 'opacity-50' : 'opacity-100'}`}>
                 <div className="space-y-3">
-                  <Label className="font-bold">WABA ID</Label>
-                  <Input value={wabaId} onChange={(e) => setWabaId(e.target.value)} className="h-14 rounded-2xl bg-slate-50" />
+                  <Label className="font-bold flex items-center gap-2">
+                    WABA ID {isLoadingSettings && <RefreshCw className="w-3 h-3 animate-spin text-slate-400" />}
+                  </Label>
+                  <Input value={wabaId} onChange={(e) => setWabaId(e.target.value)} className="h-14 rounded-2xl bg-slate-50" disabled={isLoadingSettings} />
                 </div>
                 <div className="space-y-3">
                   <Label className="font-bold">Phone Number ID</Label>
-                  <Input value={phoneId} onChange={(e) => setPhoneId(e.target.value)} className="h-14 rounded-2xl bg-slate-50" />
+                  <Input value={phoneId} onChange={(e) => setPhoneId(e.target.value)} className="h-14 rounded-2xl bg-slate-50" disabled={isLoadingSettings} />
                 </div>
               </div>
-              <div className="space-y-3">
+              <div className={`space-y-3 transition-opacity ${isLoadingSettings ? 'opacity-50' : 'opacity-100'}`}>
                 <Label className="font-bold">Access Token Permanente</Label>
-                <Input type="password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} className="h-14 rounded-2xl bg-slate-50" />
+                <Input type="password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} className="h-14 rounded-2xl bg-slate-50" disabled={isLoadingSettings} />
               </div>
               <div className="flex justify-end gap-3 pt-4">
                  <Button variant="outline" onClick={handleTestWhatsApp} disabled={isTestingWa} className="h-14 px-8 rounded-2xl gap-2 font-bold">
