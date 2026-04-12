@@ -85,7 +85,17 @@ const WhatsApp = () => {
       setIsConfigSaved(true);
     }
     loadHistory();
+    loadStoredTemplates();
   }, []);
+
+  const loadStoredTemplates = async () => {
+    try {
+      const data = await metaService.getStoredTemplates();
+      setTemplates(data);
+    } catch (e) {
+      console.error("Erro ao carregar templates salvos:", e);
+    }
+  };
 
   const loadHistory = async () => {
     try {
@@ -104,9 +114,9 @@ const WhatsApp = () => {
     setIsSyncingTemplates(true);
     try {
       const data = await metaService.fetchMetaTemplates(config);
+      await metaService.saveMetaTemplates(data);
       setTemplates(data);
-      localStorage.setItem("meta_templates", JSON.stringify(data));
-      toast({ title: "Sincronizado!", description: `${data.length} templates importados com sucesso.` });
+      toast({ title: "Sincronizado!", description: `${data.length} templates importados e salvos no banco.` });
     } catch (err: any) {
       toast({ title: "Erro na sincronização", description: err.message, variant: "destructive" });
     } finally {

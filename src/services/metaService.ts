@@ -91,5 +91,38 @@ export const metaService = {
 
     if (error) throw error;
     return data.data || [];
+  },
+
+  /**
+   * Salva templates no banco de dados
+   */
+  async saveMetaTemplates(templates: any[]) {
+    // Normalizar para o banco
+    const toInsert = templates.map(t => ({
+      name: t.name,
+      category: t.category,
+      language: t.language,
+      status: t.status,
+      components: t.components
+    }));
+
+    const { error } = await supabase
+      .from('whatsapp_templates')
+      .upsert(toInsert, { onConflict: 'name' });
+
+    if (error) throw error;
+  },
+
+  /**
+   * Busca templates salvos no banco
+   */
+  async getStoredTemplates() {
+    const { data, error } = await supabase
+      .from('whatsapp_templates')
+      .select('*')
+      .order('name');
+
+    if (error) throw error;
+    return data || [];
   }
 };

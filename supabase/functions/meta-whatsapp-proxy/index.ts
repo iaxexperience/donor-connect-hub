@@ -6,6 +6,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * Normaliza números de telefone para evitar duplicidade 
+ * Remove +, remove zeros à esquerda, e trata o 9º dígito brasileiro
+ */
+function normalizePhone(phone: string): string {
+  let cleaned = phone.replace(/\D/g, "");
+  
+  // Se for número brasileiro (começa com 55)
+  if (cleaned.startsWith("55") && cleaned.length >= 12) {
+    const ddd = cleaned.substring(2, 4);
+    const number = cleaned.substring(cleaned.length - 8);
+    // Retornamos fixo 55 + DDD + 8 dígitos finais (removemos o 9 extra se existir para matching)
+    return `55${ddd}${number}`;
+  }
+  
+  return cleaned;
+}
+
 serve(async (req) => {
   // CORS Handshake
   if (req.method === 'OPTIONS') {
@@ -44,29 +62,29 @@ serve(async (req) => {
       const message = value.messages?.[0];
 
       if (message) {
-        const from = message.from; 
-        const text = message.text?.body;
+        const fromRaw = message.from;
+        const fromNormalized = normalizePhone(fromRaw);
+        const text = message.text?.body || "Mensagem de mídia/outro";
         const messageId = message.id;
         const profileName = value.contacts?.[0]?.profile?.name || 'WhatsApp Contact';
-
-        if (!text) return new Response('Apenas texto suportado', { status: 200 });
 
         // Check/Create Chat
         let { data: chat, error: chatError } = await supabase
           .from('whatsapp_chats')
-          .select('id')
-          .eq('telefone', from)
-          .single();
+          .select('id, unread_count')
+          .eq('telefone', fromNormalized)
+          .maybeSingle();
 
         if (chatError || !chat) {
           const { data: newChat, error: createError } = await supabase
             .from('whatsapp_chats')
-            .insert([{ 
-              telefone: from, 
+            .upsert([{ 
+              telefone: fromNormalized, 
               nome: profileName,
               last_message: text,
+              last_message_at: new Date().toISOString(),
               unread_count: 1
-            }])
+            }], { onConflict: 'telefone' })
             .select()
             .single();
           
@@ -79,7 +97,7 @@ serve(async (req) => {
             .update({ 
               last_message: text, 
               last_message_at: new Date().toISOString(),
-              unread_count: 1 // For now just set to 1 or increment
+              unread_count: (chat.unread_count || 0) + 1
             })
             .eq('id', chat.id);
         }
@@ -89,7 +107,7 @@ serve(async (req) => {
           .from('whatsapp_messages')
           .insert([{
             chat_id: chat.id,
-            telefone: from,
+            telefone: fromNormalized,
             text_body: text,
             is_from_me: false,
             message_id: messageId,
@@ -132,30 +150,46 @@ serve(async (req) => {
       // If successful sending, Log it
       if (payload.messaging_product === 'whatsapp') {
         const textBody = payload.text?.body || (action === 'send_template' ? `Template: ${payload.template?.name}` : '');
-        const to = payload.to;
+        const toRaw = payload.to;
+        const toNormalized = normalizePhone(toRaw);
         const messageId = metaResult.messages?.[0]?.id;
 
-        // Find Chat
-        let { data: chat } = await supabase.from('whatsapp_chats').select('id').eq('telefone', to).single();
+        // Find/Create Chat
+        let { data: chat } = await supabase
+          .from('whatsapp_chats')
+          .select('id')
+          .eq('telefone', toNormalized)
+          .maybeSingle();
+
         if (!chat) {
-          const { data: newChat } = await supabase.from('whatsapp_chats').insert([{ telefone: to, nome: 'Contato' }]).select().single();
+          const { data: newChat } = await supabase
+            .from('whatsapp_chats')
+            .upsert([{ telefone: toNormalized, nome: 'Contato' }], { onConflict: 'telefone' })
+            .select()
+            .single();
           chat = newChat;
         }
 
         // Save to whatsapp_messages
         await supabase.from('whatsapp_messages').insert([{
           chat_id: chat?.id,
-          telefone: to,
+          telefone: toNormalized,
           text_body: textBody,
           is_from_me: true,
           message_id: messageId,
           status: 'sent'
         }]);
 
-        // Save to historical logs
+        // Update Chat head info
+        await supabase.from('whatsapp_chats').update({
+          last_message: textBody,
+          last_message_at: new Date().toISOString()
+        }).eq('id', chat?.id);
+
+        // Save up to historical logs
         await supabase.from('whatsapp_historicos').insert([{
           donor_id: body.donor_id,
-          destinatario: to,
+          destinatario: toNormalized,
           template: payload.template?.name,
           mensagem: textBody,
           status: 'sent',
