@@ -4,7 +4,7 @@ import {
   FileText, Shield, CalendarClock, UserCheck, UserMinus, Clock,
   AlertTriangle, Phone, Settings2, Key, Globe, Database, CreditCard,
   RefreshCw, History, Info, ChevronRight, Code, Copy, Zap, ListChecks, Plus,
-  Search, Upload, Smartphone, Mail, MessageCircle
+  Search, Upload, Smartphone, Mail, MessageCircle, Save
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,24 +62,20 @@ const Integracoes = () => {
   const { toast } = useToast();
   const { donors, addDonation, isDonationPending } = useDonors();
   
-  // Basic UI state
   const [waConnected, setWaConnected] = useState(false);
   const [asaasConnected, setAsaasConnected] = useState(false);
   const [isTestingWa, setIsTestingWa] = useState(false);
   const [isTestingAsaas, setIsTestingAsaas] = useState(false);
   
-  // Meta Credentials with Persistence
-  // Meta Credentials
   const [wabaId, setWabaId] = useState("1222137823202647");
   const [phoneId, setPhoneId] = useState("903758466162084");
   const [accessToken, setAccessToken] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("https://...");
-  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
 
   const [whatsappLogs, setWhatsappLogs] = useState<any[]>([]);
   const [asaasLogs, setAsaasLogs] = useState<any[]>([]);
 
-  // Templates State
   const [templates, setTemplates] = useState(() => {
     try {
       const saved = localStorage.getItem("meta_templates");
@@ -90,7 +86,6 @@ const Integracoes = () => {
     }
   });
 
-  // New Template Modal State
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newTemplate, setNewTemplate] = useState({
     name: "",
@@ -99,18 +94,22 @@ const Integracoes = () => {
     body: ""
   });
 
-  // Load Settings from Supabase
   useEffect(() => {
     const loadSettings = async () => {
       setIsLoadingSettings(true);
-      const settings = await getWhatsAppSettings();
-      if (settings) {
-        setWabaId(settings.waba_id);
-        setPhoneId(settings.phone_number_id);
-        setAccessToken(settings.access_token);
-        setWebhookUrl(settings.webhook_url);
+      try {
+        const settings = await getWhatsAppSettings();
+        if (settings) {
+          setWabaId(settings.waba_id || "");
+          setPhoneId(settings.phone_number_id || "");
+          setAccessToken(settings.access_token || "");
+          setWebhookUrl(settings.webhook_url || "");
+        }
+      } catch (err) {
+        console.error("Erro ao carregar do Supabase:", err);
+      } finally {
+        setIsLoadingSettings(false);
       }
-      setIsLoadingSettings(false);
     };
     loadSettings();
   }, []);
@@ -170,12 +169,10 @@ const Integracoes = () => {
         access_token: accessToken,
         webhook_url: webhookUrl
       });
-      // Also keep in localStorage for immediate service availability without refresh
       localStorage.setItem("meta_waba_id", wabaId);
       localStorage.setItem("meta_phone_id", phoneId);
       localStorage.setItem("meta_access_token", accessToken);
-      
-      toast({ title: "Salvo no Banco de Dados", description: "Credenciais Meta sincronizadas com o Supabase." });
+      toast({ title: "Salvo com sucesso", description: "Configurações sincronizadas no banco de dados." });
     } catch (e: any) {
       toast({ title: "Erro ao Salvar", description: e.message, variant: "destructive" });
     }
@@ -226,15 +223,15 @@ const Integracoes = () => {
 
       <Tabs defaultValue="templates" className="w-full">
         <TabsList className="bg-slate-100/80 p-1 mb-8 w-fit gap-1 rounded-xl">
-          <TabsTrigger value="templates" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold">Templates</TabsTrigger>
-          <TabsTrigger value="enviar" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold">Enviar Mensagem</TabsTrigger>
-          <TabsTrigger value="chat" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold gap-2">
+          <TabsTrigger value="templates" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold text-slate-600">Templates</TabsTrigger>
+          <TabsTrigger value="enviar" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold text-slate-600">Enviar Mensagem</TabsTrigger>
+          <TabsTrigger value="chat" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold gap-2 text-slate-600">
             <MessageCircle className="w-4 h-4" /> Chat Ao Vivo
           </TabsTrigger>
-          <TabsTrigger value="automacao" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold">Automação</TabsTrigger>
-          <TabsTrigger value="historico" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold">Histórico</TabsTrigger>
-          <TabsTrigger value="config" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold">Configuração API</TabsTrigger>
-          <TabsTrigger value="asaas" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold gap-2">
+          <TabsTrigger value="automacao" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold text-slate-600">Automação</TabsTrigger>
+          <TabsTrigger value="historico" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold text-slate-600">Histórico</TabsTrigger>
+          <TabsTrigger value="config" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold text-slate-600">Configuração API</TabsTrigger>
+          <TabsTrigger value="asaas" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold gap-2 text-slate-600">
             <Database className="w-4 h-4" /> Banco Asaas
           </TabsTrigger>
         </TabsList>
@@ -333,11 +330,11 @@ const Integracoes = () => {
 
         <TabsContent value="chat" className="h-[600px] border border-slate-100 rounded-[32px] overflow-hidden shadow-sm bg-white flex">
           <div className="w-80 border-r border-slate-100 flex flex-col">
-            <div className="p-5 font-bold border-b">Caixa de Entrada</div>
+            <div className="p-5 font-bold border-b text-slate-800">Caixa de Entrada</div>
             <ScrollArea className="flex-1">
               {chatInbox.map((chat, i) => (
                 <div key={i} className="p-4 border-b border-slate-50 hover:bg-slate-50 cursor-pointer">
-                  <div className="font-bold text-sm">{chat.name}</div>
+                  <div className="font-bold text-sm text-slate-700">{chat.name}</div>
                   <div className="text-xs text-slate-500">{chat.lastMessage}</div>
                 </div>
               ))}
@@ -352,12 +349,12 @@ const Integracoes = () => {
         <TabsContent value="automacao" className="space-y-6">
           <Card className="border-slate-100 shadow-sm rounded-[32px] overflow-hidden">
             <CardHeader className="bg-slate-50/50">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-slate-800">
                 <RefreshCw className="w-5 h-5 text-blue-600" /> Fila de Disparos
               </CardTitle>
             </CardHeader>
             <CardContent className="p-8">
-              <p className="text-slate-400 italic">Nenhum disparo pendente.</p>
+              <p className="text-slate-400 italic font-medium">Nenhum disparo pendente.</p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -365,7 +362,7 @@ const Integracoes = () => {
         <TabsContent value="historico" className="space-y-6">
           <Card className="border-slate-100 shadow-sm rounded-[32px] overflow-hidden">
              <CardHeader className="border-b">
-               <CardTitle>Histórico de Mensagens</CardTitle>
+               <CardTitle className="text-slate-800">Histórico de Mensagens</CardTitle>
              </CardHeader>
              <CardContent className="p-0">
                <Table>
@@ -374,7 +371,7 @@ const Integracoes = () => {
                    {whatsappLogs.length > 0 ? whatsappLogs.map((log: any) => (
                      <TableRow key={log.id}><TableCell>{log.time}</TableCell><TableCell>{log.to}</TableCell><TableCell>agradecimento</TableCell><TableCell className="text-right">Sucesso</TableCell></TableRow>
                    )) : (
-                     <TableRow><TableCell colSpan={4} className="h-40 text-center text-slate-400">Nenhum registro.</TableCell></TableRow>
+                     <TableRow><TableCell colSpan={4} className="h-40 text-center text-slate-400 font-medium">Nenhum registro encontrado.</TableCell></TableRow>
                    )}
                  </TableBody>
                </Table>
@@ -383,36 +380,77 @@ const Integracoes = () => {
         </TabsContent>
 
         <TabsContent value="config" className="space-y-6">
-          <Card className="border border-slate-100 shadow-sm rounded-[32px] overflow-hidden">
-            <CardHeader className="py-8 px-10 border-b border-slate-50">
+          <Card className="border border-slate-100 shadow-sm rounded-[32px] overflow-hidden bg-white">
+            <CardHeader className="py-8 px-10 border-b border-slate-50 bg-white">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-50 text-blue-500 rounded-xl"><Shield className="w-5 h-5" /></div>
-                <CardTitle className="text-xl font-bold">Credenciais Meta Developer</CardTitle>
+                <CardTitle className="text-xl font-bold text-slate-800">Credenciais Meta Developer</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="p-10 space-y-10">
-              <div className={`grid grid-cols-1 md:grid-cols-2 gap-10 transition-opacity ${isLoadingSettings ? 'opacity-50' : 'opacity-100'}`}>
+            <CardContent className="p-10 space-y-10 bg-white min-h-[400px]">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-3">
-                  <Label className="font-bold flex items-center gap-2">
-                    WABA ID {isLoadingSettings && <RefreshCw className="w-3 h-3 animate-spin text-slate-400" />}
+                  <Label className="font-bold text-slate-700 flex items-center gap-2">
+                    WhatsApp Business Account ID (WABA_ID)
+                    {isLoadingSettings && <RefreshCw className="animate-spin w-4 h-4 text-slate-300" />}
                   </Label>
-                  <Input value={wabaId} onChange={(e) => setWabaId(e.target.value)} className="h-14 rounded-2xl bg-slate-50" disabled={isLoadingSettings} />
+                  <Input 
+                    value={wabaId} 
+                    onChange={(e) => setWabaId(e.target.value)} 
+                    className="h-14 rounded-2xl bg-slate-50/50 border-slate-100 focus:bg-white transition-all text-slate-700" 
+                    placeholder="ID da conta WABA"
+                  />
                 </div>
                 <div className="space-y-3">
-                  <Label className="font-bold">Phone Number ID</Label>
-                  <Input value={phoneId} onChange={(e) => setPhoneId(e.target.value)} className="h-14 rounded-2xl bg-slate-50" disabled={isLoadingSettings} />
+                  <Label className="font-bold text-slate-700">Phone Number ID</Label>
+                  <Input 
+                    value={phoneId} 
+                    onChange={(e) => setPhoneId(e.target.value)} 
+                    className="h-14 rounded-2xl bg-slate-50/50 border-slate-100 focus:bg-white transition-all text-slate-700" 
+                    placeholder="ID do número de telefone"
+                  />
                 </div>
               </div>
-              <div className={`space-y-3 transition-opacity ${isLoadingSettings ? 'opacity-50' : 'opacity-100'}`}>
-                <Label className="font-bold">Access Token Permanente</Label>
-                <Input type="password" value={accessToken} onChange={(e) => setAccessToken(e.target.value)} className="h-14 rounded-2xl bg-slate-50" disabled={isLoadingSettings} />
+              <div className="space-y-3">
+                <Label className="font-bold text-slate-700">Access Token Permanente (System User Token)</Label>
+                <Input 
+                  type="password" 
+                  value={accessToken} 
+                  onChange={(e) => setAccessToken(e.target.value)} 
+                  className="h-14 rounded-2xl bg-slate-50/50 border-slate-100 focus:bg-white transition-all text-slate-700 font-mono" 
+                  placeholder="Seu token de acesso permanente"
+                />
+              </div>
+              <div className="space-y-3">
+                <Label className="font-bold text-slate-700">Webhook URL (Copiado da Meta Dashboard)</Label>
+                <div className="relative">
+                  <Input 
+                    value={webhookUrl} 
+                    onChange={(e) => setWebhookUrl(e.target.value)} 
+                    className="h-14 rounded-2xl bg-slate-50/50 border-slate-100 text-slate-400 font-mono pr-12" 
+                    placeholder="https://sua-url-webhook.com"
+                  />
+                  <Button variant="ghost" size="icon" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300">
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
               <div className="flex justify-end gap-3 pt-4">
-                 <Button variant="outline" onClick={handleTestWhatsApp} disabled={isTestingWa} className="h-14 px-8 rounded-2xl gap-2 font-bold">
-                   {isTestingWa ? <RefreshCw className="animate-spin w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />} Testar Conexão
+                 <Button 
+                   variant="outline" 
+                   onClick={handleTestWhatsApp} 
+                   disabled={isTestingWa || isLoadingSettings} 
+                   className="h-14 px-8 rounded-2xl gap-2 font-bold text-slate-600 border-slate-200 hover:bg-slate-50"
+                 >
+                   {isTestingWa ? <RefreshCw className="animate-spin w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />} 
+                   Testar Conexão
                  </Button>
-                 <Button onClick={handleSaveCredentials} className="h-14 px-10 rounded-2xl bg-blue-600 hover:bg-blue-700 font-bold gap-2 text-white">
-                   <Database className="w-4 h-4" /> Salvar Credenciais
+                 <Button 
+                   onClick={handleSaveCredentials} 
+                   disabled={isLoadingSettings}
+                   className="h-14 px-10 rounded-2xl bg-blue-600 hover:bg-blue-700 font-bold gap-2 text-white shadow-lg shadow-blue-200"
+                 >
+                   <Save className="w-4 h-4" /> Salvar Credenciais
                  </Button>
               </div>
             </CardContent>
@@ -424,17 +462,17 @@ const Integracoes = () => {
             <CardHeader className="py-8 px-10 border-b bg-indigo-50/30">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white text-indigo-600 rounded-xl shadow-sm"><CreditCard className="w-5 h-5" /></div>
-                <CardTitle className="text-xl font-bold text-indigo-900">Configuração Asaas</CardTitle>
+                <CardTitle className="text-xl font-bold text-indigo-900">Configuração Banco Asaas</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="p-10 space-y-10">
+            <CardContent className="p-10 space-y-10 bg-white">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                   <div className="space-y-3">
-                    <Label className="font-bold">API Token (Produção)</Label>
-                    <Input type="password" placeholder="$asaas_..." className="h-14 rounded-2xl" />
+                    <Label className="font-bold text-slate-700">API Token (Produção)</Label>
+                    <Input type="password" placeholder="$asaas_live_..." className="h-14 rounded-2xl border-slate-200 bg-slate-50/30 font-mono" />
                   </div>
                   <div className="flex items-end">
-                    <Button onClick={handleTestAsaas} disabled={isTestingAsaas} className="h-14 w-full rounded-2xl bg-indigo-600 hover:bg-indigo-700 font-bold gap-2 text-white">
+                    <Button onClick={handleTestAsaas} disabled={isTestingAsaas} className="h-14 w-full rounded-2xl bg-indigo-600 hover:bg-indigo-700 font-bold gap-2 text-white shadow-lg shadow-indigo-100">
                       {isTestingAsaas ? <RefreshCw className="animate-spin w-4 h-4" /> : <Zap className="w-4 h-4" />} Validar Integração
                     </Button>
                   </div>
