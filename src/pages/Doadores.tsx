@@ -31,7 +31,7 @@ import { typeLabel, typeBadgeStyle } from "@/lib/donationService";
 // INITIAL_DONORS moved to hook
 const Doadores = () => {
   const navigate = useNavigate();
-  const { donors, addDonation, isLoading: donorsLoading } = useDonors();
+  const { donors, addDonation, isDonationPending, isLoading: donorsLoading } = useDonors();
   const { campaigns, isLoading: campaignsLoading } = useCampaigns();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");

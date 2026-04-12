@@ -103,7 +103,7 @@ const Integracoes = () => {
   const [isTestingWa, setIsTestingWa] = useState(false);
   const [isTestingAsaas, setIsTestingAsaas] = useState(false);
   const { toast } = useToast();
-  const { donors, registerNewDonor, addDonation } = useDonors();
+  const { donors, registerNewDonor, addDonation, isDonationPending } = useDonors();
 
   const findDonorByEmailOrPhone = (email?: string, phone?: string) => {
     return donors.find(d => 
