@@ -138,6 +138,22 @@ export const registerDonation = async (
     throw donationError;
   }
 
+  // 2. Fallback / Manually update Campaign Total
+  if (campaignId && campaignId !== "Doação Geral") {
+    const { data: campaign } = await supabase
+      .from('campaigns')
+      .select('current_amount')
+      .eq('id', campaignId)
+      .single();
+      
+    if (campaign) {
+      await supabase
+        .from('campaigns')
+        .update({ current_amount: (campaign.current_amount || 0) + amount })
+        .eq('id', campaignId);
+    }
+  }
+
   return donation;
 };
 

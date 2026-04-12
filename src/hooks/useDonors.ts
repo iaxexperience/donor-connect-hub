@@ -22,6 +22,7 @@ export const useDonors = () => {
       // Invalidate queries to refresh data (totals, counts, and classification happen on DB side)
       queryClient.invalidateQueries({ queryKey: ['donors'] });
       queryClient.invalidateQueries({ queryKey: ['followups'] });
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       
       // Auto-send WhatsApp Thank You message
       const donor = donors.find(d => d.id === variables.donorId);

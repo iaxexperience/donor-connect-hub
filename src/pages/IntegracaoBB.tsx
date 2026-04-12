@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Landmark, RefreshCw, Layers, CreditCard, Clock, Link as LinkIcon, 
-  ArrowRightLeft, AlertCircle, FileText, CheckCircle2, Search, Play
+  ArrowRightLeft, AlertCircle, FileText, CheckCircle2, Search, Play, Settings, ShieldCheck, Key
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -121,9 +121,10 @@ export default function IntegracaoBB() {
       </div>
 
       <Tabs defaultValue="extrato" className="space-y-6">
-        <TabsList className="bg-slate-100/50 p-1 rounded-2xl flex w-full max-w-sm mx-auto relative overflow-hidden">
+        <TabsList className="bg-slate-100/50 p-1 rounded-2xl flex w-full max-w-2xl mx-auto relative overflow-hidden">
           <TabsTrigger value="extrato" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-amber-600 font-bold transition-all h-10">Extrato</TabsTrigger>
           <TabsTrigger value="logs" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-amber-600 font-bold transition-all h-10">Logs de Sincronização</TabsTrigger>
+          <TabsTrigger value="config" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-amber-600 font-bold transition-all h-10">Configuração de Chaves</TabsTrigger>
         </TabsList>
 
         <TabsContent value="extrato" className="space-y-4 outline-none">
@@ -199,6 +200,51 @@ export default function IntegracaoBB() {
                   </div>
                 ))
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="config" className="space-y-4 outline-none">
+          <Card className="border-none shadow-xl shadow-slate-100/50 rounded-[32px] overflow-hidden bg-white">
+            <CardHeader className="bg-slate-50/50 border-b border-slate-100 p-8">
+              <CardTitle className="text-xl font-bold flex items-center gap-2 text-slate-800"><Settings className="w-6 h-6 text-amber-500" /> Variáveis de Ambiente & Autenticação BB</CardTitle>
+              <CardDescription>O Banco do Brasil exige uma conexão backend rígida via OAuth2 e Application Keys.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-8 space-y-8">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <h3 className="font-bold text-slate-800 flex items-center gap-2"><Key className="w-5 h-5 text-slate-400" /> Constantes no Supabase (Secrets)</h3>
+                    <p className="text-sm text-slate-500">Configure no painel "Edge Functions - Secrets" do seu Supabase:</p>
+                    <ul className="space-y-3 mt-4">
+                      <li className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <Badge variant="outline" className="font-mono text-xs">BB_CLIENT_ID</Badge>
+                        <span className="text-sm text-slate-600">Client ID da sua aplicação Web.</span>
+                      </li>
+                      <li className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <Badge variant="outline" className="font-mono text-xs">BB_CLIENT_SECRET</Badge>
+                        <span className="text-sm text-slate-600">Necessário pro OAuth Token.</span>
+                      </li>
+                      <li className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <Badge variant="outline" className="font-mono text-xs text-amber-600 border-amber-200">BB_APP_KEY</Badge>
+                        <span className="text-sm text-slate-600">Enviado no header gw-dev-app-key.</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="space-y-4 flex flex-col justify-center">
+                    <div className="p-6 bg-amber-50 border-2 border-amber-100 rounded-2xl relative">
+                       <ShieldCheck className="w-10 h-10 text-amber-600 absolute right-6 top-6 opacity-20" />
+                       <h3 className="font-bold text-amber-900 mb-2 text-lg">Certificado Digital A1 (.pfx)</h3>
+                       <p className="text-sm text-amber-800/80 font-medium leading-relaxed mb-4">
+                         Para chamadas que requerem <strong>mTLS</strong> (Mutual TLS / Certificado A1 Bilateral), o Lovable não pode carregar o certificado. A comunicação tem que ser feita via Edge Functions.
+                       </p>
+                       <p className="text-sm text-amber-800/80 font-medium leading-relaxed">
+                         <strong>Status Atual:</strong> A API de "Extratos" do BB não exige mTLS para o fluxo Client Credentials em todos os contratos empresariais, utilizamos apenas API Key. 
+                         Se for exigido para PIX depois, será preciso embutir base64 do Certificado nos secrets do backend Deno.
+                       </p>
+                    </div>
+                  </div>
+               </div>
             </CardContent>
           </Card>
         </TabsContent>

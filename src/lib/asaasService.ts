@@ -47,7 +47,10 @@ export const asaasService = {
       .select('*')
       .order('created_at', { ascending: false })
       .limit(limit);
-    if (error) throw error;
+    if (error) {
+      if (error.message?.includes('Could not find') || error.code === '42P01') return [];
+      throw error;
+    }
     return data || [];
   },
 
@@ -58,17 +61,28 @@ export const asaasService = {
       .select('*, donors(name, email, phone)')
       .not('asaas_payment_id', 'is', null)
       .order('created_at', { ascending: false });
-    if (error) throw error;
+    if (error) {
+      // Catch missing column 'asaas_payment_id' if migration wasn't run
+      if (error.message?.includes('Could not find') || error.code === 'PGRST200') return [];
+      throw error;
+    }
     return data || [];
   },
 
   /** Generate dashboard data */
   async getDashboardData() {
     const today = new Date().toISOString().split('T')[0];
-    const { data: allDonations } = await supabase
+    const defaultStats = { totalToday: 0, totalConfirmed: 0, activeDonorsCount: 0, byType: { PIX: 0, BOLETO: 0, CREDIT_CARD: 0 }, totalDonationsCount: 0 };
+
+    const { data: allDonations, error } = await supabase
       .from('donations')
       .select('amount, status, billing_type, created_at')
       .not('asaas_payment_id', 'is', null);
+
+    if (error) {
+      if (error.message?.includes('Could not find') || error.code === 'PGRST200') return defaultStats;
+      throw error;
+    }
 
     const donations = allDonations || [];
     const totalToday = donations

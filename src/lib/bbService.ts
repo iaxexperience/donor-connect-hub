@@ -48,7 +48,13 @@ export const bbService = {
     if (filters?.since) query = query.gte('date', filters.since);
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) {
+      if (error.message.includes('Could not find the table') || error.code === '42P01') {
+        console.warn('Tabela bank_transactions não existe ainda. Retornando vazio.');
+        return [];
+      }
+      throw error;
+    }
     return data || [];
   },
 
@@ -60,20 +66,28 @@ export const bbService = {
       .eq('source', 'banco_brasil')
       .order('created_at', { ascending: false })
       .limit(limit);
-    if (error) throw error;
+    if (error) {
+      if (error.message?.includes('Could not find') || error.code === '42P01') return [];
+      throw error;
+    }
     return data || [];
   },
 
   /** Get stats */
   async getStats() {
     const today = new Date().toISOString().split('T')[0];
+    const defaultStats = { totalToday: 0, totalAll: 0, matched: 0, unmatched: 0, total: 0 };
 
-    const { data: todayTx } = await supabase
+    const { data: todayTx, error: err1 } = await supabase
       .from('bank_transactions')
       .select('amount')
       .eq('source', 'banco_brasil')
       .eq('type', 'credit')
       .gte('date', `${today}T00:00:00`);
+
+    if (err1 && (err1.message?.includes('Could not find') || err1.code === '42P01')) {
+      return defaultStats;
+    }
 
     const { data: allTx } = await supabase
       .from('bank_transactions')

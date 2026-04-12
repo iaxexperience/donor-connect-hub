@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Wallet, RefreshCw, CreditCard, Banknote, ShieldCheck, UserCheck, 
-  ArrowUpRight, Clock, CheckCircle2, AlertCircle, Plus, Search
+  ArrowUpRight, Clock, CheckCircle2, AlertCircle, Plus, Search, Zap, Key
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -221,8 +221,37 @@ export default function IntegracaoAsaas() {
                   </div>
                </div>
                
-               <div className="text-sm text-slate-500 font-medium px-4">
-                 <strong>Nota:</strong> Certifique-se de habilitar todos os eventos relacionados a cobranças (Recebidas, Vencidas, Confirmadas). As chaves de API precisam estar configuradas nos secrets do Supabase (`ASAAS_API_KEY`).
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+                  <div className="space-y-4">
+                    <h3 className="font-bold text-slate-800 flex items-center gap-2"><Key className="w-5 h-5 text-slate-400" /> Variáveis de Ambiente e Chaves (Secrets)</h3>
+                    <p className="text-sm text-slate-500">
+                      <strong>Por segurança total</strong>, o Frontend não deve acessar nem salvar chaves financeiras diretamente! A chave de API Asaas deve ser configurada nos Servidores em Nuvem <em>(Edge Functions)</em> do Supabase. Configure-as acessando as configurações de Secrets do projeto:
+                    </p>
+                    <ul className="space-y-3 mt-4">
+                      <li className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <Badge variant="outline" className="font-mono text-xs">ASAAS_API_KEY</Badge>
+                        <span className="text-sm text-slate-600">Sua Chave de API de Sandbox ou de Produção do Asaas.</span>
+                      </li>
+                      <li className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <Badge variant="outline" className="font-mono text-xs">ASAAS_SANDBOX</Badge>
+                        <span className="text-sm text-slate-600">Preencha com `true` se estiver enviando pagamentos falsos testando.</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="space-y-4 flex flex-col justify-center">
+                    <div className="p-6 bg-slate-50 border-2 border-slate-100 rounded-2xl relative">
+                       <h3 className="font-bold text-slate-800 mb-4 text-sm flex items-center gap-2">
+                         <ShieldCheck className="w-5 h-5 text-emerald-500" /> Por que não posso colocar a chave aqui?
+                       </h3>
+                       <p className="text-sm text-slate-600 font-medium leading-relaxed mb-4">
+                         O banco de dados <code>Supabase</code> processa a inteligência do fluxo Asaas na nuvem. A chave de API do Asaas não possui restrições de domínios; expor sua chave <strong>ASAAS_API_KEY</strong> nesta área implicaria transferir as chaves do Backend para o Computador dos doadores / atendentes, sendo uma falha crassa de segurança.
+                       </p>
+                       <p className="text-sm text-slate-500 font-bold bg-white p-3 rounded-lg border border-slate-200">
+                         ➜ Acesse o Dashboard do Supabase {'>'} Project Settings {'>'} Edge Functions {'>'} Secrets e adicione a chave <code className="text-blue-600 bg-blue-50 px-1 py-0.5 rounded">ASAAS_API_KEY</code> lá.
+                       </p>
+                    </div>
+                  </div>
                </div>
             </CardContent>
           </Card>
