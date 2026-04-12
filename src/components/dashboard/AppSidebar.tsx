@@ -40,7 +40,7 @@ const mainItems = [
 ];
 
 const configItems = [
-  { title: "Integrações", url: "/dashboard/integracoes", icon: MessageSquare },
+  { title: "WhatsApp", url: "/dashboard/integracoes", icon: MessageSquare },
   { title: "API Aberta", url: "/dashboard/api-aberta", icon: Globe },
   { title: "Configurações", url: "/dashboard/configuracoes", icon: Settings },
 ];
