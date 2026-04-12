@@ -20,6 +20,7 @@ import IntegracaoBB from "./pages/IntegracaoBB";
 import FollowUps from "./pages/FollowUps";
 import ApiAberta from "./pages/ApiAberta";
 import ApiDocumentation from "./pages/ApiDocumentation";
+import Pipeline from "./pages/Pipeline";
 import DonorForm from "./pages/DonorForm";
 import WhatsApp from "./pages/WhatsApp";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
