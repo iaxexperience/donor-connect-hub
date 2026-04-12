@@ -790,6 +790,109 @@ const WhatsApp = () => {
            </div>
         </TabsContent>
       </Tabs>
+
+      {/* CREATE TEMPLATE DIALOG */}
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <DialogContent className="max-w-xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl animate-in zoom-in-95 duration-200">
+           <div className="bg-primary/5 p-6 border-b">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-black flex items-center gap-2">
+                   Criar Novo Template (Meta)
+                </DialogTitle>
+                <DialogDescription className="font-medium opacity-70">Preencha os dados básicos para submeter à Meta API.</DialogDescription>
+              </DialogHeader>
+           </div>
+           
+           <div className="p-8 space-y-6">
+              <div className="space-y-2">
+                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nome do Template</Label>
+                 <Input 
+                   placeholder="ex: boas_vindas_v1" 
+                   className="h-12 border-2 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all rounded-xl"
+                   value={newTemplate.name}
+                   onChange={(e) => setNewTemplate({...newTemplate, name: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')})}
+                 />
+                 <p className="text-[10px] text-muted-foreground italic">Use apenas letras minúsculas, números e sublinhados.</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Categoria</Label>
+                    <Select value={newTemplate.category} onValueChange={(val) => setNewTemplate({...newTemplate, category: val})}>
+                       <SelectTrigger className="h-12 rounded-xl border-2">
+                          <SelectValue />
+                       </SelectTrigger>
+                       <SelectContent>
+                          <SelectItem value="MARKETING">Marketing</SelectItem>
+                          <SelectItem value="UTILITY">Utilidade / Transacional</SelectItem>
+                       </SelectContent>
+                    </Select>
+                 </div>
+                 <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Idioma</Label>
+                    <Select value={newTemplate.language} onValueChange={(val) => setNewTemplate({...newTemplate, language: val})}>
+                       <SelectTrigger className="h-12 rounded-xl border-2">
+                          <SelectValue />
+                       </SelectTrigger>
+                       <SelectContent>
+                          <SelectItem value="pt_BR">Português (Brasil)</SelectItem>
+                          <SelectItem value="en_US">Inglês (EUA)</SelectItem>
+                          <SelectItem value="es_ES">Espanhol</SelectItem>
+                       </SelectContent>
+                    </Select>
+                 </div>
+              </div>
+
+              <div className="space-y-2 pt-4 border-t">
+                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Cabeçalho de Mídia (Opcional)</Label>
+                 <Select value={newTemplate.headerFormat} onValueChange={(val) => setNewTemplate({...newTemplate, headerFormat: val})}>
+                    <SelectTrigger className="h-12 rounded-xl border-2">
+                       <SelectValue placeholder="Sem cabeçalho" />
+                    </SelectTrigger>
+                    <SelectContent>
+                       <SelectItem value="NONE">Sem cabeçalho (Apenas Texto)</SelectItem>
+                       <SelectItem value="IMAGE">Imagem</SelectItem>
+                       <SelectItem value="VIDEO">Vídeo</SelectItem>
+                    </SelectContent>
+                 </Select>
+              </div>
+
+              {newTemplate.headerFormat !== "NONE" && (
+                <div className="space-y-2 animate-in slide-in-from-top-2">
+                   <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">URL de Exemplo ({newTemplate.headerFormat})</Label>
+                   <Input 
+                     placeholder="https://..." 
+                     className="h-12 border-2 rounded-xl"
+                     value={newTemplate.mediaUrl}
+                     onChange={(e) => setNewTemplate({...newTemplate, mediaUrl: e.target.value})}
+                   />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Corpo da Mensagem *</Label>
+                 <Textarea 
+                   placeholder="Olá {{1}}, obrigado pelo contato!" 
+                   className="min-h-[120px] rounded-xl border-2 resize-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
+                   value={newTemplate.body}
+                   onChange={(e) => setNewTemplate({...newTemplate, body: e.target.value})}
+                 />
+                 <p className="text-[10px] text-muted-foreground">Use `{`{{1}}`}`, `{`{{2}}`}`, para variáveis.</p>
+              </div>
+           </div>
+
+           <DialogFooter className="bg-muted/30 p-6 border-t flex gap-4">
+              <Button variant="outline" className="flex-1 rounded-xl h-12" onClick={() => setIsCreateModalOpen(false)}>Cancelar</Button>
+              <Button 
+                className="flex-1 rounded-xl h-12 bg-primary hover:bg-primary/90 font-bold shadow-lg shadow-primary/20"
+                onClick={handleCreateTemplate}
+                disabled={isCreatingTemplate}
+              >
+                 {isCreatingTemplate ? "Criando..." : "Criar Template"}
+              </Button>
+           </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
