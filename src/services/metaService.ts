@@ -154,5 +154,28 @@ export const metaService = {
 
     if (error) throw error;
     return data || [];
+  },
+
+  /**
+   * Cria um novo template na Meta API via Edge Function Proxy
+   */
+  async createTemplate(payload: any, config: MetaConfig) {
+    if (!config.waba_id || !config.access_token) {
+      throw new Error("WABA ID e Access Token são necessários para criar templates.");
+    }
+
+    const { data, error } = await supabase.functions.invoke('meta-whatsapp-proxy', {
+      body: {
+        action: 'create_template',
+        config: {
+          waba_id: config.waba_id,
+          access_token: config.access_token
+        },
+        payload
+      }
+    });
+
+    if (error) throw error;
+    return data;
   }
 };

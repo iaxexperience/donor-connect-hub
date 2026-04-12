@@ -5,6 +5,15 @@ import {
   TabsList, 
   TabsTrigger 
 } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Card, 
   CardContent, 
@@ -57,6 +66,18 @@ const WhatsApp = () => {
     waba_id: ""
   });
   const [isConfigSaved, setIsConfigSaved] = useState(false);
+  
+  // 0. Create Template Modal State
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
+  const [newTemplate, setNewTemplate] = useState({
+    name: "",
+    category: "MARKETING",
+    language: "pt_BR",
+    headerFormat: "NONE",
+    mediaUrl: "",
+    body: ""
+  });
 
   // 1. Templates States
   const [templates, setTemplates] = useState<any[]>([]);
@@ -136,6 +157,60 @@ const WhatsApp = () => {
     localStorage.setItem("meta_config", JSON.stringify(config));
     setIsConfigSaved(true);
     toast({ title: "Configuração Salva", description: "Suas credenciais foram armazenadas localmente com segurança." });
+  };
+  
+  const handleCreateTemplate = async () => {
+    if (!newTemplate.name || !newTemplate.body) {
+      toast({ title: "Campos obrigatórios", description: "Nome e corpo são necessários.", variant: "destructive" });
+      return;
+    }
+    
+    setIsCreatingTemplate(true);
+    try {
+      const components: any[] = [
+        {
+          type: "BODY",
+          text: newTemplate.body
+        }
+      ];
+      
+      if (newTemplate.headerFormat !== "NONE") {
+        components.unshift({
+          type: "HEADER",
+          format: newTemplate.headerFormat,
+          // Note: Meta creation often requires handles, but we'll try to submit the structure
+          example: {
+            header_handle: [newTemplate.mediaUrl] // Fallback attempt or handle
+          }
+        });
+      }
+      
+      const payload = {
+        name: newTemplate.name.toLowerCase().replace(/\s+/g, "_"),
+        category: newTemplate.category,
+        language: newTemplate.language,
+        components: components
+      };
+      
+      await metaService.createTemplate(payload, config);
+      toast({ title: "Template Criado!", description: "O template foi enviado para análise da Meta." });
+      setIsCreateModalOpen(false);
+      // Reset form
+      setNewTemplate({
+        name: "",
+        category: "MARKETING",
+        language: "pt_BR",
+        headerFormat: "NONE",
+        mediaUrl: "",
+        body: ""
+      });
+      syncTemplates(); // Refresh list
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: "Erro ao criar", description: err.message || "Verifique os dados e tente novamente.", variant: "destructive" });
+    } finally {
+      setIsCreatingTemplate(false);
+    }
   };
 
   const handleSendSingle = async () => {
@@ -288,6 +363,14 @@ const WhatsApp = () => {
                           <CardTitle>Meus Templates</CardTitle>
                           <CardDescription>Gerencie seus templates sincronizados da Meta.</CardDescription>
                         </div>
+                        <Button 
+                          variant="default" 
+                          size="sm" 
+                          className="bg-primary hover:bg-primary/90"
+                          onClick={() => setIsCreateModalOpen(true)}
+                        >
+                          <Plus className="mr-2 h-4 w-4" /> Novo Template
+                        </Button>
                      </div>
                  </CardHeader>
                  <CardContent>
