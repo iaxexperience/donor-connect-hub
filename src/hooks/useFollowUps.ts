@@ -57,9 +57,25 @@ export const useFollowUps = () => {
     },
   });
 
+  const createFollowUpMutation = useMutation({
+    mutationFn: async ({ donor_id, due_date, status, note }: { donor_id: number; due_date: string; status: string; note?: string }) => {
+      const { data, error } = await supabase
+        .from('follow_ups')
+        .insert([{ donor_id, due_date, status, note }])
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['followups'] });
+    },
+  });
+
   return {
     followUps,
     isLoading,
     updateFollowUp: updateFollowUpMutation.mutate,
+    createFollowUp: createFollowUpMutation.mutateAsync,
   };
 };

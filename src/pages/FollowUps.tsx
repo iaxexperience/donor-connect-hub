@@ -113,18 +113,49 @@ const channelIcon: Record<string, any> = { telefone: Phone, whatsapp: MessageSqu
 const logStatusColor: Record<string, string> = { enviado: "bg-green-100 text-green-800", falha: "bg-red-100 text-red-800", aguardando: "bg-amber-100 text-amber-800" };
 
 import { useFollowUps } from "@/hooks/useFollowUps";
+import { useDonors } from "@/hooks/useDonors";
 
 const FollowUps = () => {
-  const { followUps: dbFollowUps, isLoading: loadingFollowUps, updateFollowUp } = useFollowUps();
+  const { followUps: dbFollowUps, isLoading: loadingFollowUps, updateFollowUp, createFollowUp } = useFollowUps();
   const { logs: dbLogs, isLoading: loadingLogs } = useFollowUpLogs();
+  const { donors } = useDonors();
   
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedFollowUp, setSelectedFollowUp] = useState<any | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  
+  // New Follow-up states
+  const [newFollowUpDonorId, setNewFollowUpDonorId] = useState("");
+  const [newFollowUpDate, setNewFollowUpDate] = useState("");
+  const [newFollowUpNote, setNewFollowUpNote] = useState("");
+
   const [automationRules, setAutomationRules] = useState(initialAutomationRules);
   const [automationGlobal, setAutomationGlobal] = useState(() => localStorage.getItem("automation_global") === "true");
   const { toast } = useToast();
+
+  const handleCreateFollowUp = async () => {
+    if (!newFollowUpDonorId || !newFollowUpDate) {
+      toast({ title: "Preencha os campos obrigatórios", variant: "destructive", description: "Doador e data são obrigatórios." });
+      return;
+    }
+    try {
+      await createFollowUp({
+        donor_id: parseInt(newFollowUpDonorId),
+        due_date: newFollowUpDate,
+        status: "agendado",
+        note: newFollowUpNote
+      });
+      toast({ title: "Follow-up agendado com sucesso!" });
+      setScheduleDialogOpen(false);
+      setNewFollowUpDonorId("");
+      setNewFollowUpDate("");
+      setNewFollowUpNote("");
+    } catch (e: any) {
+      toast({ title: "Erro ao agendar", description: e.message, variant: "destructive" });
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem("automation_global", automationGlobal.toString());
@@ -194,9 +225,52 @@ const FollowUps = () => {
             Gerencie o acompanhamento dos doadores com base na classificação automática.
           </p>
         </div>
-        <Button className="bg-primary">
-          <CalendarClock className="w-4 h-4 mr-2" /> Agendar Follow-up
-        </Button>
+        <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-primary">
+              <CalendarClock className="w-4 h-4 mr-2" /> Agendar Follow-up
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Agendar Novo Follow-up</DialogTitle>
+              <DialogDescription>
+                Selecione um doador e defina uma data para o próximo contato.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Doador</Label>
+                <Select value={newFollowUpDonorId} onValueChange={setNewFollowUpDonorId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um doador" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {donors.map(d => (
+                      <SelectItem key={d.id} value={d.id.toString()}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Data do Contato</Label>
+                <Input type="date" value={newFollowUpDate} onChange={(e) => setNewFollowUpDate(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Observação prévia</Label>
+                <Textarea 
+                  placeholder="Motivo ou lembrete para o follow-up..." 
+                  value={newFollowUpNote}
+                  onChange={(e) => setNewFollowUpNote(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setScheduleDialogOpen(false)}>Cancelar</Button>
+              <Button onClick={handleCreateFollowUp}>Agendar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* KPIs */}
