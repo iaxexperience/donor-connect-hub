@@ -154,7 +154,7 @@ serve(async (req) => {
 
         // Save to historical logs
         await supabase.from('whatsapp_historicos').insert([{
-          donor_id: body.donor_id, // Passed from frontend if available
+          donor_id: body.donor_id,
           destinatario: to,
           template: payload.template?.name,
           mensagem: textBody,
@@ -167,6 +167,24 @@ serve(async (req) => {
       return new Response(JSON.stringify(metaResult), { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
+    if (action === 'get_templates') {
+      const { waba_id, access_token } = config;
+      const url = `https://graph.facebook.com/v22.0/${waba_id}/message_templates`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${access_token}`,
+        }
+      });
+
+      const data = await response.json();
+      return new Response(JSON.stringify(data), { 
+        status: response.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
