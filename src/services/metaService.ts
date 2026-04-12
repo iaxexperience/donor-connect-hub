@@ -38,6 +38,36 @@ export const metaService = {
   },
 
   /**
+   * Envia uma mensagem de mídia (imagem/vídeo) via Edge Function Proxy
+   */
+  async sendMediaMessage(to: string, mediaUrl: string, type: 'image' | 'video', config: MetaConfig, donorId?: number) {
+    if (!config.phone_number_id || !config.access_token) {
+      throw new Error("Configurações da Meta API incompletas.");
+    }
+
+    const { data, error } = await supabase.functions.invoke('meta-whatsapp-proxy', {
+      body: {
+        action: 'send_message',
+        donor_id: donorId,
+        config: {
+          phone_number_id: config.phone_number_id,
+          access_token: config.access_token
+        },
+        payload: {
+          messaging_product: "whatsapp",
+          recipient_type: "individual",
+          to: to.replace(/\D/g, ""),
+          type: type,
+          [type]: { link: mediaUrl }
+        }
+      }
+    });
+
+    if (error) throw error;
+    return data;
+  },
+
+  /**
    * Envia um template via Edge Function Proxy
    */
   async sendTemplateMessage(to: string, templateName: string, languageCode: string, components: any[], config: MetaConfig, donorId?: number, batchId?: string) {

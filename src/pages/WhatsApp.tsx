@@ -61,10 +61,13 @@ const WhatsApp = () => {
   // 1. Templates States
   const [templates, setTemplates] = useState<any[]>([]);
   const [isSyncingTemplates, setIsSyncingTemplates] = useState(false);
+  const [lastSync, setLastSync] = useState<string | null>(null);
 
   // 2. Enviar Mensagem States
   const [selectedRecipient, setSelectedRecipient] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const [messageType, setMessageType] = useState<"text" | "image" | "video">("text");
+  const [mediaUrl, setMediaUrl] = useState("");
   const [messageBody, setMessageBody] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [sendMode, setSendMode] = useState<"single" | "batch">("single");
@@ -116,6 +119,7 @@ const WhatsApp = () => {
       const data = await metaService.fetchMetaTemplates(config);
       await metaService.saveMetaTemplates(data);
       setTemplates(data);
+      setLastSync(new Date().toLocaleString('pt-BR'));
       toast({ title: "Sincronizado!", description: `${data.length} templates importados e salvos no banco.` });
     } catch (err: any) {
       toast({ title: "Erro na sincronização", description: err.message, variant: "destructive" });
@@ -135,15 +139,36 @@ const WhatsApp = () => {
   };
 
   const handleSendSingle = async () => {
-    if (!selectedRecipient || !messageBody) {
-      toast({ title: "Erro", description: "Preencha o destinatário e a mensagem.", variant: "destructive" });
+    if (!selectedRecipient) {
+      toast({ title: "Erro", description: "Preencha o destinatário.", variant: "destructive" });
       return;
     }
+
+    if (messageType === 'text' && !messageBody && !selectedTemplate) {
+      toast({ title: "Erro", description: "Preencha a mensagem ou selecione um template.", variant: "destructive" });
+      return;
+    }
+
+    if ((messageType === 'image' || messageType === 'video') && !mediaUrl) {
+      toast({ title: "Erro", description: "Insira a URL da mídia.", variant: "destructive" });
+      return;
+    }
+
     setIsSending(true);
     try {
-      await metaService.sendTextMessage(selectedRecipient, messageBody, config);
+      if (messageType === 'text') {
+        if (selectedTemplate) {
+          await metaService.sendTemplateMessage(selectedRecipient, selectedTemplate.name, selectedTemplate.language, [], config);
+        } else {
+          await metaService.sendTextMessage(selectedRecipient, messageBody, config);
+        }
+      } else {
+        await metaService.sendMediaMessage(selectedRecipient, mediaUrl, messageType, config);
+      }
+      
       toast({ title: "Mensagem Enviada!", description: `Para: ${selectedRecipient}` });
       setMessageBody("");
+      setMediaUrl("");
       loadHistory();
     } catch (err: any) {
       toast({ title: "Erro ao enviar", description: err.message, variant: "destructive" });
@@ -250,19 +275,20 @@ const WhatsApp = () => {
                     >
                       {isSyncingTemplates ? "Sincronizando..." : "Sincronizar Meta"}
                     </Button>
-                    <p className="text-[10px] text-muted-foreground text-center uppercase tracking-tighter">Última sincronização: Hoje às 14:00</p>
+                    <p className="text-[10px] text-muted-foreground text-center uppercase tracking-tighter">
+                      Última sincronização: {lastSync || "Nunca"}
+                    </p>
                  </CardContent>
               </Card>
 
               <Card className="col-span-2 shadow-sm">
                  <CardHeader>
-                    <div className="flex justify-between items-center">
-                       <div>
-                         <CardTitle>Meus Templates</CardTitle>
-                         <CardDescription>Templates locais e sincronizados para uso imediato.</CardDescription>
-                       </div>
-                       <Button variant="outline" size="sm"><Plus className="mr-2 h-4 w-4" /> Criar Novo</Button>
-                    </div>
+                     <div className="flex justify-between items-center">
+                        <div>
+                          <CardTitle>Meus Templates</CardTitle>
+                          <CardDescription>Gerencie seus templates sincronizados da Meta.</CardDescription>
+                        </div>
+                     </div>
                  </CardHeader>
                  <CardContent>
                     <Table>
@@ -379,43 +405,74 @@ const WhatsApp = () => {
                     )}
 
                     <div className="space-y-4 pt-4 border-t">
-                       <div className="space-y-2">
-                          <Label>Template (Opcional)</Label>
-                          <Select onValueChange={(val) => {
-                             const t = templates.find(temp => temp.name === val);
-                             setSelectedTemplate(t);
-                          }}>
-                             <SelectTrigger>
-                                <SelectValue placeholder="Selecione um template..." />
-                             </SelectTrigger>
-                             <SelectContent>
-                                <SelectItem value="none">Nenhum (Texto Livre)</SelectItem>
-                                {templates.map(t => (
-                                   <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
-                                ))}
-                             </SelectContent>
-                          </Select>
+                       <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                             <Label>Tipo de Conteúdo</Label>
+                             <Select value={messageType} onValueChange={(val: any) => setMessageType(val)}>
+                                <SelectTrigger>
+                                   <SelectValue placeholder="Escolher tipo..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                   <SelectItem value="text">Texto / Template</SelectItem>
+                                   <SelectItem value="image">Imagem (Link)</SelectItem>
+                                   <SelectItem value="video">Vídeo (Link)</SelectItem>
+                                </SelectContent>
+                             </Select>
+                          </div>
+                          
+                          {messageType === 'text' && (
+                            <div className="space-y-2 animate-in slide-in-from-right-2">
+                               <Label>Template (Opcional)</Label>
+                               <Select onValueChange={(val) => {
+                                  const t = templates.find(temp => temp.name === val);
+                                  setSelectedTemplate(t);
+                               }}>
+                                  <SelectTrigger>
+                                     <SelectValue placeholder="Selecione um template..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                     <SelectItem value="none">Nenhum (Texto Livre)</SelectItem>
+                                     {templates.map(t => (
+                                        <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
+                                     ))}
+                                  </SelectContent>
+                               </Select>
+                            </div>
+                          )}
+
+                          {(messageType === 'image' || messageType === 'video') && (
+                            <div className="space-y-2 animate-in slide-in-from-right-2">
+                               <Label>Link da {messageType === 'image' ? 'Imagem' : 'Mídia'}</Label>
+                               <Input 
+                                 placeholder="https://..." 
+                                 value={mediaUrl} 
+                                 onChange={(e) => setMediaUrl(e.target.value)}
+                               />
+                            </div>
+                          )}
                        </div>
 
-                       <div className="space-y-2">
-                          <Label>Mensagem / Corpo</Label>
-                          {selectedTemplate ? (
-                             <div className="p-4 bg-muted rounded-md text-sm italic opacity-70 border border-dashed">
-                                {selectedTemplate.components?.find((c: any) => c.type === 'BODY')?.text || "Template sem corpo de texto"}
+                       {messageType === 'text' && (
+                          <div className="space-y-2">
+                             <Label>Mensagem / Corpo</Label>
+                             {selectedTemplate ? (
+                                <div className="p-4 bg-muted rounded-md text-sm italic opacity-70 border border-dashed">
+                                   {selectedTemplate.components?.find((c: any) => c.type === 'BODY')?.text || "Template sem corpo de texto"}
+                                </div>
+                             ) : (
+                                <textarea 
+                                  className="w-full min-h-[150px] p-4 rounded-xl border-2 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none transition-all text-sm"
+                                  placeholder="Digite sua mensagem real aqui..."
+                                  value={messageBody}
+                                  onChange={(e) => setMessageBody(e.target.value)}
+                                />
+                             )}
+                             <div className="flex justify-between text-[10px] text-muted-foreground">
+                                <span>Suporta emojis e Markdown simples</span>
+                                <span>{messageBody.length} caracteres</span>
                              </div>
-                          ) : (
-                             <textarea 
-                               className="w-full min-h-[150px] p-4 rounded-xl border-2 focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none resize-none transition-all text-sm"
-                               placeholder="Digite sua mensagem real aqui..."
-                               value={messageBody}
-                               onChange={(e) => setMessageBody(e.target.value)}
-                             />
-                          )}
-                          <div className="flex justify-between text-[10px] text-muted-foreground">
-                             <span>Suporta emojis e Markdown simples</span>
-                             <span>{messageBody.length} caracteres</span>
                           </div>
-                       </div>
+                        )}
                     </div>
                  </CardContent>
                  <CardFooter className="bg-muted/10 p-6 flex flex-col gap-4">
@@ -456,9 +513,18 @@ const WhatsApp = () => {
                     </div>
                     <div className="p-4 space-y-4">
                        <div className="max-w-[80%] bg-emerald-600 text-white p-3 rounded-2xl rounded-tr-none ml-auto text-[10px] shadow-lg">
-                          {selectedTemplate 
-                            ? (selectedTemplate.components?.find((c: any) => c.type === 'BODY')?.text || "Preview do Template") 
-                            : (messageBody || "Visualize sua mensagem aqui...")}
+                           {messageType === 'image' && mediaUrl && (
+                             <img src={mediaUrl} alt="Preview" className="rounded-lg mb-2 max-w-full h-auto" />
+                           )}
+                           {messageType === 'video' && mediaUrl && (
+                             <div className="bg-black/20 rounded-lg p-4 mb-2 flex flex-col items-center justify-center border-2 border-dashed border-white/20">
+                                <Zap className="w-8 h-8 opacity-50 mb-1" />
+                                <span className="text-[8px] opacity-70">Arquivo de Vídeo</span>
+                             </div>
+                           )}
+                           {selectedTemplate 
+                             ? (selectedTemplate.components?.find((c: any) => c.type === 'BODY')?.text || "Preview do Template") 
+                             : (messageBody || (mediaUrl ? "" : "Visualize sua mensagem aqui..."))}
                        </div>
                     </div>
                  </div>
