@@ -120,23 +120,9 @@ const Integracoes = () => {
 
     fetchHistory();
 
-    // 2. Assinar Realtime
-    console.log(`[Chat Debug] Iniciando inscrição Realtime para canal: chat_${selectedDonor.id}`);
+    // 2. Assinar Realtime de forma global e simples (Estilo Pulse)
     const channel = supabase
-      .channel(`chat_${selectedDonor.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'whatsapp_messages',
-          filter: `donor_id=eq.${selectedDonor.id}`
-        },
-        (payload) => {
-          console.log(`[Chat Debug] NOVA MENSAGEM RECEBIDA (FILTRADA):`, payload.new);
-          setChatMessages(prev => [...prev, payload.new]);
-        }
-      )
+      .channel('whatsapp_realtime_v2')
       .on(
         'postgres_changes',
         {
@@ -145,17 +131,24 @@ const Integracoes = () => {
           table: 'whatsapp_messages'
         },
         (payload) => {
-          console.log(`[Chat Debug] EVENTO GLOBAL (QUALQUER DOADOR):`, payload.new);
-          if (payload.new.donor_id !== selectedDonor.id) {
-            console.log(`[Chat Debug] Mensagem ignorada pois pertence ao doador: ${payload.new.donor_id}`);
+          const newMessage = payload.new;
+          
+          // Debug para ver TUDO que entra no banco
+          console.log("[Chat Realtime] Novo registro detectado:", newMessage);
+
+          // Se a mensagem for para o doador selecionado, adiciona na tela
+          if (newMessage.donor_id === selectedDonor.id) {
+            console.log("[Chat Realtime] Mensagem vinculada ao doador atual. Atualizando UI.");
+            setChatMessages(prev => {
+              // Evitar duplicatas caso o banco envie o evento e o fetch aconteça ao mesmo tempo
+              if (prev.some(m => m.id === newMessage.id)) return prev;
+              return [...prev, newMessage];
+            });
           }
         }
       )
       .subscribe((status) => {
-        console.log(`[Chat Debug] Status da inscrição: ${status}`);
-        if (status === 'SUBSCRIBED') {
-          console.log(`[Chat Debug] Conectado e ouvindo a tabela whatsapp_messages para donor_id=${selectedDonor.id}`);
-        }
+        console.log(`[Chat Realtime] Status da conexão: ${status}`);
       });
 
     return () => {
