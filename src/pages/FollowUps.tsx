@@ -136,25 +136,58 @@ const FollowUps = () => {
   const [automationGlobal, setAutomationGlobal] = useState(() => localStorage.getItem("automation_global") === "true");
   const { toast } = useToast();
 
+  const [isScheduling, setIsScheduling] = useState(false);
+
   const handleCreateFollowUp = async () => {
     if (!newFollowUpDonorId || !newFollowUpDate) {
       toast({ title: "Preencha os campos obrigatórios", variant: "destructive", description: "Doador e data são obrigatórios." });
       return;
     }
+    
+    setIsScheduling(true);
     try {
-      await createFollowUp({
-        donor_id: parseInt(newFollowUpDonorId),
-        due_date: newFollowUpDate,
-        status: "agendado",
-        note: newFollowUpNote
-      });
-      toast({ title: "Follow-up agendado com sucesso!" });
+      if (newFollowUpDonorId === "all_in_class") {
+        const targets = donors.filter(d => newFollowUpClassification === "all" || d.type === newFollowUpClassification);
+        if (targets.length === 0) {
+          toast({ title: "Nenhum doador encontrado nesta classificação." });
+          setIsScheduling(false);
+          return;
+        }
+        
+        let successCount = 0;
+        for (const d of targets) {
+          try {
+            await createFollowUp({
+              donor_id: d.id,
+              due_date: newFollowUpDate,
+              status: "agendado",
+              note: newFollowUpNote
+            });
+            successCount++;
+          } catch (e) {
+            console.error("Erro ao agendar em lote para", d.name, e);
+          }
+        }
+        
+        toast({ title: "Agendamento em Lote Concluído!", description: `${successCount} follow-ups foram agendados com sucesso.` });
+      } else {
+        await createFollowUp({
+          donor_id: parseInt(newFollowUpDonorId),
+          due_date: newFollowUpDate,
+          status: "agendado",
+          note: newFollowUpNote
+        });
+        toast({ title: "Follow-up agendado com sucesso!" });
+      }
+      
       setScheduleDialogOpen(false);
       setNewFollowUpDonorId("");
       setNewFollowUpDate("");
       setNewFollowUpNote("");
     } catch (e: any) {
       toast({ title: "Erro ao agendar", description: e.message, variant: "destructive" });
+    } finally {
+      setIsScheduling(false);
     }
   };
 
@@ -261,6 +294,16 @@ const FollowUps = () => {
                     <SelectValue placeholder="Selecione um doador" />
                   </SelectTrigger>
                   <SelectContent>
+                    {newFollowUpClassification !== "all" && (
+                      <SelectItem value="all_in_class" className="font-bold text-blue-600">
+                        Todos desta classificação ({donors.filter(d => d.type === newFollowUpClassification).length} doadores)
+                      </SelectItem>
+                    )}
+                    {newFollowUpClassification === "all" && (
+                      <SelectItem value="all_in_class" className="font-bold text-blue-600">
+                        Todos os doadores cadastrados ({donors.length} doadores)
+                      </SelectItem>
+                    )}
                     {donors
                       .filter(d => newFollowUpClassification === "all" || d.type === newFollowUpClassification)
                       .map(d => (
@@ -283,8 +326,10 @@ const FollowUps = () => {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setScheduleDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={handleCreateFollowUp}>Agendar</Button>
+              <Button variant="outline" onClick={() => setScheduleDialogOpen(false)} disabled={isScheduling}>Cancelar</Button>
+              <Button onClick={handleCreateFollowUp} disabled={isScheduling}>
+                {isScheduling ? "Agendando..." : "Agendar"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
