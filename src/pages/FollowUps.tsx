@@ -130,6 +130,7 @@ const FollowUps = () => {
   const [newFollowUpDonorId, setNewFollowUpDonorId] = useState("");
   const [newFollowUpDate, setNewFollowUpDate] = useState("");
   const [newFollowUpNote, setNewFollowUpNote] = useState("");
+  const [newFollowUpClassification, setNewFollowUpClassification] = useState("all");
 
   const [automationRules, setAutomationRules] = useState(initialAutomationRules);
   const [automationGlobal, setAutomationGlobal] = useState(() => localStorage.getItem("automation_global") === "true");
@@ -240,13 +241,29 @@ const FollowUps = () => {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
+                <Label>Filtrar por Classificação</Label>
+                <Select value={newFollowUpClassification} onValueChange={setNewFollowUpClassification}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas as classificações" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as classificações</SelectItem>
+                    <SelectItem value="unico">Doador Único</SelectItem>
+                    <SelectItem value="esporadico">Doador Esporádico</SelectItem>
+                    <SelectItem value="recorrente">Doador Recorrente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label>Doador</Label>
                 <Select value={newFollowUpDonorId} onValueChange={setNewFollowUpDonorId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione um doador" />
                   </SelectTrigger>
                   <SelectContent>
-                    {donors.map(d => (
+                    {donors
+                      .filter(d => newFollowUpClassification === "all" || d.type === newFollowUpClassification)
+                      .map(d => (
                       <SelectItem key={d.id} value={d.id.toString()}>{d.name}</SelectItem>
                     ))}
                   </SelectContent>
