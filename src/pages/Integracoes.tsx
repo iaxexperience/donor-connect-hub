@@ -418,14 +418,34 @@ const Integracoes = () => {
             throw new Error(`Telefone inválido para "${donor.name}": ${donor.phone}`);
           }
 
-          const components = [
-            {
-              type: "body",
-              parameters: [
-                { type: "text", text: donor.name || "Doador" }
-              ]
+          // Detect number of variables in template body: {{1}}, {{2}}, etc.
+          const templateDef = templates.find((t: any) => t.name === selectedBatchTemplate);
+          const bodyText = templateDef?.body || "";
+          const variableMatches = bodyText.match(/\{\{\d+\}\}/g) || [];
+          const variableCount = variableMatches.length;
+
+          // Build components only if the template actually has variables
+          // If 0 variables → send empty components (Meta requires no params)
+          let components: any[] = [];
+          if (variableCount > 0) {
+            const parameters: any[] = [];
+            for (let v = 0; v < variableCount; v++) {
+              if (v === 0) {
+                // First variable → donor name
+                parameters.push({ type: "text", text: donor.name || "Doador" });
+              } else if (v === 1) {
+                // Second variable → last donation formatted (if available)
+                const lastDonation = (donor as any).total_donated
+                  ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((donor as any).total_donated)
+                  : "R$ 0,00";
+                parameters.push({ type: "text", text: lastDonation });
+              } else {
+                // Extra variables → placeholder
+                parameters.push({ type: "text", text: "-" });
+              }
             }
-          ];
+            components = [{ type: "body", parameters }];
+          }
 
           const result = await sendWhatsAppTemplate(
             cleanPhone,
