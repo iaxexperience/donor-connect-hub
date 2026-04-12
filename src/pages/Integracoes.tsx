@@ -288,28 +288,34 @@ const Integracoes = () => {
 
     let targets = donors;
 
-    // Filter by Segment
-    if (selectedSegment !== "all") {
-      targets = donors.filter(d => d.type === selectedSegment);
-    }
+    if (batchMode === "individual") {
+      if (!selectedRecipientId) {
+        toast({ title: "Erro", description: "Selecione um destinatário para o envio individual.", variant: "destructive" });
+        return;
+      }
+      targets = donors.filter(d => d.id.toString() === selectedRecipientId);
+    } else {
+      // Filter by Segment (only in Mass mode)
+      if (selectedSegment !== "all") {
+        targets = donors.filter(d => d.type === selectedSegment);
+      }
 
-    // Filter by Campaign
-    if (selectedBatchCampaign !== "all") {
-      // Note: This assumes donors have a campaign_id or similar. 
-      // If not linked directly, we might need a join or additional logic.
-      // For now we filter based on selection if data supports it.
-    }
+      // Filter by Campaign
+      if (selectedBatchCampaign !== "all") {
+        // Here we could add campaign specific filtering if needed
+      }
 
-    // 15-day Rule for Leads
-    if (selectedSegment === "lead") {
-      const fifteenDaysAgo = new Date();
-      fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+      // 15-day Rule for Leads (only in Mass mode for now)
+      if (selectedSegment === "lead") {
+        const fifteenDaysAgo = new Date();
+        fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
 
-      targets = targets.filter(donor => {
-        const lastMsg = historyMessages.find(m => m.donor_id === donor.id);
-        if (!lastMsg) return true;
-        return new Date(lastMsg.created_at) < fifteenDaysAgo;
-      });
+        targets = targets.filter(donor => {
+          const lastMsg = historyMessages.find(m => m.donor_id === donor.id);
+          if (!lastMsg) return true;
+          return new Date(lastMsg.created_at) < fifteenDaysAgo;
+        });
+      }
     }
 
     if (targets.length === 0) {
