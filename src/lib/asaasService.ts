@@ -63,7 +63,14 @@ export const asaasService = {
       .order('created_at', { ascending: false });
     if (error) {
       // Catch missing column 'asaas_payment_id' if migration wasn't run
-      if (error.message?.includes('Could not find') || error.code === 'PGRST200') return [];
+      if (
+        error.message?.includes('Could not find') || 
+        error.message?.includes('does not exist') ||
+        error.code === 'PGRST200' || 
+        error.code === '42703'
+      ) {
+        return [];
+      }
       throw error;
     }
     return data || [];
@@ -80,7 +87,14 @@ export const asaasService = {
       .not('asaas_payment_id', 'is', null);
 
     if (error) {
-      if (error.message?.includes('Could not find') || error.code === 'PGRST200') return defaultStats;
+      if (
+        error.message?.includes('Could not find') || 
+        error.message?.includes('does not exist') ||
+        error.code === 'PGRST200' || 
+        error.code === '42703'
+      ) {
+        return defaultStats;
+      }
       throw error;
     }
 
