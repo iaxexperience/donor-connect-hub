@@ -15,6 +15,8 @@ import Usuarios from "./pages/Usuarios";
 import Relatorios from "./pages/Relatorios";
 import Configuracoes from "./pages/Configuracoes";
 import Integracoes from "./pages/Integracoes";
+import IntegracaoAsaas from "./pages/IntegracaoAsaas";
+import IntegracaoBB from "./pages/IntegracaoBB";
 import FollowUps from "./pages/FollowUps";
 import ApiAberta from "./pages/ApiAberta";
 import ApiDocumentation from "./pages/ApiDocumentation";
@@ -85,6 +87,8 @@ const App = () => (
                   <Route path="relatorios" element={<Relatorios />} />
                   <Route path="configuracoes" element={<Configuracoes />} />
                   <Route path="integracoes" element={<Integracoes />} />
+                  <Route path="asaas" element={<IntegracaoAsaas />} />
+                  <Route path="bb" element={<IntegracaoBB />} />
                   <Route path="api-aberta" element={<ApiAberta />} />
                   <Route path="api-documentacao" element={<ApiDocumentation />} />
                 </Route>
