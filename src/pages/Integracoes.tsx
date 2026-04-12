@@ -218,154 +218,8 @@ const Integracoes = () => {
         <p className="text-slate-500 text-sm font-medium">Conexão em Tempo Real • API Cloud v20.0</p>
       </div>
 
-      <Tabs defaultValue="chat" className="w-full">
-        <TabsList className="bg-slate-100/80 p-1 mb-8 w-fit gap-1 rounded-xl">
-          <TabsTrigger value="chat" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold gap-2 text-slate-600">
-            <MessageCircle className="w-4 h-4" /> Chat Ao Vivo
-          </TabsTrigger>
-          <TabsTrigger value="templates" className="px-5 py-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all text-sm font-semibold text-slate-600">Templates</TabsTrigger>
-
-        </TabsList>
-
-        {/* --- ABA DE CHAT --- */}
-        <TabsContent value="chat" className="h-[750px] border border-slate-100 rounded-[32px] overflow-hidden shadow-2xl bg-white flex">
-          <div className="w-80 border-r border-slate-100 flex flex-col bg-slate-50/20">
-            <div className="p-6 font-bold border-b text-slate-800 flex items-center justify-between bg-white">
-              Contatos
-              <Badge variant="secondary" className="bg-blue-50 text-blue-600">{donors?.length || 0}</Badge>
-            </div>
-            <ScrollArea className="flex-1">
-              <div className="p-3 space-y-1">
-                {donors?.map((donor: any) => (
-                  <button
-                    key={donor.id}
-                    onClick={() => setSelectedDonor(donor)}
-                    className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-200 ${
-                      selectedDonor?.id === donor.id 
-                        ? "bg-blue-600 text-white shadow-lg shadow-blue-100 scale-[1.02]" 
-                        : "hover:bg-white hover:shadow-sm text-slate-600"
-                    }`}
-                  >
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${
-                      selectedDonor?.id === donor.id ? "bg-white/20" : "bg-slate-100"
-                    }`}>
-                      <UserIcon className="w-6 h-6" />
-                    </div>
-                    <div className="flex flex-col items-start overflow-hidden">
-                      <span className="font-bold text-sm truncate w-full">{donor.name}</span>
-                      <span className={`text-[11px] truncate w-full ${selectedDonor?.id === donor.id ? "text-white/70" : "text-slate-400"}`}>
-                        {donor.phone}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
-
-          <div className="flex-1 flex flex-col bg-slate-50/50">
-            {selectedDonor ? (
-              <>
-                <div className="p-6 border-b border-slate-100 bg-white flex items-center justify-between shadow-sm z-10">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shadow-inner">
-                      <UserIcon className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-800 text-lg">{selectedDonor.name}</div>
-                      <div className="text-xs text-emerald-500 font-bold flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Conectado via WhatsApp
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <ScrollArea className="flex-1 px-8 py-8">
-                  <div className="space-y-6">
-                    {chatMessages.map((msg) => (
-                      <div key={msg.id} className={`flex ${msg.sender_id === 'me' ? "justify-end" : "justify-start"}`}>
-                        <div className={`max-w-[75%] p-4 rounded-[22px] shadow-sm transform transition-all hover:scale-[1.01] ${
-                          msg.sender_id === 'me' 
-                            ? "bg-blue-600 text-white rounded-tr-none" 
-                            : "bg-white text-slate-700 rounded-tl-none border border-slate-100"
-                        }`}>
-                          <p className="text-[14px] leading-relaxed select-text">{msg.text}</p>
-                          <div className={`text-[10px] mt-2 flex items-center justify-end gap-1 opacity-70 ${
-                            msg.sender_id === 'me' ? "text-white/80" : "text-slate-400"
-                          }`}>
-                            <Clock className="w-3 h-3" />
-                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    <div ref={messagesEndRef} />
-                  </div>
-                </ScrollArea>
-
-                <div className="p-6 bg-white border-t border-slate-100 flex gap-4 items-center z-10">
-                  <Input 
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
-                    placeholder="Escreva sua mensagem real..."
-                    className="h-16 rounded-[20px] border-slate-200 bg-slate-50 focus:bg-white text-base px-6 shadow-inner transition-all"
-                  />
-                  <Button 
-                    onClick={handleSendMessage}
-                    disabled={isSendingMessage || !chatInput.trim()}
-                    className="h-16 w-16 rounded-[20px] bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-200 transition-all hover:scale-105 active:scale-95"
-                  >
-                    {isSendingMessage ? <RefreshCw className="animate-spin w-6 h-6" /> : <Send className="w-6 h-6 -rotate-45" />}
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-slate-400 bg-white">
-                <div className="w-24 h-24 rounded-[32px] bg-slate-50 flex items-center justify-center mb-8 rotate-3 shadow-sm border border-slate-100">
-                  <MessageSquare className="w-12 h-12 text-slate-200" />
-                </div>
-                <h3 className="font-bold text-slate-800 text-2xl mb-3 tracking-tight">Sua Central de Atendimento</h3>
-                <p className="max-w-xs text-slate-400 leading-relaxed font-medium">Selecione um doador ao lado para iniciar conversas reais e visualizá-las em tempo real.</p>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-
-        {/* --- ABA DE TEMPLATES --- */}
-        <TabsContent value="templates" className="space-y-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-slate-800 tracking-tight">Templates Registrados na Meta</h2>
-            <Button variant="outline" size="sm" onClick={handleSyncTemplates} className="gap-2 rounded-xl border-slate-200 font-bold hover:bg-slate-50 transition-all">
-              <RefreshCw className="w-4 h-4" /> Atualizar Catálogo
-            </Button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {templates.map((tpl: any) => (
-              <Card key={tpl.name} className="border-slate-100 shadow-sm rounded-[28px] overflow-hidden hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="text-base font-bold text-slate-800">{tpl.name}</CardTitle>
-                    <Badge variant="outline" className="text-[9px] h-4 font-bold border-slate-100 opacity-60 uppercase">{tpl.category}</Badge>
-                  </div>
-                  <Badge className="bg-emerald-50 text-emerald-600 border-none font-bold text-[10px]">{tpl.status}</Badge>
-                </CardHeader>
-                <CardContent>
-                  <div className="bg-slate-50/70 p-5 rounded-2xl min-h-[100px] border border-slate-100/50">
-                    <p className="text-slate-600 text-sm italic leading-relaxed font-medium">"{tpl.body}"</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-
-        
-      </Tabs>
-
-      {/* --- SEÇÃO DE CONFIGURAÇÃO (FIXA NO FINAL) --- */}
-      <Card className="border border-slate-100 shadow-sm rounded-[32px] overflow-hidden bg-white mt-12">
+      {/* --- SEÇÃO DE CONFIGURAÇÃO (MOVIDA PARA O TOPO) --- */}
+      <Card className="border border-slate-100 shadow-sm rounded-[32px] overflow-hidden bg-white">
         <CardHeader className="py-10 px-12 border-b border-slate-50 bg-slate-50/30">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-100"><Shield className="w-6 h-6" /></div>
@@ -427,6 +281,7 @@ const Integracoes = () => {
           </div>
         </CardContent>
       </Card>
+
     </div>
   );
 };
