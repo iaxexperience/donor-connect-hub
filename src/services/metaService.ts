@@ -72,22 +72,24 @@ export const metaService = {
   },
 
   /**
-   * Sincroniza templates da Meta API
+   * Sincroniza templates da Meta API via Edge Function Proxy
    */
   async fetchMetaTemplates(config: MetaConfig) {
     if (!config.waba_id || !config.access_token) {
       throw new Error("WABA ID e Access Token são necessários para sincronizar templates.");
     }
 
-    const url = `https://graph.facebook.com/v22.0/${config.waba_id}/message_templates`;
-    const response = await fetch(`${url}?access_token=${config.access_token}`);
-    
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error?.message || "Erro ao buscar templates na Meta");
-    }
+    const { data, error } = await supabase.functions.invoke('meta-whatsapp-proxy', {
+      body: {
+        action: 'get_templates',
+        config: {
+          waba_id: config.waba_id,
+          access_token: config.access_token
+        }
+      }
+    });
 
-    const result = await response.json();
-    return result.data || [];
+    if (error) throw error;
+    return data.data || [];
   }
 };
