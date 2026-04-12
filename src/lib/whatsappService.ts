@@ -189,3 +189,51 @@ export const sendWhatsAppThankYou = async (donorName: string, amount: number, ph
     return { error: error.message };
   }
 };
+
+export const sendWhatsAppDirectMessage = async (to: string, message: string) => {
+  const cleanPhone = to.replace(/\D/g, "");
+  const { phoneId, token } = getStoredCredentials();
+
+  if (!token || !phoneId) {
+    throw new Error("WhatsApp não configurado. Verifique as credenciais na aba de configurações.");
+  }
+
+  const payload = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: cleanPhone,
+    type: "text",
+    text: { body: message }
+  };
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v19.0/${phoneId}/messages`, {
+      method: "POST",
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    
+    // Log no localStorage para histórico imediato
+    const logs = JSON.parse(localStorage.getItem("whatsapp_logs") || "[]");
+    logs.unshift({
+      id: Date.now(),
+      time: new Date().toLocaleTimeString(),
+      event: "direct_message_sent",
+      status: !data.error ? "success" : "falha",
+      to: cleanPhone,
+      message: message
+    });
+    localStorage.setItem("whatsapp_logs", JSON.stringify(logs.slice(0, 50)));
+
+    if (data.error) throw new Error(data.error.message);
+    return data;
+  } catch (error: any) {
+    console.error("Meta API Direct Message Error:", error);
+    throw error;
+  }
+};
