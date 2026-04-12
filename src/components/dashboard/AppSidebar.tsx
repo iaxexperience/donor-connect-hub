@@ -11,6 +11,8 @@ import {
   MessageSquare,
   Globe,
   GitMerge,
+  Wallet,
+  Landmark,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -41,6 +43,8 @@ const mainItems = [
 
 const configItems = [
   { title: "WhatsApp", url: "/dashboard/integracoes", icon: MessageSquare },
+  { title: "Integração Asaas", url: "/dashboard/asaas", icon: Wallet },
+  { title: "Banco do Brasil", url: "/dashboard/bb", icon: Landmark },
   { title: "API Aberta", url: "/dashboard/api-aberta", icon: Globe },
   { title: "Configurações", url: "/dashboard/configuracoes", icon: Settings },
 ];
