@@ -103,13 +103,17 @@ const Integracoes = () => {
 
     // 1. Buscar histórico inicial
     const fetchHistory = async () => {
+      console.log(`[Chat Debug] Buscando histórico para o doador ID: ${selectedDonor.id}`);
       const { data, error } = await supabase
         .from('whatsapp_messages')
         .select('*')
         .eq('donor_id', selectedDonor.id)
         .order('created_at', { ascending: true });
       
-      if (!error && data) {
+      if (error) {
+        console.error(`[Chat Debug] Erro ao buscar histórico:`, error);
+      } else if (data) {
+        console.log(`[Chat Debug] ${data.length} mensagens carregadas do histórico.`);
         setChatMessages(data);
       }
     };
@@ -117,6 +121,7 @@ const Integracoes = () => {
     fetchHistory();
 
     // 2. Assinar Realtime
+    console.log(`[Chat Debug] Iniciando inscrição Realtime para canal: chat_${selectedDonor.id}`);
     const channel = supabase
       .channel(`chat_${selectedDonor.id}`)
       .on(
@@ -128,10 +133,30 @@ const Integracoes = () => {
           filter: `donor_id=eq.${selectedDonor.id}`
         },
         (payload) => {
+          console.log(`[Chat Debug] NOVA MENSAGEM RECEBIDA (FILTRADA):`, payload.new);
           setChatMessages(prev => [...prev, payload.new]);
         }
       )
-      .subscribe();
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'whatsapp_messages'
+        },
+        (payload) => {
+          console.log(`[Chat Debug] EVENTO GLOBAL (QUALQUER DOADOR):`, payload.new);
+          if (payload.new.donor_id !== selectedDonor.id) {
+            console.log(`[Chat Debug] Mensagem ignorada pois pertence ao doador: ${payload.new.donor_id}`);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log(`[Chat Debug] Status da inscrição: ${status}`);
+        if (status === 'SUBSCRIBED') {
+          console.log(`[Chat Debug] Conectado e ouvindo a tabela whatsapp_messages para donor_id=${selectedDonor.id}`);
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
