@@ -20,8 +20,8 @@ import IntegracaoBB from "./pages/IntegracaoBB";
 import FollowUps from "./pages/FollowUps";
 import ApiAberta from "./pages/ApiAberta";
 import ApiDocumentation from "./pages/ApiDocumentation";
-import Pipeline from "./pages/Pipeline";
 import DonorForm from "./pages/DonorForm";
+import WhatsApp from "./pages/WhatsApp";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
@@ -87,6 +87,7 @@ const App = () => (
                   <Route path="relatorios" element={<Relatorios />} />
                   <Route path="configuracoes" element={<Configuracoes />} />
                   <Route path="integracoes" element={<Integracoes />} />
+                  <Route path="whatsapp" element={<WhatsApp />} />
                   <Route path="asaas" element={<IntegracaoAsaas />} />
                   <Route path="bb" element={<IntegracaoBB />} />
                   <Route path="api-aberta" element={<ApiAberta />} />

@@ -42,7 +42,7 @@ const mainItems = [
 ];
 
 const configItems = [
-  { title: "WhatsApp", url: "/dashboard/integracoes", icon: MessageSquare },
+  { title: "WhatsApp", url: "/dashboard/whatsapp", icon: MessageSquare },
   { title: "Integração Asaas", url: "/dashboard/asaas", icon: Wallet },
   { title: "Banco do Brasil", url: "/dashboard/bb", icon: Landmark },
   { title: "API Aberta", url: "/dashboard/api-aberta", icon: Globe },
