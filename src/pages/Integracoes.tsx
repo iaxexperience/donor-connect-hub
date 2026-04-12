@@ -713,7 +713,7 @@ const Integracoes = () => {
                         </div>
                         <div>
                           <p className="font-bold text-slate-800 mb-1">Dinamismo Ativado</p>
-                          <p className="text-slate-400 text-sm">As variáveis {{1}} serão substituídas pelo nome de cada doador automaticamente.</p>
+                          <p className="text-slate-400 text-sm">As variáveis {"{{1}}"} serão substituídas pelo nome de cada doador automaticamente.</p>
                         </div>
                      </div>
                   ) : (
