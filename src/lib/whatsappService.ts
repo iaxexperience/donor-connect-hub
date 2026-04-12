@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { supabase } from "./supabase";
 
 export interface WhatsAppPayload {
   messaging_product: string;
@@ -190,9 +191,14 @@ export const sendWhatsAppThankYou = async (donorName: string, amount: number, ph
   }
 };
 
-export const sendWhatsAppDirectMessage = async (to: string, message: string) => {
+export const sendWhatsAppDirectMessage = async (
+  to: string, 
+  message: string, 
+  credentials: { phoneId: string, token: string },
+  donorId?: string | number
+) => {
   const cleanPhone = to.replace(/\D/g, "");
-  const { phoneId, token } = getStoredCredentials();
+  const { phoneId, token } = credentials;
 
   if (!token || !phoneId) {
     throw new Error("WhatsApp não configurado. Verifique as credenciais na aba de configurações.");
@@ -218,19 +224,23 @@ export const sendWhatsAppDirectMessage = async (to: string, message: string) => 
 
     const data = await response.json();
     
-    // Log no localStorage para histórico imediato
-    const logs = JSON.parse(localStorage.getItem("whatsapp_logs") || "[]");
-    logs.unshift({
-      id: Date.now(),
-      time: new Date().toLocaleTimeString(),
-      event: "direct_message_sent",
-      status: !data.error ? "success" : "falha",
-      to: cleanPhone,
-      message: message
-    });
-    localStorage.setItem("whatsapp_logs", JSON.stringify(logs.slice(0, 50)));
-
     if (data.error) throw new Error(data.error.message);
+
+    // Persistir no Banco de Dados se o disparo foi sucesso
+    if (donorId) {
+      const { error: dbError } = await supabase
+        .from('whatsapp_messages')
+        .insert([{
+          donor_id: donorId,
+          sender_id: 'me',
+          text: message,
+          status: 'sent',
+          metadata: { waba_message_id: data.messages?.[0]?.id }
+        }]);
+      
+      if (dbError) console.error("Erro ao salvar mensagem no banco:", dbError);
+    }
+
     return data;
   } catch (error: any) {
     console.error("Meta API Direct Message Error:", error);
