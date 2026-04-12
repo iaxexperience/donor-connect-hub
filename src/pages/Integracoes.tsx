@@ -20,6 +20,10 @@ import {
   sendWhatsAppDirectMessage,
   sendWhatsAppTemplate
 } from "@/lib/whatsappService";
+import { 
+  getWhatsAppSettings, 
+  saveWhatsAppSettings 
+} from "@/lib/whatsappSettingsService";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
@@ -50,8 +54,14 @@ const INITIAL_TEMPLATES = [
 ];
 
 const Integracoes = () => {
+  const { donors } = useDonors();
   const { campaigns } = useCampaigns();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Chat States
+  const [selectedDonor, setSelectedDonor] = useState<any>(null);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState("");
   
   // Tab Management
   const [activeTab, setActiveTab] = useState("config");
@@ -247,6 +257,24 @@ const Integracoes = () => {
     }
   };
 
+  const handleTestWhatsApp = async () => {
+    if (!phoneId || !accessToken) {
+      toast({ title: "Erro de Configuração", description: "Informe o Phone ID e o Access Token.", variant: "destructive" });
+      return;
+    }
+    setIsTestingWa(true);
+    try {
+      const result = await validateMetaCredentials(wabaId, phoneId, accessToken);
+      if (result.success) {
+        setWaConnected(true);
+        toast({ title: "Conexão Estabelecida!", description: "Sua API do WhatsApp está pronta para uso." });
+      } else {
+        setWaConnected(false);
+        toast({ title: "Falha na Conexão", description: result.error, variant: "destructive" });
+      }
+    } catch (e: any) {
+      setWaConnected(false);
+      toast({ title: "Erro no Teste", description: e.message, variant: "destructive" });
     } finally {
       setIsTestingWa(false);
     }
