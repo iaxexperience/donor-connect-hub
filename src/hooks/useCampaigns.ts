@@ -18,12 +18,34 @@ export const useCampaigns = () => {
   const { data: campaigns = [], isLoading } = useQuery({
     queryKey: ['campaigns'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: campaignsData, error: campaignsError } = await supabase
         .from('campaigns')
         .select('*')
         .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data as Campaign[];
+        
+      if (campaignsError) throw campaignsError;
+
+      // Dynamically calculate the total raised for each campaign
+      const { data: donations } = await supabase
+        .from('donations')
+        .select('campaign_id, amount, status')
+        .not('campaign_id', 'is', null);
+
+      if (donations && donations.length > 0) {
+        return campaignsData.map((campaign: any) => {
+          const campaignDonations = donations.filter((d: any) => 
+            d.campaign_id === campaign.id && (d.status === 'pago' || d.status === 'confirmed' || !d.status)
+          );
+          const totalCalculated = campaignDonations.reduce((sum, d) => sum + Number(d.amount), 0);
+          
+          return {
+            ...campaign,
+            current_amount: totalCalculated > 0 ? totalCalculated : (campaign.current_amount || 0)
+          } as Campaign;
+        });
+      }
+
+      return campaignsData as Campaign[];
     },
   });
 
