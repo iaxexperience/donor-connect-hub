@@ -26,7 +26,7 @@ const DonorForm = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    phone: "",
+    phone: "+55 ",
     type: "lead" as DonorType,
     cpf_cnpj: "",
     birth_date: "",
@@ -48,7 +48,7 @@ const DonorForm = () => {
         setFormData({
           name: donor.name,
           email: donor.email,
-          phone: donor.phone,
+          phone: donor.phone.startsWith("+55") ? donor.phone : `+55 ${donor.phone}`,
           type: donor.type,
           cpf_cnpj: donor.document_id || "",
           birth_date: donor.birth_date || "",
@@ -65,11 +65,31 @@ const DonorForm = () => {
   }, [isEditMode, id, donors]);
 
   const formatPhone = (value: string) => {
-    const digits = value.replace(/\D/g, "").slice(0, 11);
-    if (digits.length <= 10) {
-      return digits.replace(/(\d{2})(\d)/, "($1) $2").replace(/(\d{4})(\d)/, "$1-$2");
+    // Remove tudo que não é número
+    const digits = value.replace(/\D/g, "");
+    
+    // Se não houver números, mantém o prefixo base
+    if (digits.length === 0) return "+55 ";
+    
+    // Se começar com 55 e tiver mais números, formata o resto
+    // Caso o usuário apague o 55, nós forçamos ele de volta
+    let numbers = digits;
+    if (!digits.startsWith("55")) {
+      numbers = "55" + digits;
     }
-    return digits.replace(/(\d{2})(\d)/, "($1) $2").replace(/(\d{5})(\d)/, "$1-$2");
+    
+    // Limita a 13 dígitos (+55 + 11 do celular)
+    numbers = numbers.slice(0, 13);
+    
+    const country = numbers.slice(0, 2);
+    const ddd = numbers.slice(2, 4);
+    const firstPart = numbers.slice(4, 9);
+    const lastPart = numbers.slice(9);
+    
+    if (numbers.length <= 2) return `+${country}`;
+    if (numbers.length <= 4) return `+${country} (${ddd}`;
+    if (numbers.length <= 9) return `+${country} (${ddd}) ${firstPart}`;
+    return `+${country} (${ddd}) ${firstPart}-${lastPart}`;
   };
 
   const formatCPF = (value: string) => {
