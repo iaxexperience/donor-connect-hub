@@ -193,8 +193,8 @@ export const metaService = {
     } catch (err: any) {
        console.warn("[Meta Service] Invoke failed or network error, trying direct fetch fallback...", err);
        
-       // Improved fallback with clearer error messages
-       const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/meta-whatsapp-proxy`;
+       // Improved fallback with cache-busting to bypass potential proxy/cache issues
+       const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/meta-whatsapp-proxy?t=${Date.now()}`;
        
        try {
          const response = await fetch(functionUrl, {
