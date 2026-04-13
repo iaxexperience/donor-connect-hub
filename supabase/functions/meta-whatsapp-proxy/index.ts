@@ -234,32 +234,44 @@ serve(async (req) => {
       
       console.log(`[Meta Proxy] Executing ${action} via ${method} at ${url}`);
 
-      const response = await fetch(url, {
-        method: method,
-        headers: {
-          'Authorization': `Bearer ${access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: method === 'POST' ? JSON.stringify(payload) : undefined
-      });
+      try {
+        const fetchOptions: any = {
+          method: method,
+          headers: {
+            'Authorization': `Bearer ${access_token}`,
+            'Content-Type': 'application/json'
+          }
+        };
 
-      const data = await response.json().catch(() => ({}));
-      
-      if (!response.ok) {
-        console.error('[Meta Proxy] Erro na API:', JSON.stringify(data));
-        return new Response(JSON.stringify({ error: data }), { 
+        if (method === 'POST' && payload) {
+          fetchOptions.body = JSON.stringify(payload);
+        }
+
+        const response = await fetch(url, fetchOptions);
+        const data = await response.json().catch(() => ({}));
+        
+        console.log(`[Meta Proxy] Status: ${response.status}`, JSON.stringify(data));
+
+        return new Response(JSON.stringify(data), { 
           status: response.status,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
+      } catch (fetchErr: any) {
+        console.error('[Meta Proxy] Fetch Error:', fetchErr);
+        return new Response(JSON.stringify({ error: { message: fetchErr.message } }), { 
+          status: 502,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
       }
+    }
 
-      return new Response(JSON.stringify(data), { 
-        status: response.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    if (action === 'ping') {
+      return new Response(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }), { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
     }
 
-    return new Response(JSON.stringify({ error: 'Ação não reconhecida' }), { status: 400 });
+    return new Response(JSON.stringify({ error: 'Ação não reconhecida' }), { status: 400, headers: corsHeaders });
 
   } catch (err: any) {
     console.error('Erro:', err);

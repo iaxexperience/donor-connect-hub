@@ -110,7 +110,19 @@ const WhatsApp = () => {
     }
     loadHistory();
     loadStoredTemplates();
+    checkConnection();
   }, []);
+
+  const checkConnection = async () => {
+    try {
+      const { data } = await supabase.functions.invoke('meta-whatsapp-proxy', {
+        body: { action: 'ping' }
+      });
+      console.log('[WhatsApp] Connection Check:', data);
+    } catch (e) {
+      console.warn('[WhatsApp] Edge Function might not be fully ready:', e);
+    }
+  };
 
   const loadStoredTemplates = async () => {
     try {
@@ -200,12 +212,14 @@ const WhatsApp = () => {
       
       const result = await metaService.createTemplate(payload, config);
       
+      // Checking for Meta API errors inside the 200 result
       if (result.error) {
         throw new Error(JSON.stringify(result.error));
       }
 
       toast({ title: "Template Criado!", description: "O template foi enviado para análise da Meta." });
       setIsCreateModalOpen(false);
+      
       // Reset form
       setNewTemplate({
         name: "",
@@ -215,7 +229,13 @@ const WhatsApp = () => {
         mediaUrl: "",
         body: ""
       });
-      syncTemplates(); // Refresh list
+
+      // No immediate sync to avoid race conditions or timeouts
+      // User can sync manually after a moment
+      setTimeout(() => {
+        loadStoredTemplates(); 
+      }, 2000);
+
     } catch (err: any) {
       console.error("Erro na criação:", err);
       let errorMsg = err.message;
@@ -223,11 +243,16 @@ const WhatsApp = () => {
       try {
         const parsed = JSON.parse(err.message);
         if (parsed.error?.message) errorMsg = parsed.error.message;
+        else if (parsed.message) errorMsg = parsed.message;
       } catch (e) {}
+
+      if (errorMsg.includes("Failed to send a request")) {
+        errorMsg = "Servidor temporariamente indisponível. Tente novamente em alguns segundos.";
+      }
 
       toast({ 
         title: "Erro ao criar", 
-        description: errorMsg || "Erro de conexão. Verifique o console ou credenciais.", 
+        description: errorMsg, 
         variant: "destructive" 
       });
     } finally {
