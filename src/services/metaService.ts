@@ -160,23 +160,53 @@ export const metaService = {
    * Cria um novo template na Meta API via Edge Function Proxy
    */
   async createTemplate(payload: any, config: MetaConfig) {
-    if (!config.waba_id || !config.access_token) {
+    const wabaId = config.waba_id?.trim();
+    const token = config.access_token?.trim();
+    
+    if (!wabaId || !token) {
       throw new Error("WABA ID e Access Token são necessários para criar templates.");
     }
 
-    const { data, error } = await supabase.functions.invoke('meta-whatsapp-proxy', {
-      body: {
-        action: 'create_template',
-        config: {
-          waba_id: config.waba_id,
-          access_token: config.access_token
-        },
-        payload
-      }
-    });
+    try {
+      const { data, error } = await supabase.functions.invoke('meta-whatsapp-proxy', {
+        body: {
+          action: 'create_template',
+          config: {
+            waba_id: wabaId,
+            access_token: token
+          },
+          payload
+        }
+      });
 
-    console.log('[Meta Service] Result:', { data, error });
-    if (error) throw error;
-    return data;
+      console.log('[Meta Service] Result:', { data, error });
+      
+      if (error) {
+        // Fallback attempt if first one fails
+        console.warn("[Meta Service] Invoke failed, trying direct fetch...");
+        throw error;
+      }
+      
+      return data;
+    } catch (err: any) {
+       // Direct fallback if invoke fails completely
+       const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/meta-whatsapp-proxy`;
+       const response = await fetch(functionUrl, {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+         },
+         body: JSON.stringify({
+           action: 'create_template',
+           config: { waba_id: wabaId, access_token: token },
+           payload
+         })
+       }).catch(e => {
+         throw new Error(`Connection Error: ${e.message}`);
+       });
+
+       return await response.json();
+    }
   }
 };
