@@ -95,23 +95,58 @@ serve(async (req) => {
 
       console.log(`Mensagem vinculada ao doador: ${donor.name} (ID: ${donor.id})`);
 
-      // Inserir mensagem no banco
-      const { error: insertError } = await supabase
-        .from('whatsapp_messages')
-        .insert([{
-          donor_id: donor.id,
-          sender_id: 'them', // 'them' identifica que é uma mensagem recebida
-          text: text,
-          status: 'received',
-          metadata: { 
-            display_phone_number: value.metadata?.display_phone_number,
-            waba_message_id: messageId
-          }
-        }]);
+      // 1. Update or create whatsapp_chats
+      let chatId: string | undefined;
+      const { data: existingChat } = await supabase
+        .from('whatsapp_chats')
+        .select('id, unread_count')
+        .eq('telefone', cleanPhone)
+        .maybeSingle();
 
-      if (insertError) {
-        console.error('Erro ao inserir mensagem:', insertError);
-        throw insertError;
+      if (existingChat) {
+        chatId = existingChat.id;
+        await supabase
+          .from('whatsapp_chats')
+          .update({
+            last_message: text,
+            last_message_at: new Date().toISOString(),
+            unread_count: (existingChat.unread_count || 0) + 1
+          })
+          .eq('id', chatId);
+      } else {
+        const { data: newChat, error: newChatErr } = await supabase
+          .from('whatsapp_chats')
+          .insert({
+            telefone: cleanPhone,
+            nome: donor.name,
+            last_message: text,
+            last_message_at: new Date().toISOString(),
+            unread_count: 1
+          })
+          .select('id')
+          .maybeSingle();
+        
+        if (newChatErr) console.error("Erro ao criar chat:", newChatErr);
+        if (newChat) chatId = newChat.id;
+      }
+
+      // 2. Inserir mensagem no banco na tabela correta
+      if (chatId) {
+        const { error: insertError } = await supabase
+          .from('whatsapp_messages')
+          .insert([{
+            chat_id: chatId,
+            telefone: cleanPhone,
+            text_body: text,
+            is_from_me: false,
+            status: 'received',
+            message_id: messageId
+          }]);
+
+        if (insertError) {
+          console.error('Erro ao inserir mensagem:', insertError);
+          throw insertError;
+        }
       }
 
       return new Response(JSON.stringify({ success: true }), { 
