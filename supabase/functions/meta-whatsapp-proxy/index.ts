@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE',
 };
 
@@ -239,6 +239,14 @@ serve(async (req) => {
       const method = action === 'get_templates' ? 'GET' : 'POST';
       
       console.log(`[Meta Proxy] Executing ${action} via ${method} at ${url}`);
+      if (action === 'create_template') {
+        console.log('[Meta Proxy] Create Template Payload Summary:', JSON.stringify({
+          name: meta_data?.name,
+          category: meta_data?.category,
+          language: meta_data?.language,
+          components_count: meta_data?.components?.length
+        }));
+      }
 
       try {
         const fetchOptions: any = {

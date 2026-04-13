@@ -214,15 +214,23 @@ export const metaService = {
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             console.error("[Meta Service] Fallback server returned error:", { status: response.status, errorData });
-            throw new Error(errorData.error?.message || errorData.message || `Erro do Servidor (HTTP ${response.status})`);
+            
+            // Extract meaningful error from Meta
+            const detailedMsg = errorData.error?.message || errorData.message || `Erro do Servidor (HTTP ${response.status})`;
+            throw new Error(`[Status ${response.status}] ${detailedMsg}`);
           }
 
           return await response.json();
         } catch (fetchErr: any) {
           console.error("[Meta Service] Fallback also failed:", fetchErr);
-          const isNetworkError = fetchErr.message.includes("Failed to fetch") || fetchErr.name === "TypeError";
+          
+          const errorStr = fetchErr.message || "";
+          const isNetworkError = errorStr.includes("Failed to fetch") || 
+                                 errorStr.includes("NetworkError") || 
+                                 fetchErr.name === "TypeError";
+
           if (isNetworkError) {
-             throw new Error("Erro de Rede: A requisição foi bloqueada ou o servidor está inacessível. Verifique se há ad-blockers ativos ou problemas de CSP no Lovable.");
+             throw new Error("Erro de Rede: A conexão com o Supabase foi bloqueada pelo navegador. Isso Geralmente é causado por um Ad-blocker (uBlock, AdBlock, DuckDuckGo) que bloqueia o termo 'whatsapp' na URL. Desative o ad-blocker e tente novamente.");
           }
           throw new Error(`Erro de Conexão: ${fetchErr.message}`);
         }
