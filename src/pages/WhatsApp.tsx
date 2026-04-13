@@ -193,6 +193,17 @@ const WhatsApp = () => {
     
     setIsCreatingTemplate(true);
     try {
+      // 1. Validate variables - Meta only allows numbers {{1}}, {{2}}
+      if (newTemplate.body.includes("{{") && !/\{\{\d+}}/.test(newTemplate.body)) {
+        toast({ 
+          title: "Variáveis Inválidas", 
+          description: "A Meta só aceita números como {{1}}, {{2}}. Substitua variáveis como {{Nome}}.", 
+          variant: "destructive" 
+        });
+        setIsCreatingTemplate(false);
+        return;
+      }
+
       const components: any[] = [
         {
           type: "BODY",
@@ -205,8 +216,6 @@ const WhatsApp = () => {
           type: "HEADER",
           format: newTemplate.headerFormat,
           example: {
-            // Using a text example or URL, but handles are better.
-            // For now, we pass the URL. Meta might reject URLs for examples during creation.
             header_handle: [newTemplate.mediaUrl] 
           }
         });
@@ -219,6 +228,7 @@ const WhatsApp = () => {
         components: components
       };
       
+      console.log("[WhatsApp] Creating template with meta_data:", payload);
       const result = await metaService.createTemplate(payload, config);
       
       // Checking for Meta API errors inside the 200 result
@@ -933,7 +943,13 @@ const WhatsApp = () => {
                    value={newTemplate.body}
                    onChange={(e) => setNewTemplate({...newTemplate, body: e.target.value})}
                  />
-                 <p className="text-[10px] text-muted-foreground">Use `{`{{1}}`}`, `{`{{2}}`}`, para variáveis.</p>
+                 <div className="p-3 bg-orange-50 border border-orange-100 rounded-lg">
+                    <p className="text-[10px] text-orange-700 font-bold uppercase mb-1">Aviso da Meta API</p>
+                    <p className="text-[10px] text-orange-600 leading-tight">
+                       Use APENAS números para variáveis: <code className="bg-orange-200 px-1 rounded">{"{{1}}"}</code>, <code className="bg-orange-200 px-1 rounded">{"{{2}}"}</code>.<br />
+                       Nomes como <code className="bg-red-100 text-red-600 px-1 rounded">{"{{Nome}}"}</code> causarão erro de conexão.
+                    </p>
+                 </div>
               </div>
            </div>
 

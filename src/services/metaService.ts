@@ -23,7 +23,7 @@ export const metaService = {
           phone_number_id: config.phone_number_id,
           access_token: config.access_token
         },
-        payload: {
+        meta_data: {
           messaging_product: "whatsapp",
           recipient_type: "individual",
           to: to.replace(/\D/g, ""),
@@ -53,7 +53,7 @@ export const metaService = {
           phone_number_id: config.phone_number_id,
           access_token: config.access_token
         },
-        payload: {
+        meta_data: {
           messaging_product: "whatsapp",
           recipient_type: "individual",
           to: to.replace(/\D/g, ""),
@@ -84,7 +84,7 @@ export const metaService = {
           phone_number_id: config.phone_number_id,
           access_token: config.access_token
         },
-        payload: {
+        meta_data: {
           messaging_product: "whatsapp",
           to: to.replace(/\D/g, ""),
           type: "template",
@@ -175,7 +175,7 @@ export const metaService = {
             waba_id: wabaId,
             access_token: token
           },
-          payload
+          meta_data: payload
         }
       });
 
@@ -200,7 +200,7 @@ export const metaService = {
          body: JSON.stringify({
            action: 'create_template',
            config: { waba_id: wabaId, access_token: token },
-           payload
+           meta_data: payload
          })
        }).catch(e => {
          throw new Error(`Connection Error: ${e.message}`);
