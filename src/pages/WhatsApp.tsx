@@ -115,12 +115,12 @@ const WhatsApp = () => {
 
   const checkConnection = async () => {
     try {
-      const { data } = await supabase.functions.invoke('meta-whatsapp-proxy', {
+      const { data } = await supabase.functions.invoke('whatsapp-api', {
         body: { action: 'ping' }
       });
-      console.log('[WhatsApp] Connection Check:', data);
+      console.log('[WhatsApp] whatsapp-api Connection Check:', data);
     } catch (e) {
-      console.warn('[WhatsApp] Edge Function might not be fully ready:', e);
+      console.warn('[WhatsApp] whatsapp-api might not be fully ready:', e);
     }
   };
 
@@ -409,13 +409,23 @@ const WhatsApp = () => {
                     <CardDescription>Obtenha seus templates aprovados diretamente do Facebook.</CardDescription>
                  </CardHeader>
                  <CardContent className="space-y-4">
-                    <Button 
-                      className="w-full h-12 text-lg font-bold" 
-                      onClick={syncTemplates} 
-                      disabled={isSyncingTemplates}
-                    >
-                      {isSyncingTemplates ? "Sincronizando..." : "Sincronizar Meta"}
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                      <Button 
+                        className="w-full h-12 text-lg font-bold" 
+                        onClick={syncTemplates} 
+                        disabled={isSyncingTemplates}
+                      >
+                        {isSyncingTemplates ? "Sincronizando..." : "Sincronizar Meta"}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={checkConnection}
+                        className="rounded-xl border-dashed"
+                      >
+                        Diagnóstico de Rede
+                      </Button>
+                    </div>
                     <p className="text-[10px] text-muted-foreground text-center uppercase tracking-tighter">
                       Última sincronização: {lastSync || "Nunca"}
                     </p>

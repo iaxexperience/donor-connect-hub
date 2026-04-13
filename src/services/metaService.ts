@@ -102,19 +102,19 @@ export const metaService = {
   },
 
   /**
-   * Sincroniza templates da Meta API via Edge Function Proxy
+   * Sincroniza templates da Meta API via whatsapp-api Edge Function
    */
   async fetchMetaTemplates(config: MetaConfig) {
     if (!config.waba_id || !config.access_token) {
       throw new Error("WABA ID e Access Token são necessários para sincronizar templates.");
     }
 
-    const { data, error } = await supabase.functions.invoke('meta-whatsapp-proxy', {
+    const { data, error } = await supabase.functions.invoke('whatsapp-api', {
       body: {
         action: 'get_templates',
         config: {
-          waba_id: config.waba_id,
-          access_token: config.access_token
+          waba_id: config.waba_id?.trim(),
+          access_token: config.access_token?.trim()
         }
       }
     });
@@ -157,7 +157,7 @@ export const metaService = {
   },
 
   /**
-   * Cria um novo template na Meta API via Edge Function Proxy
+   * Cria um novo template na Meta API via whatsapp-api Edge Function
    */
   async createTemplate(payload: any, config: MetaConfig) {
     const wabaId = config.waba_id?.trim();
@@ -168,7 +168,7 @@ export const metaService = {
     }
 
     try {
-      const { data, error } = await supabase.functions.invoke('meta-whatsapp-proxy', {
+      const { data, error } = await supabase.functions.invoke('whatsapp-api', {
         body: {
           action: 'create_template',
           config: {
@@ -179,18 +179,17 @@ export const metaService = {
         }
       });
 
-      console.log('[Meta Service] Result:', { data, error });
+      console.log('[Meta Service] whatsapp-api Result:', { data, error });
       
       if (error) {
-        // Fallback attempt if first one fails
-        console.warn("[Meta Service] Invoke failed, trying direct fetch...");
+        console.warn("[Meta Service] invoke failed, trying fallback...");
         throw error;
       }
       
       return data;
     } catch (err: any) {
-       // Direct fallback if invoke fails completely
-       const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/meta-whatsapp-proxy`;
+       console.warn("[Meta Service] Using fetch fallback...");
+       const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-api`;
        const response = await fetch(functionUrl, {
          method: 'POST',
          headers: {
