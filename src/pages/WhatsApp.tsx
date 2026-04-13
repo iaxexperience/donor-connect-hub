@@ -115,12 +115,12 @@ const WhatsApp = () => {
 
   const checkConnection = async () => {
     try {
-      const { data } = await supabase.functions.invoke('whatsapp-api', {
+      const { data } = await supabase.functions.invoke('meta-whatsapp-proxy', {
         body: { action: 'ping' }
       });
-      console.log('[WhatsApp] whatsapp-api Connection Check:', data);
+      console.log('[WhatsApp] meta-whatsapp-proxy Connection Check:', data);
     } catch (e) {
-      console.warn('[WhatsApp] whatsapp-api might not be fully ready:', e);
+      console.warn('[WhatsApp] meta-whatsapp-proxy might not be fully ready:', e);
     }
   };
 

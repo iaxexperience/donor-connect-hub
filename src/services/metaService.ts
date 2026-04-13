@@ -102,19 +102,22 @@ export const metaService = {
   },
 
   /**
-   * Sincroniza templates da Meta API via whatsapp-api Edge Function
+   * Sincroniza templates da Meta API via meta-whatsapp-proxy Edge Function
    */
   async fetchMetaTemplates(config: MetaConfig) {
-    if (!config.waba_id || !config.access_token) {
+    const wabaId = config.waba_id?.trim();
+    const token = config.access_token?.trim();
+
+    if (!wabaId || !token) {
       throw new Error("WABA ID e Access Token são necessários para sincronizar templates.");
     }
 
-    const { data, error } = await supabase.functions.invoke('whatsapp-api', {
+    const { data, error } = await supabase.functions.invoke('meta-whatsapp-proxy', {
       body: {
         action: 'get_templates',
         config: {
-          waba_id: config.waba_id?.trim(),
-          access_token: config.access_token?.trim()
+          waba_id: wabaId,
+          access_token: token
         }
       }
     });
@@ -157,7 +160,7 @@ export const metaService = {
   },
 
   /**
-   * Cria um novo template na Meta API via whatsapp-api Edge Function
+   * Cria um novo template na Meta API via meta-whatsapp-proxy Edge Function
    */
   async createTemplate(payload: any, config: MetaConfig) {
     const wabaId = config.waba_id?.trim();
@@ -168,7 +171,8 @@ export const metaService = {
     }
 
     try {
-      const { data, error } = await supabase.functions.invoke('whatsapp-api', {
+      console.log('[Meta Service] Creating template via meta-whatsapp-proxy...');
+      const { data, error } = await supabase.functions.invoke('meta-whatsapp-proxy', {
         body: {
           action: 'create_template',
           config: {
@@ -179,33 +183,43 @@ export const metaService = {
         }
       });
 
-      console.log('[Meta Service] whatsapp-api Result:', { data, error });
+      console.log('[Meta Service] Invocation Result:', { data, error });
       
       if (error) {
-        console.warn("[Meta Service] invoke failed, trying fallback...");
         throw error;
       }
       
       return data;
     } catch (err: any) {
-       console.warn("[Meta Service] Using fetch fallback...");
-       const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-api`;
-       const response = await fetch(functionUrl, {
-         method: 'POST',
-         headers: {
-           'Content-Type': 'application/json',
-           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-         },
-         body: JSON.stringify({
-           action: 'create_template',
-           config: { waba_id: wabaId, access_token: token },
-           meta_data: payload
-         })
-       }).catch(e => {
-         throw new Error(`Connection Error: ${e.message}`);
-       });
+       console.warn("[Meta Service] Invoke failed or network error, trying direct fetch fallback...", err);
+       
+       // Improved fallback with clearer error messages
+       const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/meta-whatsapp-proxy`;
+       
+       try {
+         const response = await fetch(functionUrl, {
+           method: 'POST',
+           headers: {
+             'Content-Type': 'application/json',
+             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+           },
+           body: JSON.stringify({
+             action: 'create_template',
+             config: { waba_id: wabaId, access_token: token },
+             meta_data: payload
+           })
+         });
 
-       return await response.json();
+         if (!response.ok) {
+           const errorData = await response.json().catch(() => ({}));
+           throw new Error(errorData.error?.message || errorData.message || `HTTP ${response.status}`);
+         }
+
+         return await response.json();
+       } catch (fetchErr: any) {
+         console.error("[Meta Service] Fallback also failed:", fetchErr);
+         throw new Error(`Erro de Conexão: ${fetchErr.message}. Verifique se a função 'meta-whatsapp-proxy' está ativa.`);
+       }
     }
   }
 };
