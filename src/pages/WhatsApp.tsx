@@ -533,7 +533,7 @@ const WhatsApp = () => {
                        </div>
                     ) : (
                        <div className="space-y-4 animate-in fade-in zoom-in-95">
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                              <div className="space-y-2">
                                 <Label>Segmento</Label>
                                 <Select value={batchClassification} onValueChange={setBatchClassification}>
@@ -565,7 +565,7 @@ const WhatsApp = () => {
                     )}
 
                     <div className="space-y-4 pt-4 border-t">
-                       <div className="grid grid-cols-2 gap-4">
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
                              <Label>Tipo de Conteúdo</Label>
                              <Select value={messageType} onValueChange={(val: any) => setMessageType(val)}>
@@ -892,7 +892,7 @@ const WhatsApp = () => {
                  <p className="text-[10px] text-muted-foreground italic">Use apenas letras minúsculas, números e sublinhados.</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Categoria</Label>
                     <Select value={newTemplate.category} onValueChange={(val) => setNewTemplate({...newTemplate, category: val})}>
