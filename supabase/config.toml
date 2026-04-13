@@ -1,0 +1,32 @@
+[functions.api-proxy]
+verify_jwt = false
+
+[functions.meta-whatsapp-proxy]
+verify_jwt = false
+
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.whatsapp-api]
+verify_jwt = false
+
+[functions.asaas-webhook]
+verify_jwt = false
+
+[functions.asaas-create-customer]
+verify_jwt = false
+
+[functions.asaas-create-payment]
+verify_jwt = false
+
+[functions.asaas-get-payment-status]
+verify_jwt = false
+
+[functions.bb-fetch-transactions]
+verify_jwt = false
+
+[functions.bb-get-token]
+verify_jwt = false
+
+[functions.bb-reconcile]
+verify_jwt = false
