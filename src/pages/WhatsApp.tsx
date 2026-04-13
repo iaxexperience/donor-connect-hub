@@ -165,6 +165,11 @@ const WhatsApp = () => {
       return;
     }
     
+    if (!config.waba_id || !config.access_token) {
+      toast({ title: "Configuração faltando", description: "WABA ID e Access Token são necessários.", variant: "destructive" });
+      return;
+    }
+    
     setIsCreatingTemplate(true);
     try {
       const components: any[] = [
@@ -178,9 +183,10 @@ const WhatsApp = () => {
         components.unshift({
           type: "HEADER",
           format: newTemplate.headerFormat,
-          // Note: Meta creation often requires handles, but we'll try to submit the structure
           example: {
-            header_handle: [newTemplate.mediaUrl] // Fallback attempt or handle
+            // Using a text example or URL, but handles are better.
+            // For now, we pass the URL. Meta might reject URLs for examples during creation.
+            header_handle: [newTemplate.mediaUrl] 
           }
         });
       }
@@ -192,7 +198,12 @@ const WhatsApp = () => {
         components: components
       };
       
-      await metaService.createTemplate(payload, config);
+      const result = await metaService.createTemplate(payload, config);
+      
+      if (result.error) {
+        throw new Error(JSON.stringify(result.error));
+      }
+
       toast({ title: "Template Criado!", description: "O template foi enviado para análise da Meta." });
       setIsCreateModalOpen(false);
       // Reset form
@@ -206,8 +217,19 @@ const WhatsApp = () => {
       });
       syncTemplates(); // Refresh list
     } catch (err: any) {
-      console.error(err);
-      toast({ title: "Erro ao criar", description: err.message || "Verifique os dados e tente novamente.", variant: "destructive" });
+      console.error("Erro na criação:", err);
+      let errorMsg = err.message;
+      
+      try {
+        const parsed = JSON.parse(err.message);
+        if (parsed.error?.message) errorMsg = parsed.error.message;
+      } catch (e) {}
+
+      toast({ 
+        title: "Erro ao criar", 
+        description: errorMsg || "Erro de conexão. Verifique o console ou credenciais.", 
+        variant: "destructive" 
+      });
     } finally {
       setIsCreatingTemplate(false);
     }

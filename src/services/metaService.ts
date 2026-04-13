@@ -175,6 +175,7 @@ export const metaService = {
       }
     });
 
+    console.log('[Meta Service] Result:', { data, error });
     if (error) throw error;
     return data;
   }

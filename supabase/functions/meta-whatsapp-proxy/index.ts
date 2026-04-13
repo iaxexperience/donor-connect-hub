@@ -4,6 +4,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE',
 };
 
 /**
@@ -53,8 +54,17 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     console.log('Evento Recebido:', JSON.stringify(body, null, 2));
+    
+    if (!body || Object.keys(body).length === 0) {
+      if (req.method === 'POST') {
+        return new Response(JSON.stringify({ error: 'Corpo da requisição vazio' }), { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
+    }
 
     // A. WEBHOOK (Incoming from Meta)
     if (body.entry?.[0]?.changes?.[0]?.value) {
@@ -208,38 +218,41 @@ serve(async (req) => {
       });
     }
 
-    if (action === 'get_templates') {
-      const { waba_id, access_token } = config;
-      const url = `https://graph.facebook.com/v22.0/${waba_id}/message_templates`;
+    // General Action Handler
+    if (action === 'get_templates' || action === 'create_template') {
+      const { waba_id, access_token } = config || {};
       
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${access_token}`,
-        }
-      });
+      if (!waba_id || !access_token) {
+        return new Response(JSON.stringify({ error: 'WABA ID e Access Token são necessários para esta ação.' }), { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
 
-      const data = await response.json();
-      return new Response(JSON.stringify(data), { 
-        status: response.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    if (action === 'create_template') {
-      const { waba_id, access_token } = config;
       const url = `https://graph.facebook.com/v22.0/${waba_id}/message_templates`;
+      const method = action === 'get_templates' ? 'GET' : 'POST';
       
+      console.log(`[Meta Proxy] Executing ${action} via ${method} at ${url}`);
+
       const response = await fetch(url, {
-        method: 'POST',
+        method: method,
         headers: {
           'Authorization': `Bearer ${access_token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(payload)
+        body: method === 'POST' ? JSON.stringify(payload) : undefined
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
+      
+      if (!response.ok) {
+        console.error('[Meta Proxy] Erro na API:', JSON.stringify(data));
+        return new Response(JSON.stringify({ error: data }), { 
+          status: response.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       return new Response(JSON.stringify(data), { 
         status: response.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
