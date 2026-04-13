@@ -488,7 +488,8 @@ const WhatsApp = () => {
                           )}
                        </TableBody>
                     </Table>
-                 </CardContent>
+                     </div>
+                  </CardContent>
               </Card>
            </div>
         </TabsContent>
