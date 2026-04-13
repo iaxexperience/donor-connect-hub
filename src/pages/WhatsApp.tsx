@@ -166,9 +166,18 @@ const WhatsApp = () => {
       toast({ title: "Campos obrigatórios", description: "Phone ID e Token são essenciais.", variant: "destructive" });
       return;
     }
-    localStorage.setItem("meta_config", JSON.stringify(config));
+    
+    // Sanitize config - remove spaces
+    const cleanConfig = {
+      phone_number_id: config.phone_number_id.trim(),
+      access_token: config.access_token.trim(),
+      waba_id: config.waba_id?.trim() || ""
+    };
+    
+    localStorage.setItem("meta_config", JSON.stringify(cleanConfig));
+    setConfig(cleanConfig);
     setIsConfigSaved(true);
-    toast({ title: "Configuração Salva", description: "Suas credenciais foram armazenadas localmente com segurança." });
+    toast({ title: "Configuração Salva", description: "Suas credenciais foram armazenadas e limpas (sem espaços)." });
   };
   
   const handleCreateTemplate = async () => {
