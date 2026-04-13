@@ -449,8 +449,9 @@ const WhatsApp = () => {
                         </Button>
                      </div>
                  </CardHeader>
-                 <CardContent>
-                    <Table>
+                 <CardContent className="overflow-x-auto no-scrollbar">
+                    <div className="min-w-[600px]">
+                       <Table>
                        <TableHeader>
                           <TableRow>
                             <TableHead>Nome</TableHead>
