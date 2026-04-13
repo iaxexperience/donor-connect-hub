@@ -115,12 +115,20 @@ const WhatsApp = () => {
 
   const checkConnection = async () => {
     try {
-      const { data } = await supabase.functions.invoke('meta-whatsapp-proxy', {
+      const { data, error } = await supabase.functions.invoke('api-proxy', {
         body: { action: 'ping' }
       });
-      console.log('[WhatsApp] meta-whatsapp-proxy Connection Check:', data);
-    } catch (e) {
-      console.warn('[WhatsApp] meta-whatsapp-proxy might not be fully ready:', e);
+      if (error) throw error;
+      console.log('[WhatsApp] api-proxy ping OK:', data);
+      toast({ title: "Conexão OK ✓", description: "Servidor api-proxy respondeu corretamente. O sistema está operacional." });
+    } catch (e: any) {
+      console.warn('[WhatsApp] api-proxy ping failed:', e);
+      const msg = e.message || '';
+      let userMsg = msg;
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('blocked') || e.name === 'TypeError') {
+        userMsg = 'A Edge Function "api-proxy" pode não estar deployada ainda. Execute: npx supabase functions deploy api-proxy';
+      }
+      toast({ title: "Falha no Diagnóstico", description: userMsg, variant: "destructive" });
     }
   };
 
@@ -191,8 +199,22 @@ const WhatsApp = () => {
       return;
     }
     
-    setIsCreatingTemplate(true);
+        setIsCreatingTemplate(true);
     try {
+      // 0. Detect social media URLs in media fields
+      if (newTemplate.headerFormat !== "NONE" && newTemplate.mediaUrl) {
+        const isSocialMedia = /instagram\.com|facebook\.com|youtube\.com|youtu\.be/.test(newTemplate.mediaUrl);
+        if (isSocialMedia) {
+          toast({ 
+            title: "URL de mídia inválida", 
+            description: "Você não pode usar links de redes sociais (Instagram/YouTube) aqui. Use um Handle ID da Meta ou um link direto de arquivo (MP4/PNG).", 
+            variant: "destructive" 
+          });
+          setIsCreatingTemplate(false);
+          return;
+        }
+      }
+
       // 1. Validate variables - Meta only allows numbers {{1}}, {{2}}
       if (newTemplate.body.includes("{{") && !/\{\{\d+}}/.test(newTemplate.body)) {
         toast({ 
