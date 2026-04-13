@@ -26,9 +26,14 @@ function normalizePhone(phone: string): string {
 }
 
 serve(async (req) => {
+  console.log(`[Meta Proxy] Request Received: ${req.method} ${req.url}`);
+  
   // CORS Handshake
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, { 
+      status: 204,
+      headers: corsHeaders 
+    });
   }
 
   // 1. Meta Handshake (GET)

@@ -211,16 +211,21 @@ export const metaService = {
            })
          });
 
-         if (!response.ok) {
-           const errorData = await response.json().catch(() => ({}));
-           throw new Error(errorData.error?.message || errorData.message || `HTTP ${response.status}`);
-         }
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error("[Meta Service] Fallback server returned error:", { status: response.status, errorData });
+            throw new Error(errorData.error?.message || errorData.message || `Erro do Servidor (HTTP ${response.status})`);
+          }
 
-         return await response.json();
-       } catch (fetchErr: any) {
-         console.error("[Meta Service] Fallback also failed:", fetchErr);
-         throw new Error(`Erro de Conexão: ${fetchErr.message}. Verifique se a função 'meta-whatsapp-proxy' está ativa.`);
-       }
+          return await response.json();
+        } catch (fetchErr: any) {
+          console.error("[Meta Service] Fallback also failed:", fetchErr);
+          const isNetworkError = fetchErr.message.includes("Failed to fetch") || fetchErr.name === "TypeError";
+          if (isNetworkError) {
+             throw new Error("Erro de Rede: A requisição foi bloqueada ou o servidor está inacessível. Verifique se há ad-blockers ativos ou problemas de CSP no Lovable.");
+          }
+          throw new Error(`Erro de Conexão: ${fetchErr.message}`);
+        }
     }
   }
 };
