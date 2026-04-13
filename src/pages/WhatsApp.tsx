@@ -386,14 +386,14 @@ const WhatsApp = () => {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
-        <div className="flex items-center justify-between bg-card p-1 rounded-2xl border shadow-sm sticky top-0 z-10">
-          <TabsList className="bg-transparent border-none">
-            <TabsTrigger value="templates" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><FileJson className="mr-2 h-4 w-4" /> Templates</TabsTrigger>
-            <TabsTrigger value="send" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Send className="mr-2 h-4 w-4" /> Enviar</TabsTrigger>
-            <TabsTrigger value="chat" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><MessageSquare className="mr-2 h-4 w-4" /> Chat ao Vivo</TabsTrigger>
-            <TabsTrigger value="automation" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Zap className="mr-2 h-4 w-4" /> Automação</TabsTrigger>
-            <TabsTrigger value="history" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><History className="mr-2 h-4 w-4" /> Histórico</TabsTrigger>
-            <TabsTrigger value="config" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Settings className="mr-2 h-4 w-4" /> API</TabsTrigger>
+        <div className="flex items-center justify-between bg-card p-1 rounded-2xl border shadow-sm sticky top-0 z-10 overflow-x-auto no-scrollbar">
+          <TabsList className="bg-transparent border-none w-full justify-start h-auto flex-wrap md:flex-nowrap gap-1">
+            <TabsTrigger value="templates" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 h-auto flex-1 min-w-[120px]"><FileJson className="mr-2 h-4 w-4" /> Templates</TabsTrigger>
+            <TabsTrigger value="send" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 h-auto flex-1 min-w-[120px]"><Send className="mr-2 h-4 w-4" /> Enviar</TabsTrigger>
+            <TabsTrigger value="chat" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 h-auto flex-1 min-w-[120px]"><MessageSquare className="mr-2 h-4 w-4" /> Chat ao Vivo</TabsTrigger>
+            <TabsTrigger value="automation" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 h-auto flex-1 min-w-[120px]"><Zap className="mr-2 h-4 w-4" /> Automação</TabsTrigger>
+            <TabsTrigger value="history" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 h-auto flex-1 min-w-[120px]"><History className="mr-2 h-4 w-4" /> Histórico</TabsTrigger>
+            <TabsTrigger value="config" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 h-auto flex-1 min-w-[120px]"><Settings className="mr-2 h-4 w-4" /> API</TabsTrigger>
           </TabsList>
         </div>
 
@@ -869,7 +869,7 @@ const WhatsApp = () => {
 
       {/* CREATE TEMPLATE DIALOG */}
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-        <DialogContent className="max-w-xl rounded-3xl p-0 overflow-hidden border-none shadow-2xl animate-in zoom-in-95 duration-200">
+        <DialogContent className="max-w-xl w-[95vw] max-h-[90vh] overflow-y-auto rounded-3xl p-0 border-none shadow-2xl animate-in zoom-in-95 duration-200">
            <div className="bg-primary/5 p-6 border-b">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-black flex items-center gap-2">
