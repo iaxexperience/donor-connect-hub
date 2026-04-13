@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-meta-id',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE',
 };
 
@@ -133,7 +133,8 @@ serve(async (req) => {
     }
 
     // B. PROXY (Outgoing from Frontend)
-    const { action, payload, config } = body;
+    const { action, meta_data, config } = body;
+    const payload = meta_data; // Mapping for compatibility with internal logic
 
     if (action === 'send_message' || action === 'send_template') {
       const { phone_number_id, access_token } = config;
@@ -243,8 +244,8 @@ serve(async (req) => {
           }
         };
 
-        if (method === 'POST' && payload) {
-          fetchOptions.body = JSON.stringify(payload);
+        if (method === 'POST' && meta_data) {
+          fetchOptions.body = JSON.stringify(meta_data);
         }
 
         const response = await fetch(url, fetchOptions);
