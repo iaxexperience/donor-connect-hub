@@ -143,10 +143,6 @@ serve(async (req) => {
     console.log(`[BB Extrato] Response Status: ${response!.status}`);
     
     let data: any = {};
-    const rawResponse = await response!.text();
-    console.log(`[BB Extrato] Response Status: ${response!.status}`);
-    
-    let data: any = {};
     try {
       data = JSON.parse(rawResponse);
     } catch {
