@@ -186,7 +186,7 @@ export default function IntegracaoAsaas() {
                     <TableRow><TableCell colSpan={5} className="text-center py-10 text-slate-400">Nenhuma cobrança Asaas encontrada.</TableCell></TableRow>
                   ) : donations.map((d) => (
                     <TableRow key={d.id} className="hover:bg-slate-50/50 border-b border-slate-50">
-                      <TableCell className="py-4 px-6 font-bold text-slate-700">{d.donors?.name}</TableCell>
+                      <TableCell className="py-4 px-6 font-bold text-slate-700">{d.donors?.name || 'Anônimo'}</TableCell>
                       <TableCell className="font-black text-slate-800">{formatCurrency(d.amount)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2 font-bold text-xs text-slate-500 bg-slate-100 w-fit px-2 py-1 rounded-md">
@@ -195,7 +195,7 @@ export default function IntegracaoAsaas() {
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(d.status)}</TableCell>
-                      <TableCell className="text-right px-6 text-sm text-slate-500">{new Date(d.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right px-6 text-sm text-slate-500">{d.donation_date ? new Date(d.donation_date).toLocaleDateString() : 'N/A'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -84,7 +84,7 @@ export const asaasService = {
 
     const { data: allDonations, error } = await supabase
       .from('donations')
-      .select('amount, status, billing_type, created_at, confirmed_at, donor_id')
+      .select('amount, status, billing_type, donation_date, confirmed_at, donor_id')
       .not('asaas_payment_id', 'is', null);
 
     if (error) {
