@@ -113,6 +113,35 @@ serve(async (req) => {
           text = `[${msgType}]`;
         }
 
+        // Match Donor based on phone
+        let matchedDonorId = null;
+        let matchedDonorName = profileName;
+
+        const cleanPhone = fromNormalized;
+        const shortPhone = cleanPhone.startsWith("55") ? cleanPhone.slice(2) : cleanPhone;
+
+        const { data: donors } = await supabase.from('donors').select('id, name, phone');
+        if (donors && donors.length > 0) {
+          const donor = donors.find((d: any) => {
+            if (!d.phone) return false;
+            const dbPhoneClean = d.phone.replace(/\D/g, "");
+            if (dbPhoneClean === cleanPhone || dbPhoneClean === shortPhone) return true;
+            
+            const last8DB = dbPhoneClean.slice(-8);
+            const last8Meta = cleanPhone.slice(-8);
+            const dddDB = dbPhoneClean.length >= 10 ? dbPhoneClean.slice(-10, -8) : "";
+            const dddMeta = shortPhone.length >= 10 ? shortPhone.slice(0, 2) : "";
+
+            if (last8DB === last8Meta && dddDB && dddMeta && dddDB === dddMeta) return true;
+            return cleanPhone.endsWith(dbPhoneClean) || shortPhone.endsWith(dbPhoneClean);
+          });
+
+          if (donor) {
+            matchedDonorId = donor.id;
+            matchedDonorName = donor.name; // Prioritize our DB name over Meta's profile name
+          }
+        }
+
         // Check/Create Chat
         let { data: chat, error: chatError } = await supabase
           .from('whatsapp_chats')
@@ -125,7 +154,7 @@ serve(async (req) => {
             .from('whatsapp_chats')
             .upsert([{ 
               telefone: fromNormalized, 
-              nome: profileName,
+              nome: matchedDonorName,
               last_message: text,
               last_message_at: new Date().toISOString(),
               unread_count: 1
@@ -159,7 +188,8 @@ serve(async (req) => {
             text_body: text,
             is_from_me: false,
             message_id: messageId,
-            status: 'received'
+            status: 'received',
+            donor_id: matchedDonorId
           }]);
 
         if (msgInsertError) {

@@ -60,79 +60,7 @@ function checkProxyResponse(data: any): any {
   return data;
 }
 
-// Helper to keep local database synced globally (Histórico + Chat ao Vivo)
-async function syncToDatabase(
-  cleanPhone: string,
-  textBody: string,
-  isTemplate: boolean,
-  msgId: string,
-  donorId?: number
-) {
-  try {
-    // 1. Log to whatsapp_historicos so it appears in the "Histórico" tab
-    await supabase.from('whatsapp_historicos').insert({
-      donor_id: donorId,
-      destinatario: cleanPhone,
-      template: isTemplate ? textBody : null,
-      mensagem: isTemplate ? null : textBody,
-      status: 'sent'
-    });
-
-    // 2. Upsert whatsapp_chats so it appears in the left sidebar of "Chat ao Vivo"
-    let chatId: string | undefined;
-    const { data: existingChat } = await supabase
-      .from('whatsapp_chats')
-      .select('id')
-      .eq('telefone', cleanPhone)
-      .maybeSingle();
-
-    if (existingChat) {
-      chatId = existingChat.id;
-      await supabase
-        .from('whatsapp_chats')
-        .update({
-          last_message: textBody,
-          last_message_at: new Date().toISOString()
-        })
-        .eq('id', chatId);
-    } else {
-      // Find donor name if not passed but we have the donorId
-      let chatName = "Contato";
-      if (donorId) {
-         const { data: donor } = await supabase.from('donors').select('name').eq('id', donorId).maybeSingle();
-         if (donor?.name) chatName = donor.name;
-      }
-      
-      const { data: newChat } = await supabase
-        .from('whatsapp_chats')
-        .insert({
-          telefone: cleanPhone,
-          nome: chatName,
-          last_message: textBody,
-          last_message_at: new Date().toISOString(),
-          unread_count: 0
-        })
-        .select('id')
-        .maybeSingle();
-        
-      if (newChat) chatId = newChat.id;
-    }
-
-    // 3. Log to whatsapp_messages so it appears in the right pane of "Chat ao Vivo"
-    if (chatId) {
-      await supabase.from('whatsapp_messages').insert({
-        chat_id: chatId,
-        telefone: cleanPhone,
-        text_body: textBody,
-        is_from_me: true,
-        status: 'sent',
-        message_id: msgId
-      });
-    }
-  } catch (dbErr) {
-    console.error("Erro ao sincronizar com banco local:", dbErr);
-  }
-}
+// Removing syncToDatabase because api-proxy handles DB insertion atomically
 
 export const metaService = {
   /** Envia mensagem de texto via api-proxy */
@@ -158,8 +86,6 @@ export const metaService = {
       },
     });
 
-    const msgId = resp?.messages?.[0]?.id || "unknown";
-    await syncToDatabase(cleanPhone, text, false, msgId, donorId);
     return resp;
   },
 
@@ -186,8 +112,6 @@ export const metaService = {
       },
     });
 
-    const msgId = resp?.messages?.[0]?.id || "unknown";
-    await syncToDatabase(cleanPhone, `Mídia: ${mediaUrl}`, false, msgId, donorId);
     return resp;
   },
 
@@ -218,8 +142,6 @@ export const metaService = {
       },
     });
 
-    const msgId = resp?.messages?.[0]?.id || "unknown";
-    await syncToDatabase(cleanPhone, templateName, true, msgId, donorId);
     return resp;
   },
 
