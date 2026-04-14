@@ -40,10 +40,10 @@ serve(async (req) => {
 
     // Map Asaas event to our status
     const statusMap: Record<string, string> = {
-      PAYMENT_RECEIVED: 'confirmed',
-      PAYMENT_CONFIRMED: 'confirmed',
-      PAYMENT_OVERDUE: 'overdue',
-      PAYMENT_DELETED: 'cancelled',
+      PAYMENT_RECEIVED: 'pago',
+      PAYMENT_CONFIRMED: 'pago',
+      PAYMENT_OVERDUE: 'pendente',
+      PAYMENT_DELETED: 'cancelada',
     };
     const newStatus = statusMap[event] || 'pending';
 

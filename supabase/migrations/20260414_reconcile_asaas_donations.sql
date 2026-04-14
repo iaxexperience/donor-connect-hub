@@ -41,14 +41,16 @@ INSERT INTO donations (
   amount,
   status,
   billing_type,
+  payment_method,
   donation_date,
   confirmed_at
 )
 SELECT
   pl.payload->'payment'->>'id'                                              AS asaas_payment_id,
   (pl.payload->'payment'->>'value')::numeric                                AS amount,
-  'confirmed'                                                               AS status,
+  'pago'                                                                    AS status,
   COALESCE(pl.payload->'payment'->>'billingType', 'PIX')                   AS billing_type,
+  COALESCE(pl.payload->'payment'->>'billingType', 'PIX')                   AS payment_method,
   COALESCE(
     (pl.payload->'payment'->>'confirmedDate')::timestamptz,
     pl.created_at
@@ -71,7 +73,7 @@ WHERE pl.event IN ('PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED')
 -- ──────────────────────────────────────────────────────────────
 UPDATE donations d
 SET
-  status       = 'confirmed',
+  status       = 'pago',
   confirmed_at = COALESCE(
     (pl.payload->'payment'->>'confirmedDate')::timestamptz,
     pl.created_at
@@ -79,7 +81,7 @@ SET
 FROM payments_logs pl
 WHERE pl.event IN ('PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED')
   AND pl.payload->'payment'->>'id' = d.asaas_payment_id
-  AND (d.status = 'pending' OR d.status IS NULL OR d.status = 'PENDING')
+  AND d.status::text != 'pago'
   AND d.confirmed_at IS NULL;
 
 -- ──────────────────────────────────────────────────────────────
@@ -93,17 +95,17 @@ FROM donations
 WHERE asaas_payment_id IS NOT NULL;
 
 SELECT
-  'Confirmed today' AS label,
+  'Confirmados hoje' AS label,
   COUNT(*) AS total,
   SUM(amount) AS total_amount
 FROM donations
 WHERE asaas_payment_id IS NOT NULL
-  AND status = 'confirmed'
+  AND status = 'pago'
   AND (confirmed_at::date = CURRENT_DATE OR donation_date::date = CURRENT_DATE);
 
 SELECT
   id, asaas_payment_id, amount, status, billing_type, donation_date, confirmed_at
 FROM donations
 WHERE asaas_payment_id IS NOT NULL
-ORDER BY created_at DESC
+ORDER BY donation_date DESC
 LIMIT 10;

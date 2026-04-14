@@ -20,9 +20,9 @@ export const useDashboard = () => {
     },
   });
 
-  // Helper
+  // Helper — 'pago' é o valor correto do enum donation_status no banco
   const isConfirmedStatus = (status: string) =>
-    status === 'confirmed' || status === 'pago' || status === 'Confirmado' || status === 'CONFIRMED' || status === 'RECEIVED';
+    status === 'pago' || status === 'confirmed' || status === 'Confirmado' || status === 'CONFIRMED';
 
   // 1. Recebimentos Mensais (Últimos 6 meses)
   const getMonthlyData = () => {

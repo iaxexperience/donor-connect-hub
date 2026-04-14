@@ -99,10 +99,10 @@ export const asaasService = {
     }
 
     const donations = allDonations || [];
-    const isConfirmed = (status: string) => status === 'confirmed' || status === 'pago' || status === 'Confirmado';
+    const isConfirmed = (status: string) => status === 'pago' || status === 'confirmed' || status === 'Confirmado';
 
     const totalToday = donations
-      .filter(d => isConfirmed(d.status) && (d.confirmed_at?.startsWith(today) || d.created_at.startsWith(today)))
+      .filter(d => isConfirmed(d.status) && (d.confirmed_at?.startsWith(today) || d.donation_date?.startsWith(today)))
       .reduce((acc, d) => acc + parseFloat(d.amount), 0);
 
     const totalConfirmed = donations
