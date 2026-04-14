@@ -118,7 +118,12 @@ export const WhatsAppChat = () => {
             filter: `chat_id=eq.${selectedChat.id}` 
           }, 
           (payload) => {
-            setMessages(prev => [...prev, payload.new as Message]);
+            // Deduplicate: avoid adding if already in state (optimistic update already added it)
+            setMessages(prev => {
+              const incoming = payload.new as Message;
+              if (prev.some(m => m.id === incoming.id)) return prev;
+              return [...prev, incoming];
+            });
           }
         )
         .subscribe();
@@ -141,19 +146,80 @@ export const WhatsAppChat = () => {
     const currentText = inputText;
     setInputText("");
 
-    try {
-      // Get config from localStorage (saved in Config tab)
-      const savedConfig = localStorage.getItem("meta_config");
-      if (!savedConfig) {
-        toast({ title: "Erro", description: "Configurações da Meta API não encontradas.", variant: "destructive" });
-        return;
-      }
-      const config = JSON.parse(savedConfig);
+    // 1. Optimistic update — show message immediately in the UI
+    const tempId = `tmp-${Date.now()}`;
+    const optimisticMsg: Message = {
+      id: tempId,
+      chat_id: selectedChat.id,
+      text_body: currentText,
+      is_from_me: true,
+      status: 'sending',
+      created_at: new Date().toISOString(),
+      message_id: tempId,
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
 
-      await metaService.sendTextMessage(selectedChat.telefone, currentText, config);
-      // The message will appear via Realtime subscription because the Edge Function inserts it into DB
+    try {
+      // 2. Save directly to Supabase from the frontend (guaranteed persistence)
+      const { data: savedMsg, error: insertErr } = await supabase
+        .from('whatsapp_messages')
+        .insert([{
+          chat_id: selectedChat.id,
+          telefone: selectedChat.telefone,
+          text_body: currentText,
+          is_from_me: true,
+          status: 'sent',
+        }])
+        .select()
+        .single();
+
+      if (insertErr) {
+        console.error('[Chat] Error saving message to DB:', insertErr);
+      }
+
+      // 3. Update the optimistic message with the real DB id + status
+      setMessages(prev => prev.map(m =>
+        m.id === tempId
+          ? { ...(savedMsg || m), status: 'sent' }
+          : m
+      ));
+
+      // 4. Update the sidebar last_message
+      await supabase
+        .from('whatsapp_chats')
+        .update({
+          last_message: currentText,
+          last_message_at: new Date().toISOString(),
+        })
+        .eq('id', selectedChat.id);
+
+      // 5. Attempt to send via Meta API (fire-and-forget for UI responsiveness)
+      const savedConfig = localStorage.getItem("meta_config");
+      if (savedConfig) {
+        const config = JSON.parse(savedConfig);
+        metaService.sendTextMessage(selectedChat.telefone, currentText, config)
+          .then(resp => {
+            const wamId = resp?.messages?.[0]?.id;
+            if (wamId && savedMsg) {
+              // Update message_id with real Meta WAM ID
+              supabase
+                .from('whatsapp_messages')
+                .update({ message_id: wamId, status: 'sent' })
+                .eq('id', savedMsg.id)
+                .then(() => {});
+            }
+          })
+          .catch(err => {
+            console.warn('[Chat] Meta API send failed (message already saved locally):', err.message);
+          });
+      } else {
+        toast({ title: "Aviso", description: "Configure as credenciais da Meta API na aba API para enviar via WhatsApp.", variant: "default" });
+      }
+
     } catch (err: any) {
       toast({ title: "Erro ao enviar", description: err.message, variant: "destructive" });
+      // Remove optimistic message on full failure
+      setMessages(prev => prev.filter(m => m.id !== tempId));
       setInputText(currentText);
     }
   };
