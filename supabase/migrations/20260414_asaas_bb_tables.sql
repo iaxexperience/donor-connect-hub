@@ -1,8 +1,51 @@
 -- ============================================================
 -- Migration: Asaas & Banco do Brasil — Tabelas e Campos
 -- Execute no Supabase SQL Editor
+-- Inclui: asaas_settings, bb_settings e tabelas de dados
 -- Seguro de reexecutar (usa IF NOT EXISTS e ADD COLUMN IF NOT EXISTS)
 -- ============================================================
+
+-- ──────────────────────────────────────────────────────────────
+-- 0a. asaas_settings  (Credenciais da API do Asaas)
+-- Campos exibidos na aba "Configuração" do menu Integração Asaas
+-- ──────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS asaas_settings (
+  id          int PRIMARY KEY DEFAULT 1,
+  api_key     text,          -- access_token (Asaas API Key)
+  sandbox     boolean NOT NULL DEFAULT true,  -- true = Sandbox, false = Produção
+  webhook_url text,          -- URL do webhook registrada no painel Asaas
+  updated_at  timestamptz DEFAULT now(),
+  CONSTRAINT asaas_settings_single_row CHECK (id = 1)
+);
+
+ALTER TABLE asaas_settings ADD COLUMN IF NOT EXISTS api_key text;
+ALTER TABLE asaas_settings ADD COLUMN IF NOT EXISTS sandbox boolean NOT NULL DEFAULT true;
+ALTER TABLE asaas_settings ADD COLUMN IF NOT EXISTS webhook_url text;
+ALTER TABLE asaas_settings ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- ──────────────────────────────────────────────────────────────
+-- 0b. bb_settings  (Credenciais da API do Banco do Brasil)
+-- Campos exibidos na aba "Configuração de Chaves" do menu BB
+-- ──────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS bb_settings (
+  id            int PRIMARY KEY DEFAULT 1,
+  client_id     text,         -- BB_CLIENT_ID (OAuth2)
+  client_secret text,         -- BB_CLIENT_SECRET (OAuth2)
+  app_key       text,         -- BB_APP_KEY (header gw-dev-app-key)
+  agencia       text,         -- Número da agência
+  conta         text,         -- Número da conta
+  sandbox       boolean NOT NULL DEFAULT true,   -- true = Sandbox BB
+  updated_at    timestamptz DEFAULT now(),
+  CONSTRAINT bb_settings_single_row CHECK (id = 1)
+);
+
+ALTER TABLE bb_settings ADD COLUMN IF NOT EXISTS client_id text;
+ALTER TABLE bb_settings ADD COLUMN IF NOT EXISTS client_secret text;
+ALTER TABLE bb_settings ADD COLUMN IF NOT EXISTS app_key text;
+ALTER TABLE bb_settings ADD COLUMN IF NOT EXISTS agencia text;
+ALTER TABLE bb_settings ADD COLUMN IF NOT EXISTS conta text;
+ALTER TABLE bb_settings ADD COLUMN IF NOT EXISTS sandbox boolean NOT NULL DEFAULT true;
+ALTER TABLE bb_settings ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
 
 -- ──────────────────────────────────────────────────────────────
 -- 1. bank_transactions  (Extrato do Banco do Brasil)
@@ -82,9 +125,21 @@ CREATE INDEX IF NOT EXISTS idx_donors_asaas               ON donors(asaas_custom
 -- ──────────────────────────────────────────────────────────────
 -- Row Level Security
 -- ──────────────────────────────────────────────────────────────
+ALTER TABLE asaas_settings     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bb_settings        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bank_transactions  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments_logs      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE integration_logs   ENABLE ROW LEVEL SECURITY;
+
+-- asaas_settings
+DROP POLICY IF EXISTS "auth_all_asaas_settings" ON asaas_settings;
+CREATE POLICY "auth_all_asaas_settings"
+  ON asaas_settings FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- bb_settings
+DROP POLICY IF EXISTS "auth_all_bb_settings" ON bb_settings;
+CREATE POLICY "auth_all_bb_settings"
+  ON bb_settings FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- bank_transactions
 DROP POLICY IF EXISTS "auth_all_bank_transactions" ON bank_transactions;
