@@ -33,14 +33,6 @@ serve(async (req) => {
 
     const { client_id: clientId, client_secret: clientSecret, app_key: appKey, sandbox: isSandbox } = bbSettings;
 
-    // Preventive check for JWT used as Client ID
-    if (clientId.trim().startsWith('ey')) {
-      throw new Error('DETECTADO: Você parece estar tentando usar um "Access Token" (que começa com ey...) no campo "Client ID". No Banco do Brasil, o Client ID é um código alfanumérico curto ou UUID. Verifique no portal developers.bb.com.br.');
-    }
-    if (clientSecret.trim().startsWith('ey')) {
-      throw new Error('DETECTADO: O seu "Client Secret" parece ser um Token (começa com ey...). Verifique se copiou o campo "Secret" correto no portal do BB.');
-    }
-
     // 2. Fetch BB Token directly here instead of calling another function to avoid internal latency
     const credentials = btoa(`${clientId.trim()}:${clientSecret.trim()}`);
     const tokenUrl = isSandbox
@@ -49,6 +41,8 @@ serve(async (req) => {
 
     console.log(`[BB OAuth] Attempting token fetch for ${isSandbox ? 'Sandbox' : 'Production'}...`);
     
+    // Note: We removed the 'scope' parameter because for many BB Sandbox apps, 
+    // including it leads to a 400 Bad Request error.
     const tokenResponse = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
@@ -59,7 +53,6 @@ serve(async (req) => {
       },
       body: new URLSearchParams({
         'grant_type': 'client_credentials',
-        'scope': 'extrato.read'
       }).toString(),
     });
 
@@ -73,8 +66,7 @@ serve(async (req) => {
 
     if (!tokenResponse.ok) {
       const detail = tokenData.error_description || tokenData.error || tokenData.mensagem || tokenRaw || JSON.stringify(tokenData);
-      const possibleFix = tokenResponse.status === 400 ? ' (DICA: Verifique se o Client ID e Secret estão corretos e se você não incluiu espaços extras)' : '';
-      throw new Error(`BB OAuth Error (${tokenResponse.status}): ${detail}${possibleFix}`);
+      throw new Error(`BB OAuth Error (${tokenResponse.status}): ${detail}`);
     }
     const accessToken = tokenData.access_token;
 
