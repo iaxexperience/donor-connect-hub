@@ -106,16 +106,28 @@ serve(async (req) => {
       ? 'https://api.sandbox.bb.com.br'
       : 'https://api.bb.com.br';
       
+    // BB Sandbox requires dates in DDMMAAAA format (no dashes)
+    const formatDateBB = (dateStr: string) => {
+      // dateStr is YYYY-MM-DD
+      const [year, month, day] = dateStr.split('-');
+      return `${day}${month}${year}`;
+    };
+
     // 4. Fetch transactions from BB API
     const params = new URLSearchParams({
-      'dataInicio': since,
-      'dataFim': until,
+      'dataInicio': formatDateBB(since),
+      'dataFim': formatDateBB(until),
       'numeroAgencia': agencia.padStart(4, '0'),
       'numeroConta': conta,
     });
 
     console.log(`[BB Extrato] Request URL: ${baseUrl}/extrato/v1/conta?${params}`);
     
+    // The x-br-com-bb-ipa-mciteste header is REQUIRED for Sandbox tests
+    // Each value corresponds to test accounts as documented in the BB portal:
+    // 26968930 -> Ag 551 / Conta 5087
+    const sandboxHeader = isSandbox ? { 'x-br-com-bb-ipa-mciteste': '26968930' } : {};
+
     let retries = 3;
     let response: Response | null = null;
     while (retries > 0) {
@@ -125,7 +137,8 @@ serve(async (req) => {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'gw-dev-app-key': appKey
+            'gw-dev-app-key': appKey,
+            ...sandboxHeader,
           },
           // @ts-ignore: Deno-specific fetch option
           client: httpClient,
