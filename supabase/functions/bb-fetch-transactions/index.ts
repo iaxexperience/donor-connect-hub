@@ -44,6 +44,7 @@ serve(async (req) => {
       headers: {
         'Authorization': `Basic ${credentials}`,
         'Content-Type': 'application/x-www-form-urlencoded',
+        'gw-dev-app-key': appKey
       },
       body: new URLSearchParams({
         'grant_type': 'client_credentials',
