@@ -143,13 +143,20 @@ serve(async (req) => {
     console.log(`[BB Extrato] Response Status: ${response!.status}`);
     
     let data: any = {};
+    const rawResponse = await response!.text();
+    console.log(`[BB Extrato] Response Status: ${response!.status}`);
+    
+    let data: any = {};
     try {
       data = JSON.parse(rawResponse);
     } catch {
       console.error(`[BB Extrato] Failed to parse as JSON. Raw response snippet: ${rawResponse.substring(0, 1000)}`);
       // If the body contains "DOCTYPE", it's definitely HTML. Let's provide a better error.
       if (rawResponse.includes('<!DOCTYPE') || rawResponse.includes('<html')) {
-        throw new Error(`BB API HTML Error (${response!.status}): O banco retornou uma página web. Verifique se a Agência/Conta ${agencia}/${conta} é válida para o Sandbox.`);
+        // Find title if possible
+        const titleMatch = rawResponse.match(/<title[^>]*>([^<]+)<\/title>/i);
+        const title = titleMatch ? titleMatch[1].trim() : "Sem título";
+        throw new Error(`BB API HTML Error (${response!.status}): O banco retornou uma página web (Título: ${title}). Isso pode ser bloqueio de WAF ou conta inválida para Sandbox. Veja os logs.`);
       }
       throw new Error(`BB API Format Error (${response!.status}): Formato inválido recebido do banco.`);
     }
