@@ -113,20 +113,21 @@ export const useDashboard = () => {
   };
 
   // "Recebidos Hoje" — apenas doações confirmadas cuja data de confirmação é hoje
-  const today = new Date().toDateString();
+  const today = new Date();
   const todayTotal = donations
     .filter(d => {
       if (!isConfirmedStatus(d.status)) return false;
       const dateStr = d.confirmed_at || d.donation_date;
       if (!dateStr) return false;
-      return new Date(dateStr).toDateString() === today;
+      const donationDate = new Date(dateStr);
+      return donationDate.toDateString() === today.toDateString();
     })
-    .reduce((acc, d) => acc + (d.amount || 0), 0);
+    .reduce((acc, d) => acc + Number(d.amount || 0), 0);
 
   // "Saldo ASAAS" — total de todas as doações confirmadas (histórico completo)
   const totalDonations = donations
     .filter(d => isConfirmedStatus(d.status))
-    .reduce((acc, d) => acc + (d.amount || 0), 0);
+    .reduce((acc, d) => acc + Number(d.amount || 0), 0);
 
   return {
     isLoading: donationsLoading,
