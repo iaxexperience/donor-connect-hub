@@ -45,7 +45,6 @@ serve(async (req) => {
 
         const data = await res.json().catch(() => ({}));
         console.log(`[api-proxy] Meta Response ${res.status}:`, JSON.stringify(data));
-
         // Always return 200 — embed meta_status so frontend can check
         return ok({ ...data, __meta_status: res.status });
       }
@@ -81,6 +80,111 @@ serve(async (req) => {
         });
         const data = await res.json().catch(() => ({}));
         console.log(`[api-proxy] Meta Response ${res.status}:`, JSON.stringify(data));
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Persist sent message to Supabase (required for Chat ao Vivo to work)
+        // ─────────────────────────────────────────────────────────────────────
+        if (res.ok && !data.error) {
+          try {
+            const supabase = createClient(
+              Deno.env.get('SUPABASE_URL') ?? '',
+              Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+            );
+
+            const toPhone = (payload?.to ?? '').replace(/\D/g, '');
+            const wamId = data?.messages?.[0]?.id ?? null;
+            const donorId = body.donor_id ?? null;
+
+            // Determine readable text to save in the chat
+            let textBody = '';
+            if (action === 'send_message' && payload?.type === 'text') {
+              textBody = payload?.text?.body ?? '';
+            } else if (action === 'send_template') {
+              textBody = `Template: ${payload?.template?.name ?? ''}`;
+            } else if (payload?.type === 'image') {
+              textBody = `📷 Imagem`;
+            } else if (payload?.type === 'video') {
+              textBody = `🎬 Vídeo`;
+            }
+
+            // 1. Find or create whatsapp_chats entry
+            const { data: existingChat } = await supabase
+              .from('whatsapp_chats')
+              .select('id')
+              .eq('telefone', toPhone)
+              .maybeSingle();
+
+            let chatId: string | null = existingChat?.id ?? null;
+
+            if (!chatId) {
+              let chatName = 'Contato';
+              if (donorId) {
+                const { data: donor } = await supabase
+                  .from('donors')
+                  .select('name')
+                  .eq('id', donorId)
+                  .maybeSingle();
+                if (donor?.name) chatName = donor.name;
+              }
+              const { data: newChat } = await supabase
+                .from('whatsapp_chats')
+                .upsert([{
+                  telefone: toPhone,
+                  nome: chatName,
+                  last_message: textBody,
+                  last_message_at: new Date().toISOString(),
+                  unread_count: 0,
+                }], { onConflict: 'telefone' })
+                .select('id')
+                .maybeSingle();
+              chatId = newChat?.id ?? null;
+            } else {
+              await supabase
+                .from('whatsapp_chats')
+                .update({
+                  last_message: textBody,
+                  last_message_at: new Date().toISOString(),
+                })
+                .eq('id', chatId);
+            }
+
+            // 2. Insert into whatsapp_messages — triggers Realtime in the frontend
+            if (chatId) {
+              const { error: msgErr } = await supabase
+                .from('whatsapp_messages')
+                .insert([{
+                  chat_id: chatId,
+                  telefone: toPhone,
+                  text_body: textBody,
+                  is_from_me: true,
+                  status: 'sent',
+                  message_id: wamId,
+                  donor_id: donorId,
+                }]);
+              if (msgErr) {
+                console.error('[api-proxy] whatsapp_messages insert error:', JSON.stringify(msgErr));
+              } else {
+                console.log(`[api-proxy] Message saved to DB. chat_id=${chatId}`);
+              }
+            }
+
+            // 3. Log to whatsapp_historicos for the Histórico tab
+            await supabase.from('whatsapp_historicos').insert([{
+              donor_id: donorId,
+              destinatario: toPhone,
+              template: action === 'send_template' ? payload?.template?.name : null,
+              mensagem: action === 'send_message' ? textBody : null,
+              status: 'sent',
+              meta_msg_id: wamId,
+              lote: body.batch_id ?? null,
+            }]);
+
+          } catch (dbErr: any) {
+            // Non-critical: don't fail the HTTP response if DB write fails
+            console.error('[api-proxy] DB persist error:', dbErr.message);
+          }
+        }
+
         return ok({ ...data, __meta_status: res.status });
       }
 

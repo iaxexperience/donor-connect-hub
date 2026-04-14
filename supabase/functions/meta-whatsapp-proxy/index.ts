@@ -74,14 +74,44 @@ serve(async (req) => {
     // A. WEBHOOK (Incoming from Meta)
     if (body.entry?.[0]?.changes?.[0]?.value) {
       const value = body.entry[0].changes[0].value;
+      
+      // ── Ignore delivery/read status updates ──────────────────────────────
+      if (value.statuses) {
+        console.log('[Meta Proxy] Ignoring status update (delivered/read)');
+        return new Response(JSON.stringify({ ok: true }), { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
+
       const message = value.messages?.[0];
 
       if (message) {
         const fromRaw = message.from;
         const fromNormalized = normalizePhone(fromRaw);
-        const text = message.text?.body || "Mensagem de mídia/outro";
-        const messageId = message.id;
         const profileName = value.contacts?.[0]?.profile?.name || 'WhatsApp Contact';
+        const messageId = message.id;
+        const msgType = message.type;
+
+        // Determine text from message type
+        let text = '';
+        if (msgType === 'text') {
+          text = message.text?.body ?? '';
+        } else if (msgType === 'image') {
+          text = '📷 Imagem';
+        } else if (msgType === 'audio') {
+          text = '🎙️ Áudio';
+        } else if (msgType === 'video') {
+          text = '🎬 Vídeo';
+        } else if (msgType === 'document') {
+          text = `📄 Documento: ${message.document?.filename ?? ''}`;
+        } else if (msgType === 'sticker') {
+          text = '🎭 Sticker';
+        } else if (msgType === 'location') {
+          text = `📍 Localização: ${message.location?.latitude}, ${message.location?.longitude}`;
+        } else {
+          text = `[${msgType}]`;
+        }
 
         // Check/Create Chat
         let { data: chat, error: chatError } = await supabase
@@ -103,7 +133,10 @@ serve(async (req) => {
             .select()
             .single();
           
-          if (createError) throw createError;
+          if (createError) {
+            console.error('[Meta Proxy] Error creating chat:', JSON.stringify(createError));
+            throw createError;
+          }
           chat = newChat;
         } else {
           // Update Chat
@@ -117,8 +150,8 @@ serve(async (req) => {
             .eq('id', chat.id);
         }
 
-        // Insert Message
-        await supabase
+        // Insert Message — triggers Realtime in WhatsAppChat.tsx
+        const { error: msgInsertError } = await supabase
           .from('whatsapp_messages')
           .insert([{
             chat_id: chat.id,
@@ -129,12 +162,20 @@ serve(async (req) => {
             status: 'received'
           }]);
 
+        if (msgInsertError) {
+          console.error('[Meta Proxy] Error inserting message:', JSON.stringify(msgInsertError));
+        } else {
+          console.log(`[Meta Proxy] Received message saved. chat_id=${chat.id}, from=${fromNormalized}`);
+        }
+
         return new Response(JSON.stringify({ success: true }), { 
           status: 200, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         });
       }
-      return new Response('Evento ignorado', { status: 200 });
+
+      // Any other webhook event — Meta requires 200 response
+      return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // B. PROXY (Outgoing from Frontend)
