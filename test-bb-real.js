@@ -4,16 +4,13 @@ const appKey = '45f2da38f7044302819df079a6d313a3';
 const isSandbox = true;
 
 async function checkBB() {
+    console.log("Starting test...");
     const credentials = btoa(`${clientId}:${clientSecret}`);
-    const tokenUrl = isSandbox
-      ? 'https://oauth.sandbox.bb.com.br/oauth/token'
-      : 'https://oauth.bb.com.br/oauth/token';
+    const tokenUrl = 'https://oauth.sandbox.bb.com.br/oauth/token';
 
-    console.log("Testing with real user keys...");
+    console.log("Credentials length:", credentials.length);
     
-    // Attempt 1: Standard with scope
     try {
-        console.log("--- Attempt 1 (with scope) ---");
         const res = await fetch(tokenUrl, {
             method: 'POST',
             headers: {
@@ -27,28 +24,13 @@ async function checkBB() {
                 'scope': 'extrato.read'
             }).toString()
         });
-        console.log("Status:", res.status);
-        console.log("Body:", await res.text());
-    } catch (e) { console.error(e); }
-
-    // Attempt 2: WITHOUT scope (some BB apps don't use scope)
-    try {
-        console.log("--- Attempt 2 (no scope) ---");
-        const res = await fetch(tokenUrl, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Basic ${credentials}`,
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'gw-dev-app-key': appKey,
-                'Accept': 'application/json'
-            },
-            body: new URLSearchParams({
-                'grant_type': 'client_credentials'
-            }).toString()
-        });
-        console.log("Status:", res.status);
-        console.log("Body:", await res.text());
-    } catch (e) { console.error(e); }
+        
+        console.log("Status Code:", res.status);
+        const text = await res.text();
+        console.log("Response text:", text);
+    } catch (e) {
+        console.log("Fetch Error:", e.message);
+    }
 }
 
 checkBB();
