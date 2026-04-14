@@ -48,9 +48,10 @@ serve(async (req) => {
       body: 'grant_type=client_credentials&scope=extrato.read',
     });
 
-    const tokenData = await tokenResponse.json();
-    if (!tokenResponse.ok || tokenData.error) {
-      throw new Error(`BB OAuth Error: ${tokenData.error_description || tokenData.error || 'Unknown error'}`);
+    const tokenData = await tokenResponse.json().catch(() => ({}));
+    if (!tokenResponse.ok) {
+      const detail = tokenData.error_description || tokenData.error || tokenData.mensagem || JSON.stringify(tokenData);
+      throw new Error(`BB OAuth Error (${tokenResponse.status}): ${detail}`);
     }
     const accessToken = tokenData.access_token;
 
