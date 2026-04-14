@@ -26,7 +26,7 @@ serve(async (req) => {
       payload: body,
     }]);
 
-    if (!['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED', 'PAYMENT_OVERDUE', 'PAYMENT_DELETED'].includes(event)) {
+    if (!['PAYMENT_CREATED', 'PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED', 'PAYMENT_OVERDUE', 'PAYMENT_DELETED'].includes(event)) {
       return new Response(JSON.stringify({ message: 'Event ignored' }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -40,19 +40,20 @@ serve(async (req) => {
 
     // Map Asaas event to our status
     const statusMap: Record<string, string> = {
+      PAYMENT_CREATED: 'pendente',
       PAYMENT_RECEIVED: 'pago',
       PAYMENT_CONFIRMED: 'pago',
       PAYMENT_OVERDUE: 'pendente',
-      PAYMENT_DELETED: 'cancelada',
+      PAYMENT_DELETED: 'cancelado', // Ensure masculine for enum match if required
     };
-    const newStatus = statusMap[event] || 'pending';
+    const newStatus = statusMap[event] || 'pendente';
 
     // Update donation
     const { data: updated, error } = await supabase
       .from('donations')
       .update({ 
         status: newStatus,
-        confirmed_at: newStatus === 'confirmed' ? new Date().toISOString() : null
+        confirmed_at: newStatus === 'pago' ? new Date().toISOString() : null
       })
       .eq('asaas_payment_id', asaasPaymentId)
       .select();
@@ -79,7 +80,7 @@ serve(async (req) => {
         billing_type: payment.billingType,
         due_date: payment.dueDate,
         donation_date: new Date().toISOString(), // Fallback para data da doação
-        confirmed_at: newStatus === 'confirmed' ? new Date().toISOString() : null
+        confirmed_at: newStatus === 'pago' ? new Date().toISOString() : null
       }]).select();
 
       if (insertErr) throw insertErr;
