@@ -38,25 +38,25 @@ CREATE POLICY "auth_all_payments_logs"
 -- ──────────────────────────────────────────────────────────────
 INSERT INTO donations (
   asaas_payment_id,
+  donor_id,
   amount,
   status,
   billing_type,
-  payment_method,
   donation_date,
   confirmed_at
 )
 SELECT
   pl.payload->'payment'->>'id'                                              AS asaas_payment_id,
+  (SELECT id FROM donors WHERE asaas_customer_id = pl.payload->'payment'->>'customer' LIMIT 1) AS donor_id,
   (pl.payload->'payment'->>'value')::numeric                                AS amount,
   'pago'                                                                    AS status,
   COALESCE(pl.payload->'payment'->>'billingType', 'PIX')                   AS billing_type,
-  COALESCE(pl.payload->'payment'->>'billingType', 'PIX')                   AS payment_method,
   COALESCE(
-    (pl.payload->'payment'->>'confirmedDate')::timestamptz,
+    NULLIF(pl.payload->'payment'->>'confirmedDate', '')::timestamptz,
     pl.created_at
   )                                                                         AS donation_date,
   COALESCE(
-    (pl.payload->'payment'->>'confirmedDate')::timestamptz,
+    NULLIF(pl.payload->'payment'->>'confirmedDate', '')::timestamptz,
     pl.created_at
   )                                                                         AS confirmed_at
 FROM payments_logs pl
@@ -75,7 +75,7 @@ UPDATE donations d
 SET
   status       = 'pago',
   confirmed_at = COALESCE(
-    (pl.payload->'payment'->>'confirmedDate')::timestamptz,
+    NULLIF(pl.payload->'payment'->>'confirmedDate', '')::timestamptz,
     pl.created_at
   )
 FROM payments_logs pl

@@ -60,8 +60,9 @@ export const asaasService = {
       .from('donations')
       .select('*, donors(name, email, phone)')
       .not('asaas_payment_id', 'is', null)
-      .order('created_at', { ascending: false });
+      .order('donation_date', { ascending: false });
     if (error) {
+      console.error("[asaasService.getDonations] Supabase error:", error);
       // Catch missing column 'asaas_payment_id' if migration wasn't run
       if (
         error.message?.includes('Could not find') || 
@@ -87,6 +88,7 @@ export const asaasService = {
       .not('asaas_payment_id', 'is', null);
 
     if (error) {
+      console.error("[asaasService.getDashboardData] Supabase error:", error);
       if (
         error.message?.includes('Could not find') || 
         error.message?.includes('does not exist') ||
@@ -102,7 +104,14 @@ export const asaasService = {
     const isConfirmed = (status: string) => status === 'pago' || status === 'confirmed' || status === 'Confirmado';
 
     const totalToday = donations
-      .filter(d => isConfirmed(d.status) && (d.confirmed_at?.startsWith(today) || d.donation_date?.startsWith(today)))
+      .filter(d => {
+        if (!isConfirmed(d.status)) return false;
+        const dateStr = d.confirmed_at || d.donation_date;
+        if (!dateStr) return false;
+        const dDate = new Date(dateStr);
+        const tDate = new Date();
+        return dDate.toDateString() === tDate.toDateString() || dDate.toISOString().split('T')[0] === today;
+      })
       .reduce((acc, d) => acc + parseFloat(d.amount), 0);
 
     const totalConfirmed = donations

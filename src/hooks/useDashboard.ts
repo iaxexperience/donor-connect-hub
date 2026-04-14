@@ -13,9 +13,17 @@ export const useDashboard = () => {
       const { data, error } = await supabase
         .from('donations')
         .select('*, donors(name, type)')
-        .order('created_at', { ascending: false });  // usa created_at que sempre existe
+        .order('donation_date', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("[useDashboard] Supabase error fetching donations:", error);
+        if (error.code === '42703' || error.message?.includes('does not exist')) {
+            // Fallback para evitar travamento da tela toda
+            const { data: fallbackData } = await supabase.from('donations').select('*, donors(name, type)');
+            return fallbackData || [];
+        }
+        throw error;
+      }
       return data;
     },
   });
