@@ -33,18 +33,29 @@ serve(async (req) => {
 
     const { client_id: clientId, client_secret: clientSecret, app_key: appKey, sandbox: isSandbox } = bbSettings;
 
+    // Preventive check for JWT used as Client ID
+    if (clientId.trim().startsWith('ey')) {
+      throw new Error('DETECTADO: Você parece estar tentando usar um "Access Token" (que começa com ey...) no campo "Client ID". No Banco do Brasil, o Client ID é um código alfanumérico curto ou UUID. Verifique no portal developers.bb.com.br.');
+    }
+    if (clientSecret.trim().startsWith('ey')) {
+      throw new Error('DETECTADO: O seu "Client Secret" parece ser um Token (começa com ey...). Verifique se copiou o campo "Secret" correto no portal do BB.');
+    }
+
     // 2. Fetch BB Token directly here instead of calling another function to avoid internal latency
-    const credentials = btoa(`${clientId}:${clientSecret}`);
+    const credentials = btoa(`${clientId.trim()}:${clientSecret.trim()}`);
     const tokenUrl = isSandbox
       ? 'https://oauth.sandbox.bb.com.br/oauth/token'
       : 'https://oauth.bb.com.br/oauth/token';
 
+    console.log(`[BB OAuth] Attempting token fetch for ${isSandbox ? 'Sandbox' : 'Production'}...`);
+    
     const tokenResponse = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${credentials}`,
         'Content-Type': 'application/x-www-form-urlencoded',
-        'gw-dev-app-key': appKey
+        'Accept': 'application/json',
+        'gw-dev-app-key': appKey.trim()
       },
       body: new URLSearchParams({
         'grant_type': 'client_credentials',
@@ -62,7 +73,8 @@ serve(async (req) => {
 
     if (!tokenResponse.ok) {
       const detail = tokenData.error_description || tokenData.error || tokenData.mensagem || tokenRaw || JSON.stringify(tokenData);
-      throw new Error(`BB OAuth Error (${tokenResponse.status}): ${detail}`);
+      const possibleFix = tokenResponse.status === 400 ? ' (DICA: Verifique se o Client ID e Secret estão corretos e se você não incluiu espaços extras)' : '';
+      throw new Error(`BB OAuth Error (${tokenResponse.status}): ${detail}${possibleFix}`);
     }
     const accessToken = tokenData.access_token;
 

@@ -279,8 +279,13 @@ export default function IntegracaoBB() {
                       placeholder="Seu BB_CLIENT_ID"
                       value={clientId}
                       onChange={(e) => setClientId(e.target.value)}
-                      className="rounded-xl border-slate-200 h-12"
+                      className={`rounded-xl h-12 ${clientId.trim().startsWith('ey') ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
                     />
+                    {clientId.trim().startsWith('ey') && (
+                      <p className="text-xs text-red-600 font-bold mt-1 flex items-center gap-1 animate-pulse">
+                        <AlertCircle className="w-3 h-3" /> ATENÇÃO: Isso parece ser um Token (começa com ey...), não um Client ID.
+                      </p>
+                    )}
                   </div>
 
                   {/* Client Secret */}
@@ -293,13 +298,19 @@ export default function IntegracaoBB() {
                         placeholder="Seu BB_CLIENT_SECRET"
                         value={clientSecret}
                         onChange={(e) => setClientSecret(e.target.value)}
-                        className="pr-12 rounded-xl border-slate-200 h-12 font-mono"
+                        className="pr-12 rounded-xl h-12 font-mono"
+                        style={{ borderColor: clientSecret.trim().startsWith('ey') ? '#ef4444' : '#e2e8f0', backgroundColor: clientSecret.trim().startsWith('ey') ? '#fef2f2' : 'transparent' }}
                       />
                       <button type="button" onClick={() => setShowSecret(!showSecret)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">
                         {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
+                    {clientSecret.trim().startsWith('ey') && (
+                      <p className="text-xs text-red-600 font-bold mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" /> Isso parece um Token. Verifique se copiou o "Secret" correto.
+                      </p>
+                    )}
                   </div>
 
                   {/* App Key */}
