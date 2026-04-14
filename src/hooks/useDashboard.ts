@@ -13,12 +13,16 @@ export const useDashboard = () => {
       const { data, error } = await supabase
         .from('donations')
         .select('*, donors(name, type)')
-        .order('donation_date', { ascending: false });
+        .order('created_at', { ascending: false });  // usa created_at que sempre existe
 
       if (error) throw error;
       return data;
     },
   });
+
+  // Helper
+  const isConfirmedStatus = (status: string) =>
+    status === 'confirmed' || status === 'pago' || status === 'Confirmado' || status === 'CONFIRMED' || status === 'RECEIVED';
 
   // 1. Recebimentos Mensais (Últimos 6 meses)
   const getMonthlyData = () => {
@@ -31,7 +35,10 @@ export const useDashboard = () => {
       const monthLabel = months[d.getMonth()];
       const total = donations
         .filter(don => {
-          const donDate = new Date(don.donation_date);
+          if (!isConfirmedStatus(don.status)) return false;
+          const dateStr = don.confirmed_at || don.donation_date;
+          if (!dateStr) return false;
+          const donDate = new Date(dateStr);
           return donDate.getMonth() === d.getMonth() && donDate.getFullYear() === d.getFullYear();
         })
         .reduce((acc, don) => acc + (don.amount || 0), 0);
@@ -49,7 +56,7 @@ export const useDashboard = () => {
       const total = donations
         .filter(d => d.campaign_id === c.id)
         .reduce((acc, d) => acc + (d.amount || 0), 0);
-      return { name: c.name, value: total, color: "#0066CC" }; // Simplificado para cor azul por enquanto
+      return { name: c.name, value: total, color: "#0066CC" };
     });
 
     const totalCollected = totalsByCampaign.reduce((acc, c) => acc + c.value, 0);
@@ -72,8 +79,9 @@ export const useDashboard = () => {
       
       const total = donations
         .filter(don => {
-          const donDate = new Date(don.donation_date);
-          return donDate.toDateString() === d.toDateString();
+          const dateStr = don.confirmed_at || don.donation_date;
+          if (!dateStr) return false;
+          return new Date(dateStr).toDateString() === d.toDateString();
         })
         .reduce((acc, don) => acc + (don.amount || 0), 0);
 
@@ -99,19 +107,25 @@ export const useDashboard = () => {
     return donations.slice(0, 4).map(d => ({
       name: d.donors?.name || "Anônimo",
       amount: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(d.amount),
-      time: new Date(d.donation_date).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' }),
+      time: new Date(d.confirmed_at || d.donation_date || new Date()).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' }),
       status: d.status || "Confirmado"
     }));
   };
 
+  // "Recebidos Hoje" — apenas doações confirmadas cuja data de confirmação é hoje
   const today = new Date().toDateString();
   const todayTotal = donations
     .filter(d => {
-      const isConfirmed = d.status === 'confirmed' || d.status === 'pago' || d.status === 'Confirmado';
-      if (!isConfirmed) return false;
-      const confirmDateStr = String(d.confirmed_at || d.donation_date || d.created_at);
-      return new Date(confirmDateStr).toDateString() === today;
+      if (!isConfirmedStatus(d.status)) return false;
+      const dateStr = d.confirmed_at || d.donation_date;
+      if (!dateStr) return false;
+      return new Date(dateStr).toDateString() === today;
     })
+    .reduce((acc, d) => acc + (d.amount || 0), 0);
+
+  // "Saldo ASAAS" — total de todas as doações confirmadas (histórico completo)
+  const totalDonations = donations
+    .filter(d => isConfirmedStatus(d.status))
     .reduce((acc, d) => acc + (d.amount || 0), 0);
 
   return {
@@ -122,8 +136,8 @@ export const useDashboard = () => {
     topDonors: getTopDonors(),
     recentDonations: getRecentDonations(),
     todayTotal,
-    totalDonations: donations.reduce((acc, d) => acc + (d.amount || 0), 0),
-    avgTicket: donations.length > 0 ? donations.reduce((acc, d) => acc + (d.amount || 0), 0) / donations.length : 0,
+    totalDonations,
+    avgTicket: donations.length > 0 ? totalDonations / Math.max(donations.filter(d => isConfirmedStatus(d.status)).length, 1) : 0,
     donationsCount: donations.length
   };
 
