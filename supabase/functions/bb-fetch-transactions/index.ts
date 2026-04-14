@@ -11,44 +11,62 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  );
-
   try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
     const body = await req.json().catch(() => ({}));
     const { dataInicio, dataFim, numeroAgencia, numeroConta } = body;
 
-    // 1. Get token from bb-get-token function
-    const tokenResp = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/bb-get-token`, {
+    // 1. Get tokens and settings from DB
+    const { data: bbSettings, error: dbErr } = await supabase
+      .from('bb_settings')
+      .select('client_id, client_secret, app_key, agencia, conta, sandbox')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (dbErr) throw dbErr;
+    if (!bbSettings || !bbSettings.client_id || !bbSettings.app_key) {
+      throw new Error('As credenciais do Banco do Brasil não estão cadastradas na base de dados (tabela bb_settings). Preencha na tela "API & Config".');
+    }
+
+    const { client_id: clientId, client_secret: clientSecret, app_key: appKey, sandbox: isSandbox } = bbSettings;
+
+    // 2. Fetch BB Token directly here instead of calling another function to avoid internal latency
+    const credentials = btoa(`${clientId}:${clientSecret}`);
+    const tokenUrl = isSandbox
+      ? 'https://oauth.sandbox.bb.com.br/oauth/token'
+      : 'https://oauth.bb.com.br/oauth/token';
+
+    const tokenResponse = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-        'Content-Type': 'application/json',
+        'Authorization': `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
+      body: 'grant_type=client_credentials&scope=extrato.read',
     });
-    const tokenData = await tokenResp.json();
-    if (tokenData.error) throw new Error(tokenData.error);
+
+    const tokenData = await tokenResponse.json();
+    if (!tokenResponse.ok || tokenData.error) {
+      throw new Error(`BB OAuth Error: ${tokenData.error_description || tokenData.error || 'Unknown error'}`);
+    }
     const accessToken = tokenData.access_token;
 
-    // 2. Build date range (default: today)
+    // 3. Build date range (default: today)
     const today = new Date();
     const since = dataInicio || today.toISOString().split('T')[0];
     const until = dataFim || today.toISOString().split('T')[0];
 
-    const agencia = numeroAgencia || Deno.env.get('BB_AGENCIA') || '';
-    const conta = numeroConta || Deno.env.get('BB_CONTA') || '';
+    const agencia = numeroAgencia || bbSettings.agencia || '';
+    const conta = numeroConta || bbSettings.conta || '';
 
-    const isSandbox = Deno.env.get('BB_SANDBOX') === 'true';
     const baseUrl = isSandbox
       ? 'https://api.sandbox.bb.com.br'
       : 'https://api.bb.com.br';
       
-    const appKey = Deno.env.get('BB_APP_KEY');
-    if (!appKey) throw new Error('BB_APP_KEY is required but not configured.');
-
-    // 3. Fetch transactions from BB API
+    // 4. Fetch transactions from BB API
     const params = new URLSearchParams({
       'dataInicio': since,
       'dataFim': until,

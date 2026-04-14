@@ -195,6 +195,27 @@ serve(async (req) => {
       return ok({ __error: true, error: 'Ação desconhecida.' });
     }
 
+    // ── ASAAS ───────────────────────────────────────────────────────────────
+    if (service === 'asaas') {
+      const { api_key, sandbox } = config || {};
+      
+      if (action === 'get_balance') {
+        if (!api_key) {
+          return ok({ __error: true, error: 'Asaas API Key necessária' });
+        }
+        
+        const baseUrl = sandbox ? 'https://sandbox.asaas.com/api/v3' : 'https://api.asaas.com/v3';
+        const res = await fetch(`${baseUrl}/finance/balance`, {
+          headers: { 'access_token': api_key }
+        });
+        
+        const data = await res.json().catch(() => ({}));
+        return ok({ ...data, __meta_status: res.status });
+      }
+      
+      return ok({ __error: true, error: 'Ação desconhecida.' });
+    }
+
     // ── HEALTHCHECK ──────────────────────────────────────────────────────────
     if (action === 'ping' || !service) {
       return ok({ ok: true, timestamp: new Date().toISOString() });

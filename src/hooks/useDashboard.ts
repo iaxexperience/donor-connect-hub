@@ -132,13 +132,41 @@ export const useDashboard = () => {
     })
     .reduce((acc, d) => acc + Number(d.amount || 0), 0);
 
-  // "Saldo ASAAS" — total de todas as doações confirmadas (histórico completo)
-  const totalDonations = donations
-    .filter(d => isConfirmedStatus(d.status))
-    .reduce((acc, d) => acc + Number(d.amount || 0), 0);
+  // Busca do "Saldo Real ASAAS" via Edge Function proxy
+  // Isso substitui a soma burra das doações do banco pelo saldo financeiro real.
+  const { data: realBalance = 0, isLoading: balanceLoading } = useQuery({
+    queryKey: ['asaas-real-balance'],
+    queryFn: async () => {
+      const { data: settings } = await supabase.from('asaas_settings').select('*').eq('id', 1).maybeSingle();
+      if (!settings?.api_key) return 0;
+      
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api-proxy`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          service: 'asaas',
+          action: 'get_balance',
+          config: { api_key: settings.api_key, sandbox: settings.sandbox }
+        })
+      });
+      const resData = await response.json().catch(() => null);
+      if (resData && typeof resData.balance !== 'undefined') {
+        return parseFloat(resData.balance);
+      }
+      return 0;
+    },
+    // Recarrega a cada 30 segundos
+    refetchInterval: 30000 
+  });
+
+  // Mantemos fallback
+  const totalDonations = realBalance;
 
   return {
-    isLoading: donationsLoading,
+    isLoading: donationsLoading || balanceLoading,
     monthlyData: getMonthlyData(),
     campaignData: getCampaignMix(),
     evolutionData: getEvolutionData(),
@@ -146,7 +174,7 @@ export const useDashboard = () => {
     recentDonations: getRecentDonations(),
     todayTotal,
     totalDonations,
-    avgTicket: donations.length > 0 ? totalDonations / Math.max(donations.filter(d => isConfirmedStatus(d.status)).length, 1) : 0,
+    avgTicket: donations.length > 0 ? donations.reduce((acc, d) => acc + Number(d.amount || 0), 0) / Math.max(donations.filter(d => isConfirmedStatus(d.status)).length, 1) : 0,
     donationsCount: donations.length
   };
 
