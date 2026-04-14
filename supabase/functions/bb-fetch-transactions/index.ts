@@ -161,14 +161,20 @@ serve(async (req) => {
     });
 
   } catch (err: any) {
-    console.error('[BB Fetch Transactions] Error:', err.message);
-    await supabase.from('integration_logs').insert([{
-      source: 'banco_brasil',
-      event: 'transactions_fetch_error',
-      payload: { error: err.message },
-      status: 'error'
-    }]).catch(() => {});
-    return new Response(JSON.stringify({ error: err.message }), {
+    const errorMsg = err.message || 'Unknown error';
+    console.error('[BB Fetch Transactions] Error:', errorMsg);
+    
+    // Attempt to log error if supabase is available
+    if (typeof supabase !== 'undefined' && supabase) {
+      await supabase.from('integration_logs').insert([{
+        source: 'banco_brasil',
+        event: 'transactions_fetch_error',
+        payload: { error: errorMsg },
+        status: 'error'
+      }]).catch((e: any) => console.error('Failed to log to integration_logs:', e.message));
+    }
+
+    return new Response(JSON.stringify({ error: errorMsg }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
