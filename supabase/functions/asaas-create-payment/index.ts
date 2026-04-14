@@ -59,7 +59,7 @@ serve(async (req) => {
       .insert([{
         donor_id,
         amount: value,
-        status: 'pending',
+        status: 'pendente',
         asaas_payment_id: paymentId,
         billing_type: billingType,
         due_date: dueDate

@@ -33,10 +33,10 @@ serve(async (req) => {
 
     const { client_id: clientId, client_secret: clientSecret, app_key: appKey, sandbox: isSandbox, client_cert: cert, client_key: key } = bbSettings;
 
-    // Initialize mTLS client if certificate is provided
+    // Initialize mTLS client ONLY for Production (BB Sandbox uses non-mTLS endpoint)
     let httpClient: any = undefined;
-    if (cert && key) {
-      console.log("[BB mTLS] Certificate detected. Initializing mTLS client...");
+    if (!isSandbox && cert && key) {
+      console.log("[BB mTLS] Production mode: Initializing mTLS client...");
       try {
         httpClient = Deno.createHttpClient({
           cert: cert,
@@ -108,10 +108,11 @@ serve(async (req) => {
     }
 
     // Per BB official OpenAPI spec: Endpoints
-    // Sandbox with mTLS: https://api-extratos.hm.bb.com.br/extratos/v1
-    // Production:        https://api-extratos.bb.com.br/extratos/v1
+    // Sandbox WITHOUT mTLS: https://api.hm.bb.com.br/extratos/v1
+    // Sandbox WITH mTLS:    https://api-extratos.hm.bb.com.br/extratos/v1
+    // Production:           https://api-extratos.bb.com.br/extratos/v1
     const baseUrl = isSandbox
-      ? 'https://api-extratos.hm.bb.com.br/extratos/v1'
+      ? 'https://api.hm.bb.com.br/extratos/v1'
       : 'https://api-extratos.bb.com.br/extratos/v1';
       
     // BB requires dates as integers in DDMMAAAA format
@@ -131,7 +132,17 @@ serve(async (req) => {
     console.log(`[BB Extrato] Request URL: ${apiUrl}`);
     
     // The x-br-com-bb-ipa-mciteste header is REQUIRED for Sandbox tests
-    const sandboxHeader = isSandbox ? { 'x-br-com-bb-ipa-mciteste': '26968930' } : {};
+    // Mapping based on official BB portal documentation:
+    const sandboxHeaders: Record<string, string> = {
+      '551_5087': '26968930',
+      '1505_1348': '178961031',
+      '452_123873': '704950857'
+    };
+    
+    const mciKey = `${parseInt(agencia, 10)}_${parseInt(conta, 10)}`;
+    const mciValue = sandboxHeaders[mciKey] || '26968930';
+    
+    const sandboxHeader = isSandbox ? { 'x-br-com-bb-ipa-mciteste': mciValue } : {};
 
     let retries = 3;
     let response: Response | null = null;
@@ -156,9 +167,24 @@ serve(async (req) => {
     }
 
     const rawResponse = await response!.text();
-    console.log(`[BB Extrato] Response Status: ${response!.status}`);
+    console.log(`[BB Extrato] Response Status: ${response!.status} ${response!.statusText}`);
+    console.log(`[BB Extrato] Response Length: ${rawResponse.length}`);
     
+    // Log headers to see if we are hitting a WAF or a proxy
+    const responseHeaders: Record<string, string> = {};
+    response!.headers.forEach((v, k) => {
+      responseHeaders[k] = v;
+    });
+    console.log(`[BB Extrato] Response Headers:`, JSON.stringify(responseHeaders));
+
     let data: any = {};
+    if (rawResponse.trim().length === 0) {
+      if (response!.status === 404) {
+        throw new Error(`BB API Erro 404: A conta ${agencia}/${conta} não foi encontrada no ambiente de Sandbox. Verifique no portal se essa conta existe para a API de Extratos.`);
+      }
+      throw new Error(`BB API Erro (${response!.status}): O banco retornou uma resposta vazia.`);
+    }
+
     try {
       data = JSON.parse(rawResponse);
     } catch {
@@ -166,12 +192,15 @@ serve(async (req) => {
       if (rawResponse.includes('<!DOCTYPE') || rawResponse.includes('<html')) {
         const titleMatch = rawResponse.match(/<title[^>]*>([^<]+)<\/title>/i);
         const title = titleMatch ? titleMatch[1].trim() : "Sem título";
-        throw new Error(`BB API HTML Error (${response!.status}): ${title} - Conta ${agencia}/${conta}`);
+        throw new Error(`BB API HTML Error (${response!.status}): ${title} - Verifique Agência/Conta no Sandbox.`);
       }
-      throw new Error(`BB API Format Error (${response!.status}): Formato inválido.`);
+      throw new Error(`BB API Format Error (${response!.status}): Resposta inválida (não JSON).`);
     }
 
-    if (!response!.ok) throw new Error(data.erros?.[0]?.mensagem || `BB API Error ${response!.status}`);
+    if (!response!.ok) {
+        const errorMsg = data.erros?.[0]?.mensagem || data.message || `Erro ${response!.status}`;
+        throw new Error(`BB API Error: ${errorMsg}`);
+    }
 
     // 4. Filter credits only and normalize
     // Per BB API spec, the response field is 'listaLancamento'
@@ -209,7 +238,7 @@ serve(async (req) => {
           amount,
           type: 'credit',
           description: desc,
-          date: new Date(date).toISOString(),
+          date: new Date(dateISO).toISOString(),
           matched: false,
           raw_data: t,
           source: 'banco_brasil',
@@ -226,12 +255,16 @@ serve(async (req) => {
       }
     }
 
-    await supabase.from('integration_logs').insert([{
-      source: 'banco_brasil',
-      event: 'transactions_fetched',
-      payload: { since, until, total: credits.length, inserted, skipped },
-      status: 'success'
-    }]).catch(() => {});
+    try {
+      await supabase.from('integration_logs').insert([{
+        source: 'banco_brasil',
+        event: 'transactions_fetched',
+        payload: { since, until, total: credits.length, inserted, skipped },
+        status: 'success'
+      }]);
+    } catch (e) {
+      console.error('Failed to log to integration_logs (success):', e.message);
+    }
 
     return new Response(JSON.stringify({ 
       success: true, 
@@ -250,12 +283,16 @@ serve(async (req) => {
     
     // Attempt to log error if supabase is available
     if (typeof supabase !== 'undefined' && supabase) {
-      await supabase.from('integration_logs').insert([{
-        source: 'banco_brasil',
-        event: 'transactions_fetch_error',
-        payload: { error: errorMsg },
-        status: 'error'
-      }]).catch((e: any) => console.error('Failed to log to integration_logs:', e.message));
+      try {
+        await supabase.from('integration_logs').insert([{
+          source: 'banco_brasil',
+          event: 'transactions_fetch_error',
+          payload: { error: errorMsg },
+          status: 'error'
+        }]);
+      } catch (e) {
+        console.error('Failed to log to integration_logs (error):', e.message);
+      }
     }
 
     return new Response(JSON.stringify({ error: errorMsg }), {

@@ -37,7 +37,7 @@ serve(async (req) => {
     const { data: pendingDonations, error: donError } = await supabase
       .from('donations')
       .select('*')
-      .eq('status', 'pending');
+      .eq('status', 'pendente');
 
     if (donError) throw donError;
 
@@ -56,7 +56,7 @@ serve(async (req) => {
         await supabase
           .from('donations')
           .update({ 
-            status: 'confirmed',
+            status: 'pago',
             transaction_id: tx.id,
             confirmed_at: new Date().toISOString()
           })
@@ -77,16 +77,20 @@ serve(async (req) => {
       }
     }
 
-    await supabase.from('integration_logs').insert([{
-      source: 'banco_brasil',
-      event: 'reconciliation_done',
-      payload: { 
-        transactions_checked: transactions.length,
-        matched: matchedCount,
-        pending_donations: pendingDonations?.length || 0
-      },
-      status: 'success'
-    }]).catch(() => {});
+    try {
+      await supabase.from('integration_logs').insert([{
+        source: 'banco_brasil',
+        event: 'reconciliation_done',
+        payload: { 
+          transactions_checked: transactions.length,
+          matched: matchedCount,
+          pending_donations: pendingDonations?.length || 0
+        },
+        status: 'success'
+      }]);
+    } catch (e) {
+      console.error('Failed to log to integration_logs:', e.message);
+    }
 
     return new Response(JSON.stringify({
       success: true,

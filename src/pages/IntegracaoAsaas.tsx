@@ -101,9 +101,13 @@ export default function IntegracaoAsaas() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case 'pago':
       case 'confirmed': return <Badge className="bg-emerald-100 text-emerald-700 border-none">Confirmado</Badge>;
+      case 'pendente':
       case 'pending':   return <Badge className="bg-amber-100 text-amber-700 border-none">Pendente</Badge>;
+      case 'vencido':
       case 'overdue':   return <Badge className="bg-red-100 text-red-700 border-none">Vencido</Badge>;
+      case 'cancelado': return <Badge className="bg-slate-100 text-slate-700 border-none">Cancelado</Badge>;
       default:          return <Badge variant="outline">{status}</Badge>;
     }
   };

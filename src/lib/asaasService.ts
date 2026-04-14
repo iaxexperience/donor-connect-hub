@@ -101,7 +101,7 @@ export const asaasService = {
     }
 
     const donations = allDonations || [];
-    const isConfirmed = (status: string) => status === 'pago' || status === 'confirmed' || status === 'Confirmado';
+    const isConfirmed = (status: string) => ['pago', 'confirmed', 'Confirmado'].includes(status);
 
     const totalToday = donations
       .filter(d => {
