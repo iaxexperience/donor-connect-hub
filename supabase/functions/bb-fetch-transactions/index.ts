@@ -47,16 +47,17 @@ serve(async (req) => {
       }
     }
 
-    // 2. Fetch BB Token directly here instead of calling another function to avoid internal latency
+    // 2. Fetch BB Token
     const credentials = btoa(`${clientId.trim()}:${clientSecret.trim()}`);
+    
+    // Per BB official spec: OAuth URL for Sandbox is oauth.hm.bb.com.br, Production is oauth.bb.com.br
     const tokenUrl = isSandbox
-      ? 'https://oauth.sandbox.bb.com.br/oauth/token'
+      ? 'https://oauth.hm.bb.com.br/oauth/token'
       : 'https://oauth.bb.com.br/oauth/token';
 
-    console.log(`[BB OAuth] Attempting token fetch for ${isSandbox ? 'Sandbox' : 'Production'}...`);
+    console.log(`[BB OAuth] Attempting token fetch for ${isSandbox ? 'Sandbox (hm)' : 'Production'}...`);
     
-    // Note: We removed the 'scope' parameter because for many BB Sandbox apps, 
-    // including it leads to a 400 Bad Request error.
+    // Per BB official spec: OAuth scope is 'extrato-info'
     const tokenResponse = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
@@ -67,6 +68,7 @@ serve(async (req) => {
       },
       body: new URLSearchParams({
         'grant_type': 'client_credentials',
+        'scope': 'extrato-info',
       }).toString(),
       // @ts-ignore: Deno-specific fetch option
       client: httpClient,
@@ -90,54 +92,55 @@ serve(async (req) => {
     const accessToken = tokenData.access_token;
     console.log(`[BB OAuth] Token obtained successfully.`);
 
-    // 3. Build date range (default: today)
+    // 3. Build date range (default: last 7 days for sandbox)
     const today = new Date();
-    const since = dataInicio || today.toISOString().split('T')[0];
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    
+    const since = dataInicio || weekAgo.toISOString().split('T')[0];
     const until = dataFim || today.toISOString().split('T')[0];
 
     const agencia = numeroAgencia || bbSettings.agencia || '';
     const conta = numeroConta || bbSettings.conta || '';
 
     if (!agencia || !conta) {
-      throw new Error('Agência e Conta são obrigatórias para buscar o extrato. Preencha na aba "API & Config".');
+      throw new Error('Agência e Conta são obrigatórias. Preencha na aba "API & Config".');
     }
 
+    // Per BB official OpenAPI spec: Endpoints
+    // Sandbox with mTLS: https://api-extratos.hm.bb.com.br/extratos/v1
+    // Production:        https://api-extratos.bb.com.br/extratos/v1
     const baseUrl = isSandbox
-      ? 'https://api.sandbox.bb.com.br'
-      : 'https://api.bb.com.br';
+      ? 'https://api-extratos.hm.bb.com.br/extratos/v1'
+      : 'https://api-extratos.bb.com.br/extratos/v1';
       
-    // BB Sandbox requires dates in DDMMAAAA format (no dashes)
-    const formatDateBB = (dateStr: string) => {
-      // dateStr is YYYY-MM-DD
+    // BB requires dates as integers in DDMMAAAA format
+    const formatDateBB = (dateStr: string): number => {
       const [year, month, day] = dateStr.split('-');
-      return `${day}${month}${year}`;
+      return parseInt(`${day}${month}${year}`, 10);
     };
 
-    // 4. Fetch transactions from BB API
+    // Per spec: PATH params are agencia and conta, QUERY params are gw-dev-app-key and dates
     const params = new URLSearchParams({
-      'dataInicio': formatDateBB(since),
-      'dataFim': formatDateBB(until),
-      'numeroAgencia': agencia.padStart(4, '0'),
-      'numeroConta': conta,
+      'gw-dev-app-key': appKey.trim(),
+      'dataInicioSolicitacao': formatDateBB(since).toString(),
+      'dataFimSolicitacao': formatDateBB(until).toString(),
     });
 
-    console.log(`[BB Extrato] Request URL: ${baseUrl}/extrato/v1/conta?${params}`);
+    const apiUrl = `${baseUrl}/conta-corrente/agencia/${agencia}/conta/${conta}?${params}`;
+    console.log(`[BB Extrato] Request URL: ${apiUrl}`);
     
     // The x-br-com-bb-ipa-mciteste header is REQUIRED for Sandbox tests
-    // Each value corresponds to test accounts as documented in the BB portal:
-    // 26968930 -> Ag 551 / Conta 5087
     const sandboxHeader = isSandbox ? { 'x-br-com-bb-ipa-mciteste': '26968930' } : {};
 
     let retries = 3;
     let response: Response | null = null;
     while (retries > 0) {
       try {
-        response = await fetch(`${baseUrl}/extrato/v1/conta?${params}`, {
+        response = await fetch(apiUrl, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'gw-dev-app-key': appKey,
             ...sandboxHeader,
           },
           // @ts-ignore: Deno-specific fetch option
@@ -148,7 +151,7 @@ serve(async (req) => {
         console.error(`[BB Extrato] Fetch failed (attempt ${4-retries}):`, e.message);
         retries--;
         if (retries === 0) throw e;
-        await new Promise(r => setTimeout(r, 1000 * (3 - retries))); // exponential backoff
+        await new Promise(r => setTimeout(r, 1000 * (3 - retries)));
       }
     }
 
@@ -160,17 +163,15 @@ serve(async (req) => {
       data = JSON.parse(rawResponse);
     } catch {
       console.error(`[BB Extrato] Failed to parse as JSON. Raw response snippet: ${rawResponse.substring(0, 1000)}`);
-      // If the body contains "DOCTYPE", it's definitely HTML. Let's provide a better error.
       if (rawResponse.includes('<!DOCTYPE') || rawResponse.includes('<html')) {
-        // Find title if possible
         const titleMatch = rawResponse.match(/<title[^>]*>([^<]+)<\/title>/i);
         const title = titleMatch ? titleMatch[1].trim() : "Sem título";
-        throw new Error(`BB API HTML Error (${response!.status}): O banco retornou uma página web (Título: ${title}). Isso pode ser bloqueio de WAF ou conta inválida para Sandbox. Veja os logs.`);
+        throw new Error(`BB API HTML Error (${response!.status}): ${title} - Conta ${agencia}/${conta}`);
       }
-      throw new Error(`BB API Format Error (${response!.status}): Formato inválido recebido do banco.`);
+      throw new Error(`BB API Format Error (${response!.status}): Formato inválido.`);
     }
 
-    if (!response!.ok) throw new Error(data.erros?.[0]?.mensagem || 'BB API Error');
+    if (!response!.ok) throw new Error(data.erros?.[0]?.mensagem || `BB API Error ${response!.status}`);
 
     // 4. Filter credits only and normalize
     const allTransactions = [
