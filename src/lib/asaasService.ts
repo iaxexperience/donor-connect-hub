@@ -99,16 +99,18 @@ export const asaasService = {
     }
 
     const donations = allDonations || [];
+    const isConfirmed = (status: string) => status === 'confirmed' || status === 'pago' || status === 'Confirmado';
+
     const totalToday = donations
-      .filter(d => d.status === 'confirmed' && (d.confirmed_at?.startsWith(today) || d.created_at.startsWith(today)))
+      .filter(d => isConfirmed(d.status) && (d.confirmed_at?.startsWith(today) || d.created_at.startsWith(today)))
       .reduce((acc, d) => acc + parseFloat(d.amount), 0);
 
     const totalConfirmed = donations
-      .filter(d => d.status === 'confirmed')
+      .filter(d => isConfirmed(d.status))
       .reduce((acc, d) => acc + parseFloat(d.amount), 0);
 
     const activeDonorsCount = new Set(
-      donations.filter(d => d.status === 'confirmed').map(d => d.donor_id)
+      donations.filter(d => isConfirmed(d.status)).map(d => d.donor_id)
     ).size;
 
     const byType = {
