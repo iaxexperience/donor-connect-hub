@@ -22,7 +22,7 @@ serve(async (req) => {
     // 1. Get tokens and settings from DB
     const { data: bbSettings, error: dbErr } = await supabase
       .from('bb_settings')
-      .select('client_id, client_secret, app_key, agencia, conta, sandbox')
+      .select('client_id, client_secret, app_key, agencia, conta, sandbox, client_cert, client_key')
       .eq('id', 1)
       .maybeSingle();
 
@@ -31,7 +31,21 @@ serve(async (req) => {
       throw new Error('As credenciais do Banco do Brasil não estão cadastradas na base de dados (tabela bb_settings). Preencha na tela "API & Config".');
     }
 
-    const { client_id: clientId, client_secret: clientSecret, app_key: appKey, sandbox: isSandbox } = bbSettings;
+    const { client_id: clientId, client_secret: clientSecret, app_key: appKey, sandbox: isSandbox, client_cert: cert, client_key: key } = bbSettings;
+
+    // Initialize mTLS client if certificate is provided
+    let httpClient: any = undefined;
+    if (cert && key) {
+      console.log("[BB mTLS] Certificate detected. Initializing mTLS client...");
+      try {
+        httpClient = Deno.createHttpClient({
+          cert: cert,
+          key: key,
+        });
+      } catch (e) {
+        console.error("[BB mTLS] Failed to create HTTP client:", e.message);
+      }
+    }
 
     // 2. Fetch BB Token directly here instead of calling another function to avoid internal latency
     const credentials = btoa(`${clientId.trim()}:${clientSecret.trim()}`);
@@ -54,14 +68,19 @@ serve(async (req) => {
       body: new URLSearchParams({
         'grant_type': 'client_credentials',
       }).toString(),
+      // @ts-ignore: Deno-specific fetch option
+      client: httpClient,
     });
 
     const tokenRaw = await tokenResponse.text();
+    console.log(`[BB OAuth] Response Status: ${tokenResponse.status}`);
+    
     let tokenData: any = {};
     try {
         tokenData = JSON.parse(tokenRaw);
     } catch {
-        tokenData = { _raw: tokenRaw };
+        console.error(`[BB OAuth] Failed to parse as JSON. Raw response: ${tokenRaw.substring(0, 500)}`);
+        throw new Error(`BB OAuth HTML Error (${tokenResponse.status}): Verifique se o certificado foi enviado ao portal do BB corretamente.`);
     }
 
     if (!tokenResponse.ok) {
@@ -69,6 +88,7 @@ serve(async (req) => {
       throw new Error(`BB OAuth Error (${tokenResponse.status}): ${detail}`);
     }
     const accessToken = tokenData.access_token;
+    console.log(`[BB OAuth] Token obtained successfully.`);
 
     // 3. Build date range (default: today)
     const today = new Date();
@@ -78,6 +98,10 @@ serve(async (req) => {
     const agencia = numeroAgencia || bbSettings.agencia || '';
     const conta = numeroConta || bbSettings.conta || '';
 
+    if (!agencia || !conta) {
+      throw new Error('Agência e Conta são obrigatórias para buscar o extrato. Preencha na aba "API & Config".');
+    }
+
     const baseUrl = isSandbox
       ? 'https://api.sandbox.bb.com.br'
       : 'https://api.bb.com.br';
@@ -86,10 +110,12 @@ serve(async (req) => {
     const params = new URLSearchParams({
       'dataInicio': since,
       'dataFim': until,
-      'numeroAgencia': agencia,
+      'numeroAgencia': agencia.padStart(4, '0'),
       'numeroConta': conta,
     });
 
+    console.log(`[BB Extrato] Request URL: ${baseUrl}/extrato/v1/conta?${params}`);
+    
     let retries = 3;
     let response: Response | null = null;
     while (retries > 0) {
@@ -98,18 +124,36 @@ serve(async (req) => {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
             'gw-dev-app-key': appKey
           },
+          // @ts-ignore: Deno-specific fetch option
+          client: httpClient,
         });
         break;
       } catch (e) {
+        console.error(`[BB Extrato] Fetch failed (attempt ${4-retries}):`, e.message);
         retries--;
         if (retries === 0) throw e;
         await new Promise(r => setTimeout(r, 1000 * (3 - retries))); // exponential backoff
       }
     }
 
-    const data = await response!.json();
+    const rawResponse = await response!.text();
+    console.log(`[BB Extrato] Response Status: ${response!.status}`);
+    
+    let data: any = {};
+    try {
+      data = JSON.parse(rawResponse);
+    } catch {
+      console.error(`[BB Extrato] Failed to parse as JSON. Raw response snippet: ${rawResponse.substring(0, 1000)}`);
+      // If the body contains "DOCTYPE", it's definitely HTML. Let's provide a better error.
+      if (rawResponse.includes('<!DOCTYPE') || rawResponse.includes('<html')) {
+        throw new Error(`BB API HTML Error (${response!.status}): O banco retornou uma página web. Verifique se a Agência/Conta ${agencia}/${conta} é válida para o Sandbox.`);
+      }
+      throw new Error(`BB API Format Error (${response!.status}): Formato inválido recebido do banco.`);
+    }
+
     if (!response!.ok) throw new Error(data.erros?.[0]?.mensagem || 'BB API Error');
 
     // 4. Filter credits only and normalize
