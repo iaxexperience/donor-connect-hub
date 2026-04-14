@@ -174,15 +174,15 @@ serve(async (req) => {
     if (!response!.ok) throw new Error(data.erros?.[0]?.mensagem || `BB API Error ${response!.status}`);
 
     // 4. Filter credits only and normalize
-    const allTransactions = [
-      ...(data.lancamentos || []),
-      ...(data.extratoLancamentos || []),
-    ];
+    // Per BB API spec, the response field is 'listaLancamento'
+    const allTransactions = data.listaLancamento
+      ? (Array.isArray(data.listaLancamento) ? data.listaLancamento : Object.values(data.listaLancamento))
+      : [...(data.lancamentos || []), ...(data.extratoLancamentos || [])];
     
+    // Per spec: indicadorSinalLancamento 'C' = crédito, 'D' = débito
     const credits = allTransactions.filter((t: any) => {
-      const tipo = t.tipoLancamento || t.tipo || '';
-      const valor = parseFloat(t.valor || t.valorLancamento || '0');
-      return tipo === 'C' || tipo === 'CREDITO' || valor > 0;
+      const sinal = t.indicadorSinalLancamento || t.tipoLancamento || t.tipo || '';
+      return sinal === 'C' || sinal === 'CREDITO';
     });
 
     // 5. Upsert to bank_transactions avoiding duplicates
@@ -190,10 +190,17 @@ serve(async (req) => {
     let skipped = 0;
 
     for (const t of credits) {
-      const txId = t.identificador || t.codigoLancamento || `${t.data}_${t.valor}_${Math.random()}`;
-      const amount = parseFloat(t.valor || t.valorLancamento || '0');
-      const desc = t.descricaoHistorico || t.historico || t.descricao || 'Crédito';
-      const date = t.dataLancamento || t.data || since;
+      // Per spec: numeroDocumento is the transaction identifier
+      const txId = t.numeroDocumento?.toString() || t.identificador || `${t.dataLancamento}_${t.valorLancamento}_${Math.random()}`;
+      const amount = parseFloat(t.valorLancamento || t.valor || '0');
+      // Per spec: textoDescricaoHistorico is the description
+      const desc = t.textoDescricaoHistorico || t.textoInformacaoComplementar || t.descricao || 'Crédito';
+      // Per spec: dataLancamento is in DDMMAAAA integer format, e.g. 11112022
+      const dateRaw = t.dataLancamento?.toString() || since.replace(/-/g, '');
+      let dateISO = since;
+      if (dateRaw && dateRaw.length === 8) {
+        dateISO = `${dateRaw.substring(4,8)}-${dateRaw.substring(2,4)}-${dateRaw.substring(0,2)}`;
+      }
 
       const { error } = await supabase
         .from('bank_transactions')
