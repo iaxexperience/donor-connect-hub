@@ -45,12 +45,22 @@ serve(async (req) => {
         'Authorization': `Basic ${credentials}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: 'grant_type=client_credentials&scope=extrato.read',
+      body: new URLSearchParams({
+        'grant_type': 'client_credentials',
+        'scope': 'extrato.read'
+      }).toString(),
     });
 
-    const tokenData = await tokenResponse.json().catch(() => ({}));
+    const tokenRaw = await tokenResponse.text();
+    let tokenData: any = {};
+    try {
+        tokenData = JSON.parse(tokenRaw);
+    } catch {
+        tokenData = { _raw: tokenRaw };
+    }
+
     if (!tokenResponse.ok) {
-      const detail = tokenData.error_description || tokenData.error || tokenData.mensagem || JSON.stringify(tokenData);
+      const detail = tokenData.error_description || tokenData.error || tokenData.mensagem || tokenRaw || JSON.stringify(tokenData);
       throw new Error(`BB OAuth Error (${tokenResponse.status}): ${detail}`);
     }
     const accessToken = tokenData.access_token;
