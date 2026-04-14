@@ -59,9 +59,37 @@ serve(async (req) => {
 
     if (error) throw error;
 
-    console.log(`[Asaas Webhook] ${event} → donation updated:`, updated);
+    let affectedRows = updated?.length || 0;
 
-    return new Response(JSON.stringify({ success: true, updated: updated?.length || 0 }), {
+    // Se nao achou no banco, foi gerada fora do sistema (ex: portal asaas) -> auto-registro!
+    if (affectedRows === 0 && payment) {
+      console.log(`[Asaas Webhook] Payment ${asaasPaymentId} not found. Auto-registering...`);
+      // Tenta achar o doador pelo customer_id do asaas
+      let donorId = null;
+      if (payment.customer) {
+        const { data: donor } = await supabase.from('donors').select('id').eq('asaas_customer_id', payment.customer).maybeSingle();
+        if (donor) donorId = donor.id;
+      }
+
+      const { data: newDonation, error: insertErr } = await supabase.from('donations').insert([{
+        donor_id: donorId,
+        amount: payment.value,
+        status: newStatus,
+        asaas_payment_id: asaasPaymentId,
+        billing_type: payment.billingType,
+        due_date: payment.dueDate,
+        donation_date: new Date().toISOString(), // Fallback para data da doação
+        confirmed_at: newStatus === 'confirmed' ? new Date().toISOString() : null
+      }]).select();
+
+      if (insertErr) throw insertErr;
+      console.log(`[Asaas Webhook] Auto-registered external donation:`, newDonation);
+      affectedRows = newDonation ? newDonation.length : 1;
+    } else {
+      console.log(`[Asaas Webhook] ${event} → donation updated:`, updated);
+    }
+
+    return new Response(JSON.stringify({ success: true, updated: affectedRows }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

@@ -83,7 +83,7 @@ export const asaasService = {
 
     const { data: allDonations, error } = await supabase
       .from('donations')
-      .select('amount, status, billing_type, created_at')
+      .select('amount, status, billing_type, created_at, confirmed_at, donor_id')
       .not('asaas_payment_id', 'is', null);
 
     if (error) {
@@ -100,7 +100,7 @@ export const asaasService = {
 
     const donations = allDonations || [];
     const totalToday = donations
-      .filter(d => d.status === 'confirmed' && d.created_at.startsWith(today))
+      .filter(d => d.status === 'confirmed' && (d.confirmed_at?.startsWith(today) || d.created_at.startsWith(today)))
       .reduce((acc, d) => acc + parseFloat(d.amount), 0);
 
     const totalConfirmed = donations

@@ -106,7 +106,12 @@ export const useDashboard = () => {
 
   const today = new Date().toDateString();
   const todayTotal = donations
-    .filter(d => new Date(d.donation_date).toDateString() === today)
+    .filter(d => {
+      const isConfirmed = d.status === 'confirmed' || d.status === 'pago' || d.status === 'Confirmado';
+      if (!isConfirmed) return false;
+      const confirmDateStr = String(d.confirmed_at || d.donation_date || d.created_at);
+      return new Date(confirmDateStr).toDateString() === today;
+    })
     .reduce((acc, d) => acc + (d.amount || 0), 0);
 
   return {
