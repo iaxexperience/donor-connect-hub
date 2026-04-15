@@ -9,17 +9,19 @@ const corsHeaders = {
 
 /**
  * Normaliza números de telefone para evitar duplicidade 
- * Remove +, remove zeros à esquerda, e trata o 9º dígito brasileiro
+ * No Brasil: Remove o 9º dígito (se houver) para garantir que 5511988887777 e 551188887777 
+ * sejam tratados como o mesmo contato no banco de dados.
  */
 function normalizePhone(phone: string): string {
+  if (!phone) return "";
   let cleaned = phone.replace(/\D/g, "");
   
-  // Se for número brasileiro (começa com 55)
+  // Se for número brasileiro (55 + DDD + ...)
   if (cleaned.startsWith("55") && cleaned.length >= 12) {
     const ddd = cleaned.substring(2, 4);
-    const number = cleaned.substring(cleaned.length - 8);
-    // Retornamos fixo 55 + DDD + 8 dígitos finais (removemos o 9 extra se existir para matching)
-    return `55${ddd}${number}`;
+    const last8 = cleaned.substring(cleaned.length - 8);
+    // SEMPRE retornamos DDI + DDD + 8 dígitos finais
+    return `55${ddd}${last8}`;
   }
   
   return cleaned;
@@ -125,15 +127,15 @@ serve(async (req) => {
           const donor = donors.find((d: any) => {
             if (!d.phone) return false;
             const dbPhoneClean = d.phone.replace(/\D/g, "");
-            if (dbPhoneClean === cleanPhone || dbPhoneClean === shortPhone) return true;
             
+            // Match flexível: se o DDI e os últimos 8 dígitos baterem
             const last8DB = dbPhoneClean.slice(-8);
             const last8Meta = cleanPhone.slice(-8);
             const dddDB = dbPhoneClean.length >= 10 ? dbPhoneClean.slice(-10, -8) : "";
-            const dddMeta = shortPhone.length >= 10 ? shortPhone.slice(0, 2) : "";
+            const dddMeta = cleanPhone.length >= 10 ? cleanPhone.slice(2, 4) : "";
 
             if (last8DB === last8Meta && dddDB && dddMeta && dddDB === dddMeta) return true;
-            return cleanPhone.endsWith(dbPhoneClean) || shortPhone.endsWith(dbPhoneClean);
+            return dbPhoneClean === cleanPhone || dbPhoneClean === shortPhone;
           });
 
           if (donor) {
@@ -150,6 +152,7 @@ serve(async (req) => {
           .maybeSingle();
 
         if (chatError || !chat) {
+          console.log(`[Meta Proxy] Creating new chat for ${fromNormalized}`);
           const { data: newChat, error: createError } = await supabase
             .from('whatsapp_chats')
             .upsert([{ 
@@ -157,7 +160,8 @@ serve(async (req) => {
               nome: matchedDonorName,
               last_message: text,
               last_message_at: new Date().toISOString(),
-              unread_count: 1
+              unread_count: 1,
+              donor_id: matchedDonorId
             }], { onConflict: 'telefone' })
             .select()
             .single();
@@ -169,12 +173,14 @@ serve(async (req) => {
           chat = newChat;
         } else {
           // Update Chat
+          console.log(`[Meta Proxy] Updating existing chat ${chat.id}`);
           await supabase
             .from('whatsapp_chats')
             .update({ 
               last_message: text, 
               last_message_at: new Date().toISOString(),
-              unread_count: (chat.unread_count || 0) + 1
+              unread_count: (chat.unread_count || 0) + 1,
+              donor_id: matchedDonorId // Keep synced
             })
             .eq('id', chat.id);
         }

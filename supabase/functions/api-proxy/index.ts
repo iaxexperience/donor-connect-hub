@@ -10,6 +10,26 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 };
 
+/**
+ * Normaliza números de telefone para evitar duplicidade 
+ * No Brasil: Remove o 9º dígito (se houver) para garantir que 5511988887777 e 551188887777 
+ * sejam tratados como o mesmo contato no banco de dados.
+ */
+function normalizePhone(phone: string): string {
+  if (!phone) return "";
+  let cleaned = phone.replace(/\D/g, "");
+  
+  // Se for número brasileiro (55 + DDD + ...)
+  if (cleaned.startsWith("55") && cleaned.length >= 12) {
+    const ddd = cleaned.substring(2, 4);
+    const last8 = cleaned.substring(cleaned.length - 8);
+    // SEMPRE retornamos DDI + DDD + 8 dígitos finais
+    return `55${ddd}${last8}`;
+  }
+  
+  return cleaned;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
@@ -91,7 +111,8 @@ serve(async (req) => {
               Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
             );
 
-            const toPhone = (payload?.to ?? '').replace(/\D/g, '');
+            const toRaw = payload?.to ?? '';
+            const toPhone = normalizePhone(toRaw); // Usando a nova normalização padronizada
             const wamId = data?.messages?.[0]?.id ?? null;
             const donorId = body.donor_id ?? null;
 
@@ -117,6 +138,7 @@ serve(async (req) => {
             let chatId: string | null = existingChat?.id ?? null;
 
             if (!chatId) {
+              console.log(`[api-proxy] Creating new chat for ${toPhone}`);
               let chatName = 'Contato';
               if (donorId) {
                 const { data: donor } = await supabase
@@ -134,16 +156,19 @@ serve(async (req) => {
                   last_message: textBody,
                   last_message_at: new Date().toISOString(),
                   unread_count: 0,
+                  donor_id: donorId
                 }], { onConflict: 'telefone' })
                 .select('id')
                 .maybeSingle();
               chatId = newChat?.id ?? null;
             } else {
+              console.log(`[api-proxy] Updating existing chat ${chatId}`);
               await supabase
                 .from('whatsapp_chats')
                 .update({
                   last_message: textBody,
                   last_message_at: new Date().toISOString(),
+                  donor_id: donorId // Mantém sincronizado
                 })
                 .eq('id', chatId);
             }
