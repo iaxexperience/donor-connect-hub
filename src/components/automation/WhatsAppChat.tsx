@@ -209,50 +209,39 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSendMessage = async () => {
-    if (!inputText.trim() || !selectedChat) return;
-
-    const currentText = inputText;
-    const tempId = `temp-${Date.now()}`;
-    
-    // Optimistic update
-    const optimisticMessage: Message = {
-      id: tempId,
-      chat_id: selectedChat.id,
-      text_body: currentText,
-      is_from_me: true,
-      status: 'sent',
-      created_at: new Date().toISOString(),
-      message_id: tempId
-    };
-
-    setMessages(prev => [...prev, optimisticMessage]);
-    setChats(prev => prev.map(c => 
-      c.id === selectedChat.id 
-        ? { ...c, last_message: currentText, last_message_at: new Date().toISOString() } 
-        : c
-    ));
-    
-    setInputText("");
-    setIsSending(true);
-
-    try {
-      const savedConfig = localStorage.getItem("meta_config");
-      if (savedConfig) {
-        const config = JSON.parse(savedConfig);
-        await metaService.sendTextMessage(selectedChat.telefone, currentText, config);
-      } else {
-        toast({ title: "Aviso", description: "Configure as credenciais da Meta API na aba API para enviar via WhatsApp.", variant: "default" });
-        setInputText(currentText);
-        setMessages(prev => prev.filter(m => m.id !== tempId));
-      }
-    } catch (err: any) {
-      toast({ title: "Erro ao enviar", description: err.message, variant: "destructive" });
-      setInputText(currentText);
-      setMessages(prev => prev.filter(m => m.id !== tempId));
     } finally {
       setIsSending(false);
     }
+  };
+
+  const clearChat = async () => {
+    if (!selectedChat) return;
+    
+    if (confirm("Tem certeza que deseja excluir todo o histórico de mensagens desta conversa? Esta ação não pode ser desfeita no Dashboard.")) {
+      const { error } = await supabase
+        .from('whatsapp_messages')
+        .delete()
+        .eq('chat_id', selectedChat.id);
+      
+      if (error) {
+        toast({ title: "Erro ao limpar", description: error.message, variant: "destructive" });
+      } else {
+        setMessages([]);
+        toast({ title: "Sucesso", description: "Histórico da conversa foi limpo." });
+      }
+    }
+  };
+
+  const handleCallAction = (type: 'video' | 'audio') => {
+    toast({ 
+      title: type === 'video' ? "Chamada de Vídeo" : "Chamada de Áudio", 
+      description: "A API do WhatsApp Business não suporta chamadas VoIP diretamente via navegador. Use o seu celular físico para realizar chamadas.",
+      variant: "default"
+    });
+  };
+
+  const handleSearchFocus = () => {
+    document.getElementById('chat-search-input')?.focus();
   };
 
   const filteredChats = chats.filter(c => 
@@ -329,6 +318,7 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
+              id="chat-search-input"
               placeholder="Buscar ou começar nova conversa..." 
               className="pl-9 bg-background/50" 
               value={searchTerm}
@@ -398,16 +388,16 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon"><Video className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="icon"><Phone className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="icon"><Search className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => handleCallAction('video')}><Video className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => handleCallAction('audio')}><Phone className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={handleSearchFocus}><Search className="w-4 h-4" /></Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem>Dados do contato</DropdownMenuItem>
-                    <DropdownMenuItem>Limpar conversa</DropdownMenuItem>
+                    <DropdownMenuItem onClick={clearChat}>Limpar conversa</DropdownMenuItem>
                     <DropdownMenuItem className="text-destructive">Bloquear</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

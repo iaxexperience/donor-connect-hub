@@ -89,9 +89,23 @@ serve(async (req) => {
     if (body.entry?.[0]?.changes?.[0]?.value) {
       const value = body.entry[0].changes[0].value;
       
-      // ── Ignore delivery/read status updates ──────────────────────────────
+      // ── Handle delivery/read status updates ──────────────────────────────
       if (value.statuses) {
-        console.log('[Meta Proxy] Ignoring status update (delivered/read)');
+        const statusUpdate = value.statuses[0];
+        const messageId = statusUpdate.id;
+        const newStatus = statusUpdate.status; // 'delivered', 'read', 'failed'
+        
+        console.log(`[Meta Proxy] Processing status update: ${messageId} -> ${newStatus}`);
+        
+        const { error: statusError } = await supabase
+          .from('whatsapp_messages')
+          .update({ status: newStatus })
+          .eq('message_id', messageId);
+
+        if (statusError) {
+          console.error('[Meta Proxy] Error updating message status:', JSON.stringify(statusError));
+        }
+
         return new Response(JSON.stringify({ ok: true }), { 
           status: 200, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
