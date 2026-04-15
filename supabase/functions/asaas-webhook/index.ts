@@ -183,15 +183,15 @@ serve(async (req) => {
                 headers: { 'access_token': config.api_key, 'Content-Type': 'application/json' }
               });
 
-              if (response.ok) {
-                const customerData = await response.json();
-                const { data: newDonor, error: insertErr } = await supabase
+              } else {
+                console.error(`[Webhook] Asaas API returned ${response.status} for ${payment.customer}`);
+                // Fallback: Create generic donor if API fails
+                const { data: fallbackDonor, error: fallbackErr } = await supabase
                   .from('donors')
                   .insert([{
-                    name: customerData.name || 'Doador Asaas ' + payment.customer,
-                    email: customerData.email || `contato_${payment.customer}@asaas.com`,
-                    phone: (customerData.mobilePhone || customerData.phone || '00000000000').replace(/\D/g, ""),
-                    document_id: customerData.cpfCnpj,
+                    name: 'Doador Asaas ' + payment.customer,
+                    email: `contato_${payment.customer}@asaas.com`,
+                    phone: '00000000000',
                     asaas_customer_id: payment.customer,
                     type: 'unico',
                     total_donated: 0,
@@ -199,13 +199,31 @@ serve(async (req) => {
                   }])
                   .select()
                   .single();
-
-                if (!insertErr && newDonor) {
-                  donorId = newDonor.id;
-                  console.log(`[Webhook] Successfully registered new donor: ${customerData.name} (${donorId})`);
-                } else {
-                  console.error('[Webhook] Error inserting new donor:', insertErr);
+                  
+                if (!fallbackErr && fallbackDonor) {
+                  donorId = fallbackDonor.id;
+                  console.log(`[Webhook] Fallback registered donor: ${donorId}`);
                 }
+              }
+            } else {
+              // Fallback if no API key is configured
+              const { data: fallbackDonor, error: fallbackErr } = await supabase
+                .from('donors')
+                .insert([{
+                  name: 'Doador Asaas ' + payment.customer,
+                  email: `contato_${payment.customer}@asaas.com`,
+                  phone: '00000000000',
+                  asaas_customer_id: payment.customer,
+                  type: 'unico',
+                  total_donated: 0,
+                  donation_count: 0
+                }])
+                .select()
+                .single();
+                
+              if (!fallbackErr && fallbackDonor) {
+                donorId = fallbackDonor.id;
+                console.log(`[Webhook] Fallback registered donor (No API Key): ${donorId}`);
               }
             }
           } catch (syncErr) {
