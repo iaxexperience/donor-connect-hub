@@ -86,7 +86,6 @@ serve(async (req) => {
     }
 
     // A. WEBHOOK (Incoming from Meta)
-    // A. WEBHOOK (Incoming from Meta)
     if (body.entry?.[0]?.changes?.[0]?.value) {
       const value = body.entry[0].changes[0].value;
       
@@ -201,10 +200,6 @@ serve(async (req) => {
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       });
-    }
-
-      // Any other webhook event — Meta requires 200 response
-      return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // B. PROXY (Outgoing from Frontend)
