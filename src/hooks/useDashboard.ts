@@ -120,17 +120,47 @@ export const useDashboard = () => {
     }));
   };
 
-  // "Recebidos Hoje" — apenas doações confirmadas cuja data de confirmação é hoje
+  // "Recebidos Hoje" — doações confirmadas de hoje (Asaas + manuais)
   const today = new Date();
-  const todayTotal = donations
+  const todayDay = today.getDate();
+  const todayMonth = today.getMonth();
+  const todayYear = today.getFullYear();
+
+  const todayDonationsTotal = donations
     .filter(d => {
       if (!isConfirmedStatus(d.status)) return false;
       const dateStr = d.confirmed_at || d.donation_date;
       if (!dateStr) return false;
-      const donationDate = new Date(dateStr);
-      return donationDate.toDateString() === today.toDateString();
+      const donDate = new Date(dateStr);
+      return donDate.getDate() === todayDay && 
+             donDate.getMonth() === todayMonth && 
+             donDate.getFullYear() === todayYear;
     })
     .reduce((acc, d) => acc + Number(d.amount || 0), 0);
+
+  // Banco do Brasil credits for today
+  const { data: bbTodayCredits = [] } = useQuery({
+    queryKey: ['bb-today-credits'],
+    queryFn: async () => {
+      const startOfDay = new Date(todayYear, todayMonth, todayDay).toISOString();
+      const endOfDay = new Date(todayYear, todayMonth, todayDay, 23, 59, 59).toISOString();
+      const { data, error } = await supabase
+        .from('bank_transactions')
+        .select('amount')
+        .eq('type', 'credit')
+        .gte('date', startOfDay)
+        .lte('date', endOfDay);
+      if (error) {
+        console.error('[Dashboard] BB credits error:', error);
+        return [];
+      }
+      return data || [];
+    },
+    refetchInterval: 30000
+  });
+
+  const bbTodayTotal = bbTodayCredits.reduce((acc: number, t: any) => acc + Number(t.amount || 0), 0);
+  const todayTotal = todayDonationsTotal + bbTodayTotal;
 
   // Busca do "Saldo Real ASAAS" via Edge Function proxy
   // Isso substitui a soma burra das doações do banco pelo saldo financeiro real.
