@@ -135,24 +135,55 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
   };
 
   const fetchMessages = async (chatId: string) => {
+    if (!selectedChat) return;
     setIsLoadingMessages(true);
-    const { data, error } = await supabase
-      .from('whatsapp_messages')
-      .select('*')
-      .eq('chat_id', chatId)
-      .order('created_at', { ascending: true });
     
-    setIsLoadingMessages(false);
-    if (!error && data) setMessages(data);
+    try {
+      // 1. Encontrar todos os IDs de chat que pertencem a este mesmo número (Deduplicação)
+      const norm = normalizePhone(selectedChat.telefone);
+      const { data: relatedChats } = await supabase
+        .from('whatsapp_chats')
+        .select('id, telefone');
+      
+      const relatedIds = (relatedChats || [])
+        .filter(c => normalizePhone(c.telefone) === norm)
+        .map(c => c.id);
+
+      // 2. Buscar todas as mensagens que pertencem a qualquer um desses IDs
+      const { data, error } = await supabase
+        .from('whatsapp_messages')
+        .select('*')
+        .in('chat_id', relatedIds)
+        .order('created_at', { ascending: true });
+      
+      if (!error && data) {
+        setMessages(data);
+      }
+    } catch (err) {
+      console.error('Error fetching consolidated messages:', err);
+    } finally {
+      setIsLoadingMessages(false);
+    }
   };
 
   const markAsRead = async (chatId: string) => {
+    if (!selectedChat) return;
+    
+    // Marcar como lido em todos os IDs relacionados
+    const norm = normalizePhone(selectedChat.telefone);
+    const { data: relatedChats } = await supabase
+      .from('whatsapp_chats')
+      .select('id, telefone');
+    
+    const relatedIds = (relatedChats || [])
+      .filter(c => normalizePhone(c.telefone) === norm)
+      .map(c => c.id);
+
     await supabase
       .from('whatsapp_chats')
       .update({ unread_count: 0 })
-      .eq('id', chatId);
+      .in('id', relatedIds);
     
-    // Refresh chats to update unread badge in list
     fetchChats();
   };
 
@@ -177,22 +208,35 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
       fetchMessages(selectedChat.id);
       markAsRead(selectedChat.id);
 
-      // Subscribe to messages in this chat
+      // Subscribe to all messages and filter locally for related IDs
       const msgSubscription = supabase
-        .channel(`chat-msgs-${selectedChat.id}`)
+        .channel(`chat-msgs-global`)
         .on('postgres_changes', 
           { 
             event: 'INSERT', 
-            table: 'whatsapp_messages', 
-            filter: `chat_id=eq.${selectedChat.id}` 
+            table: 'whatsapp_messages'
           }, 
-          (payload) => {
-            // Deduplicate: avoid adding if already in state (optimistic update already added it)
-            setMessages(prev => {
-              const incoming = payload.new as Message;
-              if (prev.some(m => m.id === incoming.id)) return prev;
-              return [...prev, incoming];
-            });
+          async (payload) => {
+            const incoming = payload.new as Message;
+            
+            // Buscar IDs relacionados para este contato
+            const norm = normalizePhone(selectedChat.telefone);
+            const { data: relatedChats } = await supabase
+              .from('whatsapp_chats')
+              .select('id, telefone');
+            
+            const relatedIds = (relatedChats || [])
+              .filter(c => normalizePhone(c.telefone) === norm)
+              .map(c => c.id);
+
+            // Verificar se a mensagem pertence a este grupo de IDs
+            if (relatedIds.includes(incoming.chat_id)) {
+              setMessages(prev => {
+                if (prev.some(m => m.id === incoming.id)) return prev;
+                return [...prev, incoming];
+              });
+              markAsRead(selectedChat.id);
+            }
           }
         )
         .subscribe();
@@ -209,6 +253,47 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const handleSendMessage = async () => {
+    if (!inputText.trim() || !selectedChat) return;
+
+    const currentText = inputText;
+    const tempId = `temp-${Date.now()}`;
+    
+    // Optimistic update
+    const optimisticMessage: Message = {
+      id: tempId,
+      chat_id: selectedChat.id,
+      text_body: currentText,
+      is_from_me: true,
+      status: 'sent',
+      created_at: new Date().toISOString(),
+      message_id: tempId
+    };
+
+    setMessages(prev => [...prev, optimisticMessage]);
+    setChats(prev => prev.map(c => 
+      c.id === selectedChat.id 
+        ? { ...c, last_message: currentText, last_message_at: new Date().toISOString() } 
+        : c
+    ));
+    
+    setInputText("");
+    setIsSending(true);
+
+    try {
+      const savedConfig = localStorage.getItem("meta_config");
+      if (savedConfig) {
+        const config = JSON.parse(savedConfig);
+        await metaService.sendTextMessage(selectedChat.telefone, currentText, config);
+      } else {
+        toast({ title: "Aviso", description: "Configure as credenciais da Meta API na aba API para enviar via WhatsApp.", variant: "default" });
+        setInputText(currentText);
+        setMessages(prev => prev.filter(m => m.id !== tempId));
+      }
+    } catch (err: any) {
+      toast({ title: "Erro ao enviar", description: err.message, variant: "destructive" });
+      setInputText(currentText);
+      setMessages(prev => prev.filter(m => m.id !== tempId));
     } finally {
       setIsSending(false);
     }
@@ -218,16 +303,37 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
     if (!selectedChat) return;
     
     if (confirm("Tem certeza que deseja excluir todo o histórico de mensagens desta conversa? Esta ação não pode ser desfeita no Dashboard.")) {
-      const { error } = await supabase
-        .from('whatsapp_messages')
-        .delete()
-        .eq('chat_id', selectedChat.id);
-      
-      if (error) {
-        toast({ title: "Erro ao limpar", description: error.message, variant: "destructive" });
-      } else {
-        setMessages([]);
-        toast({ title: "Sucesso", description: "Histórico da conversa foi limpo." });
+      try {
+        // Encontrar todos os IDs relacionados para limpar tudo de uma vez
+        const norm = normalizePhone(selectedChat.telefone);
+        const { data: relatedChats } = await supabase
+          .from('whatsapp_chats')
+          .select('id, telefone');
+        
+        const relatedIds = (relatedChats || [])
+          .filter(c => normalizePhone(c.telefone) === norm)
+          .map(c => c.id);
+
+        const { error } = await supabase
+          .from('whatsapp_messages')
+          .delete()
+          .in('chat_id', relatedIds);
+        
+        if (error) {
+          toast({ title: "Erro ao limpar", description: error.message, variant: "destructive" });
+        } else {
+          setMessages([]);
+          // Limpar também o last_message nos chats
+          await supabase
+            .from('whatsapp_chats')
+            .update({ last_message: '', last_message_at: new Date().toISOString() })
+            .in('id', relatedIds);
+            
+          toast({ title: "Sucesso", description: "Todo o histórico foi limpo." });
+          fetchChats();
+        }
+      } catch (err: any) {
+        toast({ title: "Erro", description: err.message, variant: "destructive" });
       }
     }
   };
@@ -396,9 +502,16 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
                     <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem>Dados do contato</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toast({ title: "Dados do Contato", description: "Esta funcionalidade será integrada ao CRM em breve." })}>
+                      Dados do contato
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={clearChat}>Limpar conversa</DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive">Bloquear</DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="text-destructive" 
+                      onClick={() => toast({ title: "Bloquear Contato", description: "O bloqueio deve ser feito diretamente pelo celular vinculado." })}
+                    >
+                      Bloquear
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -432,7 +545,11 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
                               {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                             {msg.is_from_me && (
-                              msg.status === 'read' ? <CheckCheck className="w-3 h-3 text-blue-200" /> : <Check className="w-3 h-3" />
+                              msg.status === 'read' 
+                                ? <CheckCheck className="w-3 h-3 text-blue-200" /> 
+                                : msg.status === 'delivered' 
+                                  ? <CheckCheck className="w-3 h-3 text-slate-300" /> 
+                                  : <Check className="w-3 h-3 text-slate-300" />
                             )}
                           </div>
                         </div>
