@@ -39,6 +39,33 @@ function normalizePhone(phone: string): string {
   return cleaned;
 }
 
+/**
+ * Repassa o webhook para um agente externo (ex: GPTMaker)
+ */
+async function forwardToAgent(url: string, body: any, headers: Headers) {
+  try {
+    // Clona os headers originais para o repasse
+    const forwardHeaders = new Headers();
+    forwardHeaders.set('Content-Type', 'application/json');
+    
+    // Repassa o x-hub-signature se existir (usado pela Meta para segurança)
+    const sig = headers.get('x-hub-signature-256');
+    if (sig) forwardHeaders.set('x-hub-signature-256', sig);
+
+    console.log(`[Bridge] Repassando evento para: ${url}`);
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: forwardHeaders,
+      body: JSON.stringify(body)
+    });
+    
+    console.log(`[Bridge] Resposta do Agente: ${response.status}`);
+  } catch (err) {
+    console.error(`[Bridge] Falha no repasse:`, err);
+  }
+}
+
 serve(async (req) => {
   console.log(`[Meta Proxy] Request Received: ${req.method} ${req.url}`);
   
@@ -52,14 +79,23 @@ serve(async (req) => {
 
   // 1. Meta Handshake (GET)
   if (req.method === 'GET') {
-    const verifyToken = Deno.env.get('WHATSAPP_VERIFY_TOKEN');
+    const url = new URL(req.url);
+    const mode = url.searchParams.get('hub.mode');
+    const token = url.searchParams.get('hub.verify_token');
+    const challenge = url.searchParams.get('hub.challenge');
+
+    const verifyToken = Deno.env.get('WHATSAPP_VERIFY_TOKEN')?.trim();
     
     console.log(`[Handshake] Mode: ${mode}, Token Received: ${token}, Challenge: ${challenge}`);
     console.log(`[Handshake] Expected Token: ${verifyToken}`);
 
     if (mode === 'subscribe' && token === verifyToken) {
       console.log('Webhook Verificado com Sucesso!');
-      return new Response(challenge, { status: 200 });
+      // Retornamos apenas o texto do challenge como Meta exige
+      return new Response(challenge, { 
+        status: 200,
+        headers: { 'Content-Type': 'text/plain' }
+      });
     }
     
     console.warn('Webhook Handshake FALHOU: Tokens não conferem.');
@@ -75,6 +111,13 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     console.log('Evento Recebido:', JSON.stringify(body, null, 2));
+
+    // Ponte para Agente Externo (GPTMaker / Theo)
+    const forwardUrl = Deno.env.get('FORWARD_WEBHOOK_URL');
+    if (forwardUrl && body && Object.keys(body).length > 0) {
+      // Repasse assíncrono (Deno serve não suporta ctx.waitUntil, mas o promise corre solto)
+      forwardToAgent(forwardUrl, body, req.headers);
+    }
     
     if (!body || Object.keys(body).length === 0) {
       if (req.method === 'POST') {
