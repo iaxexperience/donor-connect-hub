@@ -146,16 +146,30 @@ serve(async (req) => {
         }
       }
 
-      // 2. Process Messages
+      // 2. Process Messages (Incoming and Echoes)
       const message = value.messages?.[0];
       if (message) {
-        const fromRaw = message.from;
-        const fromNormalized = normalizePhone(fromRaw);
-        const profileName = value.contacts?.[0]?.profile?.name || 'WhatsApp Contact';
         const messageId = message.id;
         const msgType = message.type;
+        
+        // Detecta se é um "Echo" (Mensagem enviada pelo robô/empresa)
+        // No Echo, o destinatário (to) está no campo 'from' ou o objeto tem 'from' igual ao número da empresa
+        const rawPhone = message.from;
+        const isEcho = body.entry[0].id === message.from || (message.metadata?.display_phone_number && message.metadata.display_phone_number.includes(message.from));
+        
+        // Se for Echo, o telefone do chat é o 'message.to' (se disponível) ou o context.from
+        // Na prática, para simplificar: se for Echo, ignoramos ou tratamos como 'is_from_me'
+        // Mas o mais comum é: se message.from é a empresa, ele está falando COM alguém.
+        
+        let targetPhone = rawPhone;
+        if (isEcho && message.to) {
+          targetPhone = message.to;
+        }
+        
+        const phoneNormalized = normalizePhone(targetPhone);
+        const profileName = value.contacts?.[0]?.profile?.name || 'WhatsApp Contact';
 
-        console.log(`[Webhook] Nova mensagem de ${fromRaw} (${fromNormalized})`);
+        console.log(`[Webhook] Processando mensagem (ID: ${messageId}, Echo: ${isEcho}, Fone: ${phoneNormalized})`);
 
         // Determine text from message type
         let text = '';
@@ -173,38 +187,36 @@ serve(async (req) => {
           text = `[${msgType}]`;
         }
 
-        // Match Donor (Harden lookup with .limit(1) to avoid .maybeSingle error)
+        // Match Donor
         let matchedDonorId = null;
         let matchedDonorName = profileName;
 
         const { data: donors } = await supabase
           .from('donors')
           .select('id, name')
-          .or(`phone.like.%${fromNormalized.slice(-8)},phone.eq.${fromNormalized}`)
+          .or(`phone.like.%${phoneNormalized.slice(-8)},phone.eq.${phoneNormalized}`)
           .limit(1);
 
         if (donors && donors.length > 0) {
           matchedDonorId = donors[0].id;
           matchedDonorName = donors[0].name;
-          console.log(`[Webhook] Doador identificado: ${matchedDonorName}`);
         }
 
         // Check/Create Chat
         let { data: chat } = await supabase
           .from('whatsapp_chats')
           .select('id, unread_count')
-          .eq('telefone', fromNormalized)
+          .eq('telefone', phoneNormalized)
           .maybeSingle();
 
         if (!chat) {
-          console.log(`[Webhook] Criando novo chat para ${fromNormalized}`);
           const { data: newChat } = await supabase
             .from('whatsapp_chats')
             .upsert([{ 
-              telefone: fromNormalized, 
+              telefone: phoneNormalized, 
               nome: matchedDonorName,
               last_message: text,
-              unread_count: 1,
+              unread_count: isEcho ? 0 : 1,
               donor_id: matchedDonorId
             }], { onConflict: 'telefone' })
             .select()
@@ -216,26 +228,31 @@ serve(async (req) => {
             .update({ 
               last_message: text, 
               last_message_at: new Date().toISOString(),
-              unread_count: (chat.unread_count || 0) + 1,
+              unread_count: isEcho ? chat.unread_count : (chat.unread_count || 0) + 1,
               donor_id: matchedDonorId
             })
             .eq('id', chat.id);
         }
 
-        // Insert Message
+        // Insert Message (Deduplicated with upsert)
         if (chat) {
-          await supabase
+          const { error: insertErr } = await supabase
             .from('whatsapp_messages')
-            .insert([{
+            .upsert([{
               chat_id: chat.id,
-              telefone: fromNormalized,
+              telefone: phoneNormalized,
               text_body: text,
-              is_from_me: false,
+              is_from_me: isEcho, // Se for echo, True
               message_id: messageId,
-              status: 'received',
+              status: isEcho ? 'sent' : 'received',
               donor_id: matchedDonorId
-            }]);
-          console.log(`[Webhook] Mensagem salva com sucesso (Chat: ${chat.id})`);
+            }], { onConflict: 'message_id' });
+            
+          if (insertErr) {
+            console.error(`[Webhook] Erro ao salvar mensagem (Deduplicação?):`, insertErr.message);
+          } else {
+            console.log(`[Webhook] Mensagem processada com sucesso (ID: ${messageId})`);
+          }
         }
       }
 
