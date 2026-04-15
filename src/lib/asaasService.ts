@@ -115,10 +115,11 @@ export const asaasService = {
         const dDate = new Date(dateStr);
         const tDate = new Date();
         
-        // Compara apenas o dia/mês/ano (ignora hora para somatório do dia)
-        return dDate.getDate() === tDate.getDate() &&
-               dDate.getMonth() === tDate.getMonth() &&
-               dDate.getFullYear() === tDate.getFullYear();
+        // Usa getUTC*() para dDate porque o banco salva "YYYY-MM-DDT00:00:00+00",
+        // o que em fuso do Brasil viraria o dia anterior se usássemos getData() local.
+        return dDate.getUTCDate() === tDate.getDate() &&
+               dDate.getUTCMonth() === tDate.getMonth() &&
+               dDate.getUTCFullYear() === tDate.getFullYear();
       })
       .reduce((acc, d) => acc + (Number(d.amount) || 0), 0);
 

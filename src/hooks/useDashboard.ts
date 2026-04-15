@@ -132,9 +132,9 @@ export const useDashboard = () => {
       const dateStr = d.confirmed_at || d.donation_date;
       if (!dateStr) return false;
       const donDate = new Date(dateStr);
-      return donDate.getDate() === todayDay && 
-             donDate.getMonth() === todayMonth && 
-             donDate.getFullYear() === todayYear;
+      return donDate.getUTCDate() === todayDay && 
+             donDate.getUTCMonth() === todayMonth && 
+             donDate.getUTCFullYear() === todayYear;
     })
     .reduce((acc, d) => acc + Number(d.amount || 0), 0);
 
