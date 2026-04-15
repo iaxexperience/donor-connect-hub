@@ -134,13 +134,12 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
     ));
   };
 
-  const fetchMessages = async (chatId: string) => {
-    if (!selectedChat) return;
+  const fetchMessages = async (chat: Chat) => {
     setIsLoadingMessages(true);
     
     try {
       // 1. Encontrar todos os IDs de chat que pertencem a este mesmo número (Deduplicação)
-      const norm = normalizePhone(selectedChat.telefone);
+      const norm = normalizePhone(chat.telefone);
       const { data: relatedChats } = await supabase
         .from('whatsapp_chats')
         .select('id, telefone');
@@ -166,25 +165,27 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
     }
   };
 
-  const markAsRead = async (chatId: string) => {
-    if (!selectedChat) return;
-    
-    // Marcar como lido em todos os IDs relacionados
-    const norm = normalizePhone(selectedChat.telefone);
-    const { data: relatedChats } = await supabase
-      .from('whatsapp_chats')
-      .select('id, telefone');
-    
-    const relatedIds = (relatedChats || [])
-      .filter(c => normalizePhone(c.telefone) === norm)
-      .map(c => c.id);
+  const markAsRead = async (chat: Chat) => {
+    try {
+      // Marcar como lido em todos os IDs relacionados
+      const norm = normalizePhone(chat.telefone);
+      const { data: relatedChats } = await supabase
+        .from('whatsapp_chats')
+        .select('id, telefone');
+      
+      const relatedIds = (relatedChats || [])
+        .filter(c => normalizePhone(c.telefone) === norm)
+        .map(c => c.id);
 
-    await supabase
-      .from('whatsapp_chats')
-      .update({ unread_count: 0 })
-      .in('id', relatedIds);
-    
-    fetchChats();
+      await supabase
+        .from('whatsapp_chats')
+        .update({ unread_count: 0 })
+        .in('id', relatedIds);
+      
+      fetchChats();
+    } catch (err) {
+      console.error('Error marking as read:', err);
+    }
   };
 
   useEffect(() => {
@@ -205,12 +206,14 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
 
   useEffect(() => {
     if (selectedChat) {
-      fetchMessages(selectedChat.id);
-      markAsRead(selectedChat.id);
+      fetchMessages(selectedChat);
+      markAsRead(selectedChat);
+
+      const normContact = normalizePhone(selectedChat.telefone);
 
       // Subscribe to all messages and filter locally for related IDs
       const msgSubscription = supabase
-        .channel(`chat-msgs-global`)
+        .channel(`chat-msgs-${selectedChat.id}`)
         .on('postgres_changes', 
           { 
             event: 'INSERT', 
@@ -219,14 +222,13 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
           async (payload) => {
             const incoming = payload.new as Message;
             
-            // Buscar IDs relacionados para este contato
-            const norm = normalizePhone(selectedChat.telefone);
+            // Buscar IDs relacionados para este contato NO MOMENTO do recebimento
             const { data: relatedChats } = await supabase
               .from('whatsapp_chats')
               .select('id, telefone');
             
             const relatedIds = (relatedChats || [])
-              .filter(c => normalizePhone(c.telefone) === norm)
+              .filter(c => normalizePhone(c.telefone) === normContact)
               .map(c => c.id);
 
             // Verificar se a mensagem pertence a este grupo de IDs
@@ -235,7 +237,7 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
                 if (prev.some(m => m.id === incoming.id)) return prev;
                 return [...prev, incoming];
               });
-              markAsRead(selectedChat.id);
+              markAsRead(selectedChat);
             }
           }
         )
@@ -247,7 +249,7 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
     } else {
       setMessages([]);
     }
-  }, [selectedChat]);
+  }, [selectedChat?.id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -368,7 +370,7 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
 
     if (existingChat) {
       setSelectedChat(existingChat);
-      fetchMessages(existingChat.id);
+      fetchMessages(existingChat);
       setIsDialogOpen(false);
       return;
     }
@@ -383,7 +385,7 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
 
       if (chatData) {
         setSelectedChat(chatData);
-        fetchMessages(chatData.id);
+        fetchMessages(chatData);
       } else {
         // Create new normalized chat
         const { data: newChat, error: createError } = await supabase
@@ -398,7 +400,7 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
 
         if (createError) throw createError;
         setSelectedChat(newChat);
-        fetchMessages(newChat.id);
+        fetchMessages(newChat);
         fetchChats();
       }
       setIsDialogOpen(false);
