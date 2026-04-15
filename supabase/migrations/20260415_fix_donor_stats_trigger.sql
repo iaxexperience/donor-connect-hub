@@ -35,10 +35,10 @@ BEGIN
                 WHERE donor_id = v_donor_id AND status = 'pago'
             ),
             type = CASE
-                WHEN (SELECT COUNT(*) FROM donations WHERE donor_id = v_donor_id AND status = 'pago') >= 5 THEN 'recorrente'::donation_status_type
-                WHEN (SELECT COUNT(*) FROM donations WHERE donor_id = v_donor_id AND status = 'pago') >= 2 THEN 'esporadico'::donation_status_type
-                WHEN (SELECT COUNT(*) FROM donations WHERE donor_id = v_donor_id AND status = 'pago') = 1 THEN 'unico'::donation_status_type
-                ELSE 'lead'::donation_status_type
+                WHEN (SELECT COUNT(*) FROM donations WHERE donor_id = v_donor_id AND status = 'pago') >= 5 THEN 'recorrente'::donor_type
+                WHEN (SELECT COUNT(*) FROM donations WHERE donor_id = v_donor_id AND status = 'pago') >= 2 THEN 'esporadico'::donor_type
+                WHEN (SELECT COUNT(*) FROM donations WHERE donor_id = v_donor_id AND status = 'pago') = 1 THEN 'unico'::donor_type
+                ELSE 'lead'::donor_type
             END
         WHERE id::text = v_donor_id::text;
     END IF;
@@ -63,10 +63,10 @@ BEGIN
                 WHERE donor_id = OLD.donor_id AND status = 'pago'
             ),
             type = CASE
-                WHEN (SELECT COUNT(*) FROM donations WHERE donor_id = OLD.donor_id AND status = 'pago') >= 5 THEN 'recorrente'::donation_status_type
-                WHEN (SELECT COUNT(*) FROM donations WHERE donor_id = OLD.donor_id AND status = 'pago') >= 2 THEN 'esporadico'::donation_status_type
-                WHEN (SELECT COUNT(*) FROM donations WHERE donor_id = OLD.donor_id AND status = 'pago') = 1 THEN 'unico'::donation_status_type
-                ELSE 'lead'::donation_status_type
+                WHEN (SELECT COUNT(*) FROM donations WHERE donor_id = OLD.donor_id AND status = 'pago') >= 5 THEN 'recorrente'::donor_type
+                WHEN (SELECT COUNT(*) FROM donations WHERE donor_id = OLD.donor_id AND status = 'pago') >= 2 THEN 'esporadico'::donor_type
+                WHEN (SELECT COUNT(*) FROM donations WHERE donor_id = OLD.donor_id AND status = 'pago') = 1 THEN 'unico'::donor_type
+                ELSE 'lead'::donor_type
             END
         WHERE id::text = OLD.donor_id::text;
     END IF;
@@ -106,10 +106,10 @@ BEGIN
                 WHERE donor_id = d.id AND status = 'pago'
             ),
             type = CASE
-                WHEN (SELECT COUNT(*) FROM donations WHERE donor_id = d.id AND status = 'pago') >= 5 THEN 'recorrente'::donation_status_type
-                WHEN (SELECT COUNT(*) FROM donations WHERE donor_id = d.id AND status = 'pago') >= 2 THEN 'esporadico'::donation_status_type
-                WHEN (SELECT COUNT(*) FROM donations WHERE donor_id = d.id AND status = 'pago') = 1 THEN 'unico'::donation_status_type
-                ELSE 'lead'::donation_status_type
+                WHEN (SELECT COUNT(*) FROM donations WHERE donor_id = d.id AND status = 'pago') >= 5 THEN 'recorrente'::donor_type
+                WHEN (SELECT COUNT(*) FROM donations WHERE donor_id = d.id AND status = 'pago') >= 2 THEN 'esporadico'::donor_type
+                WHEN (SELECT COUNT(*) FROM donations WHERE donor_id = d.id AND status = 'pago') = 1 THEN 'unico'::donor_type
+                ELSE 'lead'::donor_type
             END
         WHERE id = d.id;
     END LOOP;
