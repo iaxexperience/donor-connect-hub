@@ -93,7 +93,55 @@ serve(async (req) => {
           .select('id')
           .eq('asaas_customer_id', payment.customer)
           .maybeSingle();
-        if (donor) donorId = donor.id;
+        
+        if (donor) {
+          donorId = donor.id;
+        } else {
+          // AUTO-REGISTRATION: Fetch details from Asaas and create donor
+          console.log(`[Webhook] Donor ${payment.customer} not found. Attempting auto-registration...`);
+          try {
+            // Get Asaas Config
+            const { data: config } = await supabase
+              .from('asaas_settings')
+              .select('api_key, sandbox')
+              .eq('id', 1)
+              .maybeSingle();
+
+            if (config?.api_key) {
+              const baseUrl = config.sandbox ? 'https://sandbox.asaas.com/api/v3' : 'https://api.asaas.com/v3';
+              const response = await fetch(`${baseUrl}/customers/${payment.customer}`, {
+                headers: { 'access_token': config.api_key, 'Content-Type': 'application/json' }
+              });
+
+              if (response.ok) {
+                const customerData = await response.json();
+                const { data: newDonor, error: insertErr } = await supabase
+                  .from('donors')
+                  .insert([{
+                    name: customerData.name || 'Doador Asaas ' + payment.customer,
+                    email: customerData.email || `contato_${payment.customer}@asaas.com`,
+                    phone: (customerData.mobilePhone || customerData.phone || '00000000000').replace(/\D/g, ""),
+                    document_id: customerData.cpfCnpj,
+                    asaas_customer_id: payment.customer,
+                    type: 'unico',
+                    total_donated: 0,
+                    donation_count: 0
+                  }])
+                  .select()
+                  .single();
+
+                if (!insertErr && newDonor) {
+                  donorId = newDonor.id;
+                  console.log(`[Webhook] Successfully registered new donor: ${customerData.name} (${donorId})`);
+                } else {
+                  console.error('[Webhook] Error inserting new donor:', insertErr);
+                }
+              }
+            }
+          } catch (syncErr) {
+            console.error('[Webhook] Failed to auto-sync donor details:', syncErr);
+          }
+        }
       }
 
       const { data: newDonation, error: insertErr } = await supabase.from('donations').insert([{
