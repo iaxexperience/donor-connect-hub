@@ -60,16 +60,29 @@ interface Donor {
 }
 
 /**
- * Normaliza números de telefone para evitar duplicidade 
- * No Brasil: Remove o 9º dígito (se houver) para garantir que 5511988887777 e 551188887777 
- * sejam tratados como o mesmo contato no banco de dados.
+ * Função de Normalização Robusta (Padronizada)
+ * Garante que o número sempre tenha o formato: 55 + DDD + 8 dígitos finais
+ * Remove múltiplos prefixos '55' e o 9º dígito quando presente.
  */
 const normalizePhone = (phone: string): string => {
   if (!phone) return "";
   let cleaned = phone.replace(/\D/g, "");
   
+  // Limpa múltiplos prefixos 55 (ex: 555555... -> 55)
+  while (cleaned.length > 11 && cleaned.startsWith("5555")) {
+    cleaned = cleaned.substring(2);
+  }
+  
+  // Formato DDI(55) + DDD + Numero (12 ou 13 dígitos)
   if (cleaned.startsWith("55") && cleaned.length >= 12) {
     const ddd = cleaned.substring(2, 4);
+    const last8 = cleaned.substring(cleaned.length - 8);
+    return `55${ddd}${last8}`;
+  }
+  
+  // Formato DDD + Numero (10 ou 11 dígitos) - Adiciona DDI 55
+  if (cleaned.length === 10 || cleaned.length === 11) {
+    const ddd = cleaned.substring(0, 2);
     const last8 = cleaned.substring(cleaned.length - 8);
     return `55${ddd}${last8}`;
   }
@@ -96,7 +109,29 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
       .select('*')
       .order('last_message_at', { ascending: false });
     
-    if (!error && data) setChats(data);
+    if (error) {
+      console.error('Error fetching chats:', error);
+      return;
+    }
+
+    // Deduplicação em tempo de exibição (Client-side merge)
+    // Se existirem chats duplicados (com e sem 9 dígitos), mostramos apenas o mais recente
+    const uniqueChats: Record<string, Chat> = {};
+    (data || []).forEach(chat => {
+      const norm = normalizePhone(chat.telefone);
+      if (!uniqueChats[norm]) {
+        uniqueChats[norm] = chat;
+      } else {
+        // Se este chat for mais recente que o já guardado para este número, substitui
+        if (new Date(chat.last_message_at).getTime() > new Date(uniqueChats[norm].last_message_at).getTime()) {
+           uniqueChats[norm] = chat;
+        }
+      }
+    });
+
+    setChats(Object.values(uniqueChats).sort((a,b) => 
+      new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
+    ));
   };
 
   const fetchMessages = async (chatId: string) => {
@@ -233,47 +268,47 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
 
     const cleanPhone = normalizePhone(donor.phone);
     
-    // Check if chat already exists in state
-    const existingChat = chats.find(c => c.telefone.replace(/\D/g, "") === cleanPhone);
-    
+    // Check if chat already exists in our (already deduplicated) state
+    const existingChat = chats.find(c => normalizePhone(c.telefone) === cleanPhone);
+
     if (existingChat) {
       setSelectedChat(existingChat);
+      fetchMessages(existingChat.id);
       setIsDialogOpen(false);
       return;
     }
 
-    // Try to find in DB or create
+    // If not in state, check database for the normalized phone
     try {
       const { data: chatData, error: fetchError } = await supabase
         .from('whatsapp_chats')
         .select('*')
         .eq('telefone', cleanPhone)
-        .single();
+        .maybeSingle();
 
       if (chatData) {
-        setChats(prev => [chatData, ...prev]);
         setSelectedChat(chatData);
+        fetchMessages(chatData.id);
       } else {
-        // Create new chat record
+        // Create new normalized chat
         const { data: newChat, error: createError } = await supabase
           .from('whatsapp_chats')
-          .insert([{
-            telefone: cleanPhone,
-            nome: donor.name,
+          .upsert([{ 
+            telefone: cleanPhone, 
+            nome: donor.name || 'Contato',
             donor_id: donor.id
-          }])
+          }], { onConflict: 'telefone' })
           .select()
           .single();
 
         if (createError) throw createError;
-        if (newChat) {
-          setChats(prev => [newChat, ...prev]);
-          setSelectedChat(newChat);
-        }
+        setSelectedChat(newChat);
+        fetchMessages(newChat.id);
+        fetchChats();
       }
       setIsDialogOpen(false);
     } catch (err: any) {
-      toast({ title: "Erro ao iniciar conversa", description: err.message, variant: "destructive" });
+      toast({ title: "Erro ao iniciar chat", description: err.message, variant: "destructive" });
     }
   };
 

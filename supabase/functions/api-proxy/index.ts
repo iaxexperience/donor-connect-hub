@@ -19,11 +19,23 @@ function normalizePhone(phone: string): string {
   if (!phone) return "";
   let cleaned = phone.replace(/\D/g, "");
   
-  // Se for número brasileiro (55 + DDD + ...)
+  // Limpa múltiplos prefixos 55 (ex: 555555... -> 55)
+  while (cleaned.length > 11 && cleaned.startsWith("5555")) {
+    cleaned = cleaned.substring(2);
+  }
+  
+  // Formato DDI(55) + DDD + Numero (12 ou 13 dígitos)
   if (cleaned.startsWith("55") && cleaned.length >= 12) {
     const ddd = cleaned.substring(2, 4);
     const last8 = cleaned.substring(cleaned.length - 8);
-    // SEMPRE retornamos DDI + DDD + 8 dígitos finais
+    // SEMPRE retornamos DDI (55) + DDD + 8 dígitos finais
+    return `55${ddd}${last8}`;
+  }
+  
+  // Formato DDD + Numero (10 ou 11 dígitos) - Adiciona DDI 55
+  if (cleaned.length === 10 || cleaned.length === 11) {
+    const ddd = cleaned.substring(0, 2);
+    const last8 = cleaned.substring(cleaned.length - 8);
     return `55${ddd}${last8}`;
   }
   
