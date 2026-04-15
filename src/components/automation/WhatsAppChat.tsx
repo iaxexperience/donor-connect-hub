@@ -59,6 +59,24 @@ interface Donor {
   type?: string;
 }
 
+/**
+ * Normaliza números de telefone para evitar duplicidade 
+ * No Brasil: Remove o 9º dígito (se houver) para garantir que 5511988887777 e 551188887777 
+ * sejam tratados como o mesmo contato no banco de dados.
+ */
+const normalizePhone = (phone: string): string => {
+  if (!phone) return "";
+  let cleaned = phone.replace(/\D/g, "");
+  
+  if (cleaned.startsWith("55") && cleaned.length >= 12) {
+    const ddd = cleaned.substring(2, 4);
+    const last8 = cleaned.substring(cleaned.length - 8);
+    return `55${ddd}${last8}`;
+  }
+  
+  return cleaned;
+};
+
 export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
@@ -213,7 +231,7 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
       return;
     }
 
-    const cleanPhone = donor.phone.replace(/\D/g, "");
+    const cleanPhone = normalizePhone(donor.phone);
     
     // Check if chat already exists in state
     const existingChat = chats.find(c => c.telefone.replace(/\D/g, "") === cleanPhone);
@@ -338,7 +356,10 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
                 </Avatar>
                 <div>
                   <h3 className="font-bold text-sm leading-none">{selectedChat.nome}</h3>
-                  <p className="text-[10px] text-muted-foreground mt-1">Conectado via WhatsApp • {selectedChat.telefone}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                  Conectado via WhatsApp • {selectedChat.telefone} 
+                  {selectedChat.telefone.length === 12 && selectedChat.telefone.startsWith('55') && ' (Normalizado)'}
+                </p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
