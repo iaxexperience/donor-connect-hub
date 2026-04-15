@@ -16,20 +16,17 @@ function normalizePhone(phone: string): string {
   if (!phone) return "";
   let cleaned = phone.replace(/\D/g, "");
   
-  // Limpa múltiplos prefixos 55 (ex: 555555... -> 55)
-  while (cleaned.length > 11 && cleaned.startsWith("5555")) {
-    cleaned = cleaned.substring(2);
-  }
+  // Limpa prefixos 5555...
+  while (cleaned.length > 11 && cleaned.startsWith("5555")) cleaned = cleaned.substring(2);
   
-  // Formato DDI(55) + DDD + Numero (12 ou 13 dígitos)
+  // Se começar com 55 e tiver 12 ou 13 dígitos
   if (cleaned.startsWith("55") && cleaned.length >= 12) {
     const ddd = cleaned.substring(2, 4);
     const last8 = cleaned.substring(cleaned.length - 8);
-    // SEMPRE retornamos DDI (55) + DDD + 8 dígitos finais
     return `55${ddd}${last8}`;
   }
   
-  // Formato DDD + Numero (10 ou 11 dígitos) - Adiciona DDI 55
+  // Se tiver 10 ou 11 dígitos (DDD + Numero)
   if (cleaned.length === 10 || cleaned.length === 11) {
     const ddd = cleaned.substring(0, 2);
     const last8 = cleaned.substring(cleaned.length - 8);
@@ -43,16 +40,18 @@ function normalizePhone(phone: string): string {
  * Repassa o webhook para um agente externo (ex: GPTMaker)
  */
 async function forwardToAgent(url: string, body: any, headers: Headers) {
+  if (!url || url.includes('LINK_DO_GPTMAKER')) {
+    console.log('[Bridge] URL de repasse inválida ou ainda em placeholder. Ignorando.');
+    return;
+  }
+  
   try {
-    // Clona os headers originais para o repasse
     const forwardHeaders = new Headers();
     forwardHeaders.set('Content-Type', 'application/json');
-    
-    // Repassa o x-hub-signature se existir (usado pela Meta para segurança)
     const sig = headers.get('x-hub-signature-256');
     if (sig) forwardHeaders.set('x-hub-signature-256', sig);
 
-    console.log(`[Bridge] Repassando evento para: ${url}`);
+    console.log(`[Bridge] Repassando para: ${url.substring(0, 20)}...`);
     
     const response = await fetch(url, {
       method: 'POST',
@@ -60,9 +59,9 @@ async function forwardToAgent(url: string, body: any, headers: Headers) {
       body: JSON.stringify(body)
     });
     
-    console.log(`[Bridge] Resposta do Agente: ${response.status}`);
+    console.log(`[Bridge] Resposta: ${response.status}`);
   } catch (err) {
-    console.error(`[Bridge] Falha no repasse:`, err);
+    console.error(`[Bridge] Falha:`, err);
   }
 }
 
@@ -164,20 +163,24 @@ serve(async (req) => {
       }
     }
     
-    // C. PROCESSAMENTO GPTMAKER (Plano B - Respostas do Theo)
+    // C. PROCESSAMENTO EXTERNO (GPTMaker / Irrah / Bot)
     else if (isGPTMaker) {
-      console.log('[Webhook] Processando formato GPTMaker/Externo');
+      console.log('[Webhook] Recebido aviso externo (Theo)');
+      const msgId = body.id || body.message_id || body.data?.message_id || `ext_${Date.now()}`;
       
-      // Mapeamento flexível de campos do GPTMaker
-      const messageId = body.id || body.message_id || `gtp_${Date.now()}`;
-      const rawPhone = body.contact?.phone || body.sender?.phone || body.phone || body.from;
-      const text = body.message?.text || body.content || body.text || body.message || '';
-      const isEcho = body.direction === 'outbound' || body.event?.includes('sent') || !!body.user_id || true; // Geralmente se o GPTMaker nos avisa, é porque ele respondeu
+      // Mapeamento agressivo de telefone
+      const rawPhone = body.phone || body.from || body.sender?.phone || body.contact?.phone || body.data?.phone || body.data?.contact?.phone;
       
+      // Mapeamento agressivo de texto
+      const text = body.content || body.text || body.message?.text || body.data?.content || body.data?.text || '';
+      
+      // Detecta se é echo (Bot enviando)
+      const isEcho = body.is_reply || body.direction === 'outbound' || body.event?.includes('sent') || !!body.user_id || true;
+
       if (rawPhone && text) {
-        const phoneNormalized = normalizePhone(rawPhone);
+        const phone = normalizePhone(rawPhone);
         await handleMessageSync(supabase, {
-          messageId, phoneNormalized, text, isEcho, profileName: 'IAX - Theo', status: 'sent'
+          messageId: msgId, phoneNormalized: phone, text, isEcho, profileName: 'IAX - Theo', status: 'sent'
         });
       }
     }
