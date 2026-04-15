@@ -52,17 +52,17 @@ serve(async (req) => {
 
   // 1. Meta Handshake (GET)
   if (req.method === 'GET') {
-    const url = new URL(req.url);
-    const mode = url.searchParams.get('hub.mode');
-    const token = url.searchParams.get('hub.verify_token');
-    const challenge = url.searchParams.get('hub.challenge');
-
     const verifyToken = Deno.env.get('WHATSAPP_VERIFY_TOKEN');
+    
+    console.log(`[Handshake] Mode: ${mode}, Token Received: ${token}, Challenge: ${challenge}`);
+    console.log(`[Handshake] Expected Token: ${verifyToken}`);
 
     if (mode === 'subscribe' && token === verifyToken) {
       console.log('Webhook Verificado com Sucesso!');
       return new Response(challenge, { status: 200 });
     }
+    
+    console.warn('Webhook Handshake FALHOU: Tokens não conferem.');
     return new Response('Token de verificação inválido', { status: 403 });
   }
 
@@ -86,40 +86,34 @@ serve(async (req) => {
     }
 
     // A. WEBHOOK (Incoming from Meta)
+    // A. WEBHOOK (Incoming from Meta)
     if (body.entry?.[0]?.changes?.[0]?.value) {
       const value = body.entry[0].changes[0].value;
       
-      // ── Handle delivery/read status updates ──────────────────────────────
-      if (value.statuses) {
-        const statusUpdate = value.statuses[0];
-        const messageId = statusUpdate.id;
-        const newStatus = statusUpdate.status; // 'delivered', 'read', 'failed'
-        
-        console.log(`[Meta Proxy] Processing status update: ${messageId} -> ${newStatus}`);
-        
-        const { error: statusError } = await supabase
-          .from('whatsapp_messages')
-          .update({ status: newStatus })
-          .eq('message_id', messageId);
-
-        if (statusError) {
-          console.error('[Meta Proxy] Error updating message status:', JSON.stringify(statusError));
+      // 1. Process Statuses (Read Receipts / Delivery)
+      if (value.statuses && value.statuses.length > 0) {
+        for (const statusUpdate of value.statuses) {
+          const messageId = statusUpdate.id;
+          const newStatus = statusUpdate.status;
+          console.log(`[Webhook] Status update: ${messageId} -> ${newStatus}`);
+          
+          await supabase
+            .from('whatsapp_messages')
+            .update({ status: newStatus })
+            .eq('message_id', messageId);
         }
-
-        return new Response(JSON.stringify({ ok: true }), { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
       }
 
+      // 2. Process Messages
       const message = value.messages?.[0];
-
       if (message) {
         const fromRaw = message.from;
         const fromNormalized = normalizePhone(fromRaw);
         const profileName = value.contacts?.[0]?.profile?.name || 'WhatsApp Contact';
         const messageId = message.id;
         const msgType = message.type;
+
+        console.log(`[Webhook] Nova mensagem de ${fromRaw} (${fromNormalized})`);
 
         // Determine text from message type
         let text = '';
@@ -133,98 +127,81 @@ serve(async (req) => {
           text = '🎬 Vídeo';
         } else if (msgType === 'document') {
           text = `📄 Documento: ${message.document?.filename ?? ''}`;
-        } else if (msgType === 'sticker') {
-          text = '🎭 Sticker';
-        } else if (msgType === 'location') {
-          text = `📍 Localização: ${message.location?.latitude}, ${message.location?.longitude}`;
         } else {
           text = `[${msgType}]`;
         }
 
-        // Match Donor based on phone
+        // Match Donor (Harden lookup with .limit(1) to avoid .maybeSingle error)
         let matchedDonorId = null;
         let matchedDonorName = profileName;
 
-        const cleanPhone = fromNormalized;
-        
-        // Optimize search: fetch specific potential match
-        const { data: donor } = await supabase
+        const { data: donors } = await supabase
           .from('donors')
           .select('id, name')
-          .or(`phone.like.%${cleanPhone.slice(-8)},phone.eq.${cleanPhone}`)
-          .maybeSingle();
+          .or(`phone.like.%${fromNormalized.slice(-8)},phone.eq.${fromNormalized}`)
+          .limit(1);
 
-        if (donor) {
-          matchedDonorId = donor.id;
-          matchedDonorName = donor.name; // Prioritize our DB name over Meta's profile name
-          console.log(`[Meta Proxy] Matched donor: ${matchedDonorName} (ID: ${matchedDonorId})`);
+        if (donors && donors.length > 0) {
+          matchedDonorId = donors[0].id;
+          matchedDonorName = donors[0].name;
+          console.log(`[Webhook] Doador identificado: ${matchedDonorName}`);
         }
 
         // Check/Create Chat
-        let { data: chat, error: chatError } = await supabase
+        let { data: chat } = await supabase
           .from('whatsapp_chats')
           .select('id, unread_count')
           .eq('telefone', fromNormalized)
           .maybeSingle();
 
-        if (chatError || !chat) {
-          console.log(`[Meta Proxy] Creating new chat for ${fromNormalized}`);
-          const { data: newChat, error: createError } = await supabase
+        if (!chat) {
+          console.log(`[Webhook] Criando novo chat para ${fromNormalized}`);
+          const { data: newChat } = await supabase
             .from('whatsapp_chats')
             .upsert([{ 
               telefone: fromNormalized, 
               nome: matchedDonorName,
               last_message: text,
-              last_message_at: new Date().toISOString(),
               unread_count: 1,
               donor_id: matchedDonorId
             }], { onConflict: 'telefone' })
             .select()
             .single();
-          
-          if (createError) {
-            console.error('[Meta Proxy] Error creating chat:', JSON.stringify(createError));
-            throw createError;
-          }
           chat = newChat;
         } else {
-          // Update Chat
-          console.log(`[Meta Proxy] Updating existing chat ${chat.id}`);
           await supabase
             .from('whatsapp_chats')
             .update({ 
               last_message: text, 
               last_message_at: new Date().toISOString(),
               unread_count: (chat.unread_count || 0) + 1,
-              donor_id: matchedDonorId // Keep synced
+              donor_id: matchedDonorId
             })
             .eq('id', chat.id);
         }
 
-        // Insert Message — triggers Realtime in WhatsAppChat.tsx
-        const { error: msgInsertError } = await supabase
-          .from('whatsapp_messages')
-          .insert([{
-            chat_id: chat.id,
-            telefone: fromNormalized,
-            text_body: text,
-            is_from_me: false,
-            message_id: messageId,
-            status: 'received',
-            donor_id: matchedDonorId
-          }]);
-
-        if (msgInsertError) {
-          console.error('[Meta Proxy] Error inserting message:', JSON.stringify(msgInsertError));
-        } else {
-          console.log(`[Meta Proxy] Received message saved. chat_id=${chat.id}, from=${fromNormalized}`);
+        // Insert Message
+        if (chat) {
+          await supabase
+            .from('whatsapp_messages')
+            .insert([{
+              chat_id: chat.id,
+              telefone: fromNormalized,
+              text_body: text,
+              is_from_me: false,
+              message_id: messageId,
+              status: 'received',
+              donor_id: matchedDonorId
+            }]);
+          console.log(`[Webhook] Mensagem salva com sucesso (Chat: ${chat.id})`);
         }
-
-        return new Response(JSON.stringify({ success: true }), { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
       }
+
+      return new Response(JSON.stringify({ success: true }), { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
 
       // Any other webhook event — Meta requires 200 response
       return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
