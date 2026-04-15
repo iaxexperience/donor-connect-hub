@@ -52,6 +52,8 @@ serve(async (req) => {
 
     for (const customerId of uniqueCustomerIds) {
       try {
+        console.log(`[Asaas Sync] Processing customer: ${customerId}`);
+        
         // Check if donor already exists by ID
         const { data: existingDonor } = await supabase
           .from('donors')
@@ -63,7 +65,7 @@ serve(async (req) => {
 
         if (!donorId) {
           // 3. Fetch from Asaas
-          console.log(`[Asaas Sync] Fetching customer ${customerId} from Asaas...`);
+          console.log(`[Asaas Sync] Fetching details from Asaas API for ${customerId}...`);
           const response = await fetch(`${baseUrl}/customers/${customerId}`, {
             method: 'GET',
             headers: { 'access_token': asaasApiKey, 'Content-Type': 'application/json' }
@@ -71,40 +73,52 @@ serve(async (req) => {
 
           if (!response.ok) {
             const errBody = await response.json();
-            throw new Error(`Asaas API Error: ${errBody.errors?.[0]?.description || response.statusText}`);
+            throw new Error(`Asaas API Error for ${customerId}: ${errBody.errors?.[0]?.description || response.statusText}`);
           }
 
           const customerData = await response.json();
+          console.log(`[Asaas Sync] Customer data retrieved: ${customerData.name}`);
 
-          // 4. Create in DB
+          // 4. Create in DB with all required fields and fallbacks
           const { data: newDonor, error: insertErr } = await supabase
             .from('donors')
             .insert([{
               name: customerData.name || 'Doador Asaas ' + customerId,
-              email: customerData.email,
-              phone: customerData.mobilePhone || customerData.phone,
+              email: customerData.email || `contato_${customerId}@asaas.com`, // Fallback for required email
+              phone: (customerData.mobilePhone || customerData.phone || '00000000000').replace(/\D/g, ""), // Numeric only
               document_id: customerData.cpfCnpj,
               asaas_customer_id: customerId,
-              type: 'unico' // Default as requested
+              type: 'unico',
+              total_donated: 0,
+              donation_count: 0
             }])
             .select()
             .single();
 
-          if (insertErr) throw insertErr;
+          if (insertErr) {
+            console.error(`[Asaas Sync] Insert Error for ${customerId}:`, insertErr);
+            throw new Error(`Database Insert Error: ${insertErr.message}`);
+          }
+          
           donorId = newDonor.id;
+          console.log(`[Asaas Sync] Created new donor ID: ${donorId}`);
         }
 
         // 5. Update Donations
+        console.log(`[Asaas Sync] Linking donations to donor ${donorId}...`);
         const { error: updateErr } = await supabase
           .from('donations')
           .update({ donor_id: donorId })
           .eq('asaas_customer_id', customerId)
           .is('donor_id', null);
 
-        if (updateErr) throw updateErr;
+        if (updateErr) {
+          console.error(`[Asaas Sync] Update donations error for ${customerId}:`, updateErr);
+          throw updateErr;
+        }
 
         results.synced++;
-        results.details.push(`Synced: ${customerId}`);
+        results.details.push(`Synced: ${customerId} (${donorId})`);
 
       } catch (err: any) {
         console.error(`[Asaas Sync] Error syncing ${customerId}:`, err.message);
