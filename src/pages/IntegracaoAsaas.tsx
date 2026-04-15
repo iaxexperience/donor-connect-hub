@@ -125,9 +125,33 @@ export default function IntegracaoAsaas() {
           </h1>
           <p className="text-slate-500 mt-2 text-lg font-medium">Gestão automatizada de pagamentos, cobranças PIX, Boletos e Cartões.</p>
         </div>
-        <Button onClick={loadData} disabled={isLoading} className="gap-2 h-12 rounded-2xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm font-bold">
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> Atualizar
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button 
+            onClick={async () => {
+              setIsLoading(true);
+              try {
+                const res = await asaasService.syncDonors();
+                toast({ 
+                  title: "Sincronização concluída", 
+                  description: `${res.results.synced} doadores vinculados, ${res.results.errors} erros.` 
+                });
+                loadData();
+              } catch (e: any) {
+                toast({ title: "Erro na sincronização", description: e.message, variant: "destructive" });
+              } finally {
+                setIsLoading(false);
+              }
+            }} 
+            disabled={isLoading} 
+            className="gap-2 h-12 rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-100 font-bold"
+          >
+            <ShieldCheck className="w-4 h-4" /> Sincronizar Doadores
+          </Button>
+
+          <Button onClick={loadData} disabled={isLoading} className="gap-2 h-12 rounded-2xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm font-bold">
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> Atualizar
+          </Button>
+        </div>
       </div>
 
       {/* Stats banner */}

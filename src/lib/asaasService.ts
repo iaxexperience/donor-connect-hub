@@ -40,6 +40,11 @@ export const asaasService = {
     return invokeFunction('asaas-get-payment-status', { payment_id });
   },
 
+  /** Sync anonymous donors from Asaas details */
+  async syncDonors() {
+    return invokeFunction('asaas-sync-donors');
+  },
+
   /** Get payments logs (webhooks) */
   async getLogs(limit = 50) {
     const { data, error } = await supabase
