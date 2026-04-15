@@ -101,25 +101,33 @@ export const asaasService = {
     }
 
     const donations = allDonations || [];
-    const isConfirmed = (status: string) => ['pago', 'confirmed', 'Confirmado'].includes(status);
+    
+    // Status que são considerados como confirmados/pagos
+    const confirmedStatuses = ['pago', 'confirmed', 'Confirmado', 'RECEIVE', 'RECEIVED', 'CONFIRMED'];
+    const isConfirmed = (status: string) => status && confirmedStatuses.some(s => s.toLowerCase() === status.toLowerCase());
 
     const totalToday = donations
       .filter(d => {
         if (!isConfirmed(d.status)) return false;
         const dateStr = d.confirmed_at || d.donation_date;
         if (!dateStr) return false;
+        
         const dDate = new Date(dateStr);
         const tDate = new Date();
-        return dDate.toDateString() === tDate.toDateString() || dDate.toISOString().split('T')[0] === today;
+        
+        // Compara apenas o dia/mês/ano (ignora hora para somatório do dia)
+        return dDate.getDate() === tDate.getDate() &&
+               dDate.getMonth() === tDate.getMonth() &&
+               dDate.getFullYear() === tDate.getFullYear();
       })
-      .reduce((acc, d) => acc + parseFloat(d.amount), 0);
+      .reduce((acc, d) => acc + (Number(d.amount) || 0), 0);
 
     const totalConfirmed = donations
       .filter(d => isConfirmed(d.status))
-      .reduce((acc, d) => acc + parseFloat(d.amount), 0);
+      .reduce((acc, d) => acc + (Number(d.amount) || 0), 0);
 
     const activeDonorsCount = new Set(
-      donations.filter(d => isConfirmed(d.status)).map(d => d.donor_id)
+      donations.filter(d => isConfirmed(d.status)).map(d => d.donor_id).filter(Boolean)
     ).size;
 
     const byType = {
@@ -131,3 +139,4 @@ export const asaasService = {
     return { totalToday, totalConfirmed, activeDonorsCount, byType, totalDonationsCount: donations.length };
   }
 };
+

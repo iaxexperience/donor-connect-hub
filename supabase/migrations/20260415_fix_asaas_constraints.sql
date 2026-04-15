@@ -1,10 +1,13 @@
 -- ============================================================
 -- Migration: Fix Asaas Constraints & Reconciliation
--- Purpose: 
--- 1. Expand billing_type to support all Asaas methods.
--- 2. Add UNIQUE constraint to asaas_payment_id to prevent duplicates.
--- 3. Reconcile missing donations from payments_logs.
 -- ============================================================
+
+-- 0. Update donation_status enum with missing values
+-- Note: In some Postgres versions/environments, this cannot run inside a transaction.
+-- If this fails, run these lines individually in the SQL Editor.
+ALTER TYPE donation_status ADD VALUE IF NOT EXISTS 'vencido';
+ALTER TYPE donation_status ADD VALUE IF NOT EXISTS 'cancelado';
+ALTER TYPE donation_status ADD VALUE IF NOT EXISTS 'estornado';
 
 -- 1. Expand billing_type CHECK constraint
 -- First, drop the old constraint if it exists
@@ -20,11 +23,11 @@ ALTER TABLE donations ADD CONSTRAINT donations_billing_type_check
 CHECK (billing_type IN ('PIX', 'BOLETO', 'CREDIT_CARD', 'DEBIT_CARD', 'TRANSFER', 'DEPOSIT', 'FINANCING', 'UNDEFINED', 'CREDIT_DIRECT_DEBIT', 'DEBIT_DIRECT_DEBIT'));
 
 -- 2. Add UNIQUE constraint to asaas_payment_id
--- First, clean up any accidental duplicates (keep only the newest one)
+-- First, clean up any accidental duplicates (keep only the oldest one)
 DELETE FROM donations d1
 WHERE d1.asaas_payment_id IS NOT NULL
-  AND d1.id > (
-    SELECT MIN(d2.id) 
+  AND d1.id::text > (
+    SELECT MIN(d2.id::text) 
     FROM donations d2 
     WHERE d2.asaas_payment_id = d1.asaas_payment_id
   );
@@ -39,19 +42,13 @@ BEGIN
     END IF;
 END $$;
 
--- 3. Ensure status allowed values (if constraint exists)
-DO $$
-BEGIN
-    ALTER TABLE donations DROP CONSTRAINT IF EXISTS donations_status_check;
-EXCEPTION
-    WHEN undefined_object THEN NULL;
-END $$;
-
-ALTER TABLE donations ADD CONSTRAINT donations_status_check 
-CHECK (status IN ('pendente', 'pago', 'cancelado', 'vencido', 'estornado'));
+-- 3. Enum donation_status handles the values, no need for manual check constraint here
+-- but we ensure the column is using the enum if it wasn't already.
+-- (This part is usually handled by the column definition itself)
 
 -- 4. RECONCILIATION: Recover missing donations from logs
 -- Insert payments that exist in logs but NOT in donations table
+-- Using DISTINCT ON to ensure we don't try to insert the same payment ID twice from multiple log entries
 INSERT INTO donations (
   asaas_payment_id,
   donor_id,
@@ -62,7 +59,7 @@ INSERT INTO donations (
   confirmed_at,
   payment_method
 )
-SELECT
+SELECT DISTINCT ON (pl.payload->'payment'->>'id')
   pl.payload->'payment'->>'id'                                              AS asaas_payment_id,
   (SELECT id FROM donors WHERE asaas_customer_id = pl.payload->'payment'->>'customer' LIMIT 1) AS donor_id,
   (pl.payload->'payment'->>'value')::numeric                                AS amount,
@@ -83,7 +80,8 @@ WHERE pl.event IN ('PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED')
   AND NOT EXISTS (
     SELECT 1 FROM donations d
     WHERE d.asaas_payment_id = pl.payload->'payment'->>'id'
-  );
+  )
+ORDER BY pl.payload->'payment'->>'id', pl.created_at DESC;
 
 -- 5. Fix any 'pending' donations that were already paid in logs
 UPDATE donations d

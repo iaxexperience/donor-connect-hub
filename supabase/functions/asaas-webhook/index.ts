@@ -20,13 +20,16 @@ serve(async (req) => {
     const body = await req.json();
     const { event, payment } = body;
 
-    // Log every event for audit trail (idempotency handled by waba_message_id)
-    await supabase.from('payments_logs').insert([{
+    // Log every event for audit trail
+    const { error: logErr } = await supabase.from('payments_logs').insert([{
       event,
       payload: body,
+      source: 'asaas'
     }]);
+    
+    if (logErr) console.error('[Asaas Webhook] Log Error:', logErr);
 
-    if (!['PAYMENT_CREATED', 'PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED', 'PAYMENT_OVERDUE', 'PAYMENT_DELETED'].includes(event)) {
+    if (!['PAYMENT_CREATED', 'PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED', 'PAYMENT_OVERDUE', 'PAYMENT_DELETED', 'PAYMENT_REFUNDED', 'PAYMENT_CHARGEBACK_REQUESTED'].includes(event)) {
       return new Response(JSON.stringify({ message: 'Event ignored' }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -43,32 +46,53 @@ serve(async (req) => {
       PAYMENT_CREATED: 'pendente',
       PAYMENT_RECEIVED: 'pago',
       PAYMENT_CONFIRMED: 'pago',
-      PAYMENT_OVERDUE: 'pendente',
-      PAYMENT_DELETED: 'cancelado', // Ensure masculine for enum match if required
+      PAYMENT_OVERDUE: 'vencido',
+      PAYMENT_DELETED: 'cancelado',
+      PAYMENT_REFUNDED: 'estornado',
+      PAYMENT_CHARGEBACK_REQUESTED: 'estornado',
     };
     const newStatus = statusMap[event] || 'pendente';
 
-    // Update donation
-    const { data: updated, error } = await supabase
+    // Get confirmation date from payload if possible
+    const confirmationDate = payment.confirmedDate ? new Date(payment.confirmedDate).toISOString() : 
+                             payment.clientPaymentDate ? new Date(payment.clientPaymentDate).toISOString() :
+                             newStatus === 'pago' ? new Date().toISOString() : null;
+
+    // Check if donation already exists
+    const { data: existingDonation } = await supabase
       .from('donations')
-      .update({ 
-        status: newStatus,
-        confirmed_at: newStatus === 'pago' ? new Date().toISOString() : null
-      })
+      .select('id, status, confirmed_at')
       .eq('asaas_payment_id', asaasPaymentId)
-      .select();
+      .maybeSingle();
 
-    if (error) throw error;
+    let affectedRows = 0;
 
-    let affectedRows = updated?.length || 0;
+    if (existingDonation) {
+      // IDEMPOTENCY: If already paid, don't update confirmed_at unless it's null
+      const updateData: any = { status: newStatus };
+      if (newStatus === 'pago' && !existingDonation.confirmed_at) {
+        updateData.confirmed_at = confirmationDate;
+      }
 
-    // Se nao achou no banco, foi gerada fora do sistema (ex: portal asaas) -> auto-registro!
-    if (affectedRows === 0 && payment) {
+      console.log(`[Asaas Webhook] Updating existing donation ${asaasPaymentId}. Status: ${newStatus}`);
+      const { data: updated, error: updateErr } = await supabase
+        .from('donations')
+        .update(updateData)
+        .eq('asaas_payment_id', asaasPaymentId)
+        .select();
+
+      if (updateErr) throw updateErr;
+      affectedRows = updated?.length || 0;
+    } else {
+      // Auto-register external donation
       console.log(`[Asaas Webhook] Payment ${asaasPaymentId} not found. Auto-registering...`);
-      // Tenta achar o doador pelo customer_id do asaas
+      
       let donorId = null;
       if (payment.customer) {
-        const { data: donor } = await supabase.from('donors').select('id').eq('asaas_customer_id', payment.customer).maybeSingle();
+        const { data: donor } = await supabase.from('donors')
+          .select('id')
+          .eq('asaas_customer_id', payment.customer)
+          .maybeSingle();
         if (donor) donorId = donor.id;
       }
 
@@ -77,17 +101,25 @@ serve(async (req) => {
         amount: payment.value,
         status: newStatus,
         asaas_payment_id: asaasPaymentId,
-        billing_type: payment.billingType,
+        billing_type: payment.billingType || 'UNDEFINED',
         due_date: payment.dueDate,
-        donation_date: new Date().toISOString(), // Fallback para data da doação
-        confirmed_at: newStatus === 'pago' ? new Date().toISOString() : null
+        donation_date: payment.dateCreated || new Date().toISOString(),
+        confirmed_at: newStatus === 'pago' ? confirmationDate : null,
+        payment_method: 'Asaas'
       }]).select();
 
-      if (insertErr) throw insertErr;
-      console.log(`[Asaas Webhook] Auto-registered external donation:`, newDonation);
-      affectedRows = newDonation ? newDonation.length : 1;
-    } else {
-      console.log(`[Asaas Webhook] ${event} → donation updated:`, updated);
+      if (insertErr) {
+        // If it's a unique constraint error, someone else might have inserted it just now
+        if (insertErr.code === '23505') {
+          console.log('[Asaas Webhook] Concurrent insert detected. Skipping.');
+          affectedRows = 1;
+        } else {
+          throw insertErr;
+        }
+      } else {
+        affectedRows = newDonation ? newDonation.length : 1;
+        console.log(`[Asaas Webhook] Auto-registered:`, asaasPaymentId);
+      }
     }
 
     return new Response(JSON.stringify({ success: true, updated: affectedRows }), {
@@ -96,10 +128,13 @@ serve(async (req) => {
     });
 
   } catch (err: any) {
-    console.error('[Asaas Webhook] Error:', err.message);
+    console.error('[Asaas Webhook] Fatal Error:', err.message);
+    // Return 200 for data errors to stop Asaas retry loop if it's not a server issue
+    const isDataError = err.message?.includes('check constraint') || err.message?.includes('invalid input');
     return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
+      status: isDataError ? 200 : 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
+
