@@ -4,16 +4,11 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 const invokeFunction = async (name: string, body: Record<string, unknown> = {}) => {
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${ANON_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
+  const { data, error } = await supabase.functions.invoke(name, {
+    body: body
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || `Function ${name} failed`);
+  
+  if (error) throw new Error(error.message || `Erro ao chamar a função ${name}`);
   return data;
 };
 
