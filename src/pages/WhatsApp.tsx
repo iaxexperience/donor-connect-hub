@@ -807,7 +807,7 @@ const WhatsApp = () => {
 
         {/* 3. CHAT AO VIVO */}
         <TabsContent value="chat" className="animate-in zoom-in-95 duration-300">
-           <WhatsAppChat onStartNewChat={() => setActiveTab("send")} />
+           <WhatsAppChat donors={donors} />
         </TabsContent>
 
         {/* 4. AUTOMAÇÃO */}

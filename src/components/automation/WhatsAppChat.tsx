@@ -19,11 +19,17 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
+  DropdownMenu,
+  DropdownMenuContent,
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { metaService } from "@/services/metaService";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -46,7 +52,14 @@ interface Message {
   message_id: string;
 }
 
-export const WhatsAppChat = ({ onStartNewChat }: { onStartNewChat?: () => void }) => {
+interface Donor {
+  id: number;
+  name: string;
+  phone: string | null;
+  type?: string;
+}
+
+export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -54,6 +67,8 @@ export const WhatsAppChat = ({ onStartNewChat }: { onStartNewChat?: () => void }
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [donorSearch, setDonorSearch] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -190,6 +205,63 @@ export const WhatsAppChat = ({ onStartNewChat }: { onStartNewChat?: () => void }
   const filteredChats = chats.filter(c => 
     c.nome?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     c.telefone.includes(searchTerm)
+  );
+
+  const startChatWithDonor = async (donor: Donor) => {
+    if (!donor.phone) {
+      toast({ title: "Erro", description: "Este doador não possui telefone cadastrado.", variant: "destructive" });
+      return;
+    }
+
+    const cleanPhone = donor.phone.replace(/\D/g, "");
+    
+    // Check if chat already exists in state
+    const existingChat = chats.find(c => c.telefone.replace(/\D/g, "") === cleanPhone);
+    
+    if (existingChat) {
+      setSelectedChat(existingChat);
+      setIsDialogOpen(false);
+      return;
+    }
+
+    // Try to find in DB or create
+    try {
+      const { data: chatData, error: fetchError } = await supabase
+        .from('whatsapp_chats')
+        .select('*')
+        .eq('telefone', cleanPhone)
+        .single();
+
+      if (chatData) {
+        setChats(prev => [chatData, ...prev]);
+        setSelectedChat(chatData);
+      } else {
+        // Create new chat record
+        const { data: newChat, error: createError } = await supabase
+          .from('whatsapp_chats')
+          .insert([{
+            telefone: cleanPhone,
+            nome: donor.name,
+            donor_id: donor.id
+          }])
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        if (newChat) {
+          setChats(prev => [newChat, ...prev]);
+          setSelectedChat(newChat);
+        }
+      }
+      setIsDialogOpen(false);
+    } catch (err: any) {
+      toast({ title: "Erro ao iniciar conversa", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const filteredDonors = donors.filter(d => 
+    d.name.toLowerCase().includes(donorSearch.toLowerCase()) || 
+    (d.phone && d.phone.includes(donorSearch))
   );
 
   return (
@@ -361,7 +433,7 @@ export const WhatsAppChat = ({ onStartNewChat }: { onStartNewChat?: () => void }
                 </p>
              </div>
              <div className="pt-4">
-                <Button variant="outline" className="rounded-full" onClick={onStartNewChat}>Começar nova conversa</Button>
+                <Button variant="outline" className="rounded-full" onClick={() => setIsDialogOpen(true)}>Começar nova conversa</Button>
              </div>
           </div>
         )}
@@ -400,6 +472,48 @@ export const WhatsAppChat = ({ onStartNewChat }: { onStartNewChat?: () => void }
             </div>
          )}
       </div>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Iniciar Nova Conversa</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input 
+                placeholder="Buscar doador..." 
+                className="pl-9" 
+                value={donorSearch}
+                onChange={(e) => setDonorSearch(e.target.value)}
+              />
+            </div>
+            <ScrollArea className="h-72 pr-4">
+              <div className="space-y-2">
+                {filteredDonors.map(donor => (
+                  <div 
+                    key={donor.id}
+                    onClick={() => startChatWithDonor(donor)}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted cursor-pointer transition-colors border border-transparent hover:border-border"
+                  >
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-primary/5 text-primary text-xs font-bold">
+                        {donor.name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{donor.name}</p>
+                      <p className="text-xs text-muted-foreground">{donor.phone || "Sem telefone"}</p>
+                    </div>
+                  </div>
+                ))}
+                {filteredDonors.length === 0 && (
+                  <p className="text-center text-sm text-muted-foreground py-8">Nenhum doador encontrado.</p>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
