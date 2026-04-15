@@ -120,28 +120,18 @@ serve(async (req) => {
         let matchedDonorName = profileName;
 
         const cleanPhone = fromNormalized;
-        const shortPhone = cleanPhone.startsWith("55") ? cleanPhone.slice(2) : cleanPhone;
+        
+        // Optimize search: fetch specific potential match
+        const { data: donor } = await supabase
+          .from('donors')
+          .select('id, name')
+          .or(`phone.like.%${cleanPhone.slice(-8)},phone.eq.${cleanPhone}`)
+          .maybeSingle();
 
-        const { data: donors } = await supabase.from('donors').select('id, name, phone');
-        if (donors && donors.length > 0) {
-          const donor = donors.find((d: any) => {
-            if (!d.phone) return false;
-            const dbPhoneClean = d.phone.replace(/\D/g, "");
-            
-            // Match flexível: se o DDI e os últimos 8 dígitos baterem
-            const last8DB = dbPhoneClean.slice(-8);
-            const last8Meta = cleanPhone.slice(-8);
-            const dddDB = dbPhoneClean.length >= 10 ? dbPhoneClean.slice(-10, -8) : "";
-            const dddMeta = cleanPhone.length >= 10 ? cleanPhone.slice(2, 4) : "";
-
-            if (last8DB === last8Meta && dddDB && dddMeta && dddDB === dddMeta) return true;
-            return dbPhoneClean === cleanPhone || dbPhoneClean === shortPhone;
-          });
-
-          if (donor) {
-            matchedDonorId = donor.id;
-            matchedDonorName = donor.name; // Prioritize our DB name over Meta's profile name
-          }
+        if (donor) {
+          matchedDonorId = donor.id;
+          matchedDonorName = donor.name; // Prioritize our DB name over Meta's profile name
+          console.log(`[Meta Proxy] Matched donor: ${matchedDonorName} (ID: ${matchedDonorId})`);
         }
 
         // Check/Create Chat

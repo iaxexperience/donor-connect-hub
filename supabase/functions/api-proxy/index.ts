@@ -159,7 +159,7 @@ serve(async (req) => {
                   donor_id: donorId
                 }], { onConflict: 'telefone' })
                 .select('id')
-                .maybeSingle();
+                .single();
               chatId = newChat?.id ?? null;
             } else {
               console.log(`[api-proxy] Updating existing chat ${chatId}`);

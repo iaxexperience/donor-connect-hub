@@ -361,7 +361,7 @@ export const WhatsAppChat = ({ onStartNewChat }: { onStartNewChat?: () => void }
                 </p>
              </div>
              <div className="pt-4">
-                <Button variant="outline" className="rounded-full">Começar nova conversa</Button>
+                <Button variant="outline" className="rounded-full" onClick={onStartNewChat}>Começar nova conversa</Button>
              </div>
           </div>
         )}
