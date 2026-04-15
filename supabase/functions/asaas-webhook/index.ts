@@ -83,6 +83,76 @@ serve(async (req) => {
 
       if (updateErr) throw updateErr;
       affectedRows = updated?.length || 0;
+
+      // AUTO WHATSAPP on status change to 'pago'
+      if (newStatus === 'pago' && existingDonation.status !== 'pago' && updated?.[0]?.donor_id) {
+        try {
+          const { data: donorData } = await supabase.from('donors')
+            .select('name, phone')
+            .eq('id', updated[0].donor_id)
+            .maybeSingle();
+
+          if (donorData?.phone) {
+            const { data: waConfig } = await supabase.from('whatsapp_settings')
+              .select('phone_number_id, access_token')
+              .eq('id', 1)
+              .maybeSingle();
+
+            if (waConfig?.phone_number_id && waConfig?.access_token) {
+              const cleanPhone = donorData.phone.replace(/\D/g, '');
+              const formattedAmount = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(payment.value);
+
+              const waPayload = {
+                messaging_product: 'whatsapp',
+                recipient_type: 'individual',
+                to: cleanPhone,
+                type: 'template',
+                template: {
+                  name: 'fapagra',
+                  language: { code: 'pt_BR' },
+                  components: [{
+                    type: 'body',
+                    parameters: [
+                      { type: 'text', text: donorData.name },
+                      { type: 'text', text: formattedAmount }
+                    ]
+                  }]
+                }
+              };
+
+              console.log(`[Webhook WhatsApp] Sending 'fapagra' to ${cleanPhone} (status change)...`);
+              const waResponse = await fetch(`https://graph.facebook.com/v20.0/${waConfig.phone_number_id}/messages`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${waConfig.access_token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(waPayload)
+              });
+
+              const waResult = await waResponse.json();
+              if (waResult.error) {
+                console.error(`[Webhook WhatsApp] Error: ${waResult.error.message}`);
+              } else {
+                console.log(`[Webhook WhatsApp] Success! Sent to ${donorData.name}`);
+                await supabase.from('whatsapp_messages').insert([{
+                  donor_id: updated[0].donor_id,
+                  sender_id: 'me',
+                  text: `Template: fapagra - Agradecimento por doação de ${formattedAmount}`,
+                  status: 'sent',
+                  metadata: {
+                    waba_message_id: waResult.messages?.[0]?.id,
+                    template_name: 'fapagra',
+                    trigger: 'asaas_webhook_auto'
+                  }
+                }]);
+              }
+            }
+          }
+        } catch (waErr: any) {
+          console.error('[Webhook WhatsApp] Failed:', waErr.message);
+        }
+      }
     } else {
       // Auto-register external donation
       console.log(`[Asaas Webhook] Payment ${asaasPaymentId} not found. Auto-registering...`);
@@ -149,7 +219,7 @@ serve(async (req) => {
         amount: payment.value,
         status: newStatus,
         asaas_payment_id: asaasPaymentId,
-        asaas_customer_id: payment.customer, // Save customer ID for easier sync later
+        asaas_customer_id: payment.customer,
         billing_type: payment.billingType || 'UNDEFINED',
         due_date: payment.dueDate,
         donation_date: payment.dateCreated || new Date().toISOString(),
@@ -158,7 +228,6 @@ serve(async (req) => {
       }]).select();
 
       if (insertErr) {
-        // If it's a unique constraint error, someone else might have inserted it just now
         if (insertErr.code === '23505') {
           console.log('[Asaas Webhook] Concurrent insert detected. Skipping.');
           affectedRows = 1;
@@ -168,6 +237,85 @@ serve(async (req) => {
       } else {
         affectedRows = newDonation ? newDonation.length : 1;
         console.log(`[Asaas Webhook] Auto-registered:`, asaasPaymentId);
+      }
+
+      // AUTO WHATSAPP: Send thank-you via 'fapagra' template when payment is confirmed
+      if (newStatus === 'pago' && donorId) {
+        try {
+          // Get donor phone and name
+          const { data: donorData } = await supabase.from('donors')
+            .select('name, phone')
+            .eq('id', donorId)
+            .maybeSingle();
+
+          if (donorData?.phone) {
+            // Get WhatsApp credentials from DB
+            const { data: waConfig } = await supabase.from('whatsapp_settings')
+              .select('phone_number_id, access_token')
+              .eq('id', 1)
+              .maybeSingle();
+
+            if (waConfig?.phone_number_id && waConfig?.access_token) {
+              const cleanPhone = donorData.phone.replace(/\D/g, '');
+              const formattedAmount = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(payment.value);
+
+              const waPayload = {
+                messaging_product: 'whatsapp',
+                recipient_type: 'individual',
+                to: cleanPhone,
+                type: 'template',
+                template: {
+                  name: 'fapagra',
+                  language: { code: 'pt_BR' },
+                  components: [
+                    {
+                      type: 'body',
+                      parameters: [
+                        { type: 'text', text: donorData.name },
+                        { type: 'text', text: formattedAmount }
+                      ]
+                    }
+                  ]
+                }
+              };
+
+              console.log(`[Webhook WhatsApp] Sending 'fapagra' template to ${cleanPhone}...`);
+              const waResponse = await fetch(`https://graph.facebook.com/v20.0/${waConfig.phone_number_id}/messages`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${waConfig.access_token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(waPayload)
+              });
+
+              const waResult = await waResponse.json();
+              if (waResult.error) {
+                console.error(`[Webhook WhatsApp] Error: ${waResult.error.message}`);
+              } else {
+                console.log(`[Webhook WhatsApp] Success! Message sent to ${donorData.name} (${cleanPhone})`);
+
+                // Log the message in whatsapp_messages
+                await supabase.from('whatsapp_messages').insert([{
+                  donor_id: donorId,
+                  sender_id: 'me',
+                  text: `Template: fapagra - Agradecimento por doação de ${formattedAmount}`,
+                  status: 'sent',
+                  metadata: {
+                    waba_message_id: waResult.messages?.[0]?.id,
+                    template_name: 'fapagra',
+                    trigger: 'asaas_webhook_auto'
+                  }
+                }]);
+              }
+            } else {
+              console.log('[Webhook WhatsApp] Skipped: WhatsApp not configured in whatsapp_settings.');
+            }
+          }
+        } catch (waErr: any) {
+          console.error('[Webhook WhatsApp] Failed to send thank-you:', waErr.message);
+          // Don't throw - WhatsApp failure should not break the payment flow
+        }
       }
     }
 
