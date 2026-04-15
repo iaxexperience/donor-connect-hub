@@ -46,13 +46,14 @@ interface Message {
   message_id: string;
 }
 
-export const WhatsAppChat = () => {
+export const WhatsAppChat = ({ onStartNewChat }: { onStartNewChat?: () => void }) => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -144,22 +145,45 @@ export const WhatsAppChat = () => {
     if (!inputText.trim() || !selectedChat) return;
 
     const currentText = inputText;
+    const tempId = `temp-${Date.now()}`;
+    
+    // Optimistic update
+    const optimisticMessage: Message = {
+      id: tempId,
+      chat_id: selectedChat.id,
+      text_body: currentText,
+      is_from_me: true,
+      status: 'sent',
+      created_at: new Date().toISOString(),
+      message_id: tempId
+    };
+
+    setMessages(prev => [...prev, optimisticMessage]);
+    setChats(prev => prev.map(c => 
+      c.id === selectedChat.id 
+        ? { ...c, last_message: currentText, last_message_at: new Date().toISOString() } 
+        : c
+    ));
+    
     setInputText("");
+    setIsSending(true);
 
     try {
-      // 1. Send via Meta API (which now atomically saves to Supabase via api-proxy)
       const savedConfig = localStorage.getItem("meta_config");
       if (savedConfig) {
         const config = JSON.parse(savedConfig);
         await metaService.sendTextMessage(selectedChat.telefone, currentText, config);
-        // The postgres_changes subscription will automatically add the message to the UI
       } else {
         toast({ title: "Aviso", description: "Configure as credenciais da Meta API na aba API para enviar via WhatsApp.", variant: "default" });
-        setInputText(currentText); // Restore text if config missing
+        setInputText(currentText);
+        setMessages(prev => prev.filter(m => m.id !== tempId));
       }
     } catch (err: any) {
       toast({ title: "Erro ao enviar", description: err.message, variant: "destructive" });
-      setInputText(currentText); // Restore text on error
+      setInputText(currentText);
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+    } finally {
+      setIsSending(false);
     }
   };
 

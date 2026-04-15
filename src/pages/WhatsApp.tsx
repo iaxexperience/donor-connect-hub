@@ -142,6 +142,22 @@ const WhatsApp = () => {
     }
   };
 
+  const refreshAll = async () => {
+    setIsSyncingTemplates(true);
+    try {
+      await Promise.all([
+        loadHistory(),
+        loadStoredTemplates(),
+        checkConnection()
+      ]);
+      toast({ title: "Atualizado!", description: "Dados de histórico e templates foram atualizados." });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSyncingTemplates(false);
+    }
+  };
+
   const loadHistory = async () => {
     try {
       const data = await metaHistoricoService.getHistory();
@@ -426,8 +442,18 @@ const WhatsApp = () => {
           <p className="text-muted-foreground text-sm mt-1 uppercase tracking-widest font-bold opacity-70">Estrutura Completa de Mensageria</p>
         </div>
         <div className="flex items-center gap-2">
-           <Button variant="outline" size="sm" onClick={loadHistory}><RefreshCw className="mr-2 h-4 w-4" /> Atualizar</Button>
-           <Button variant="default" size="sm" className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"><Plus className="mr-2 h-4 w-4" /> Novo Disparo</Button>
+           <Button variant="outline" size="sm" onClick={refreshAll} disabled={isSyncingTemplates}>
+             <RefreshCw className={`mr-2 h-4 w-4 ${isSyncingTemplates ? 'animate-spin' : ''}`} /> 
+             {isSyncingTemplates ? "Atualizando..." : "Atualizar"}
+           </Button>
+           <Button 
+             variant="default" 
+             size="sm" 
+             className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
+             onClick={() => setActiveTab("send")}
+           >
+             <Plus className="mr-2 h-4 w-4" /> Novo Disparo
+           </Button>
         </div>
       </div>
 
@@ -781,7 +807,7 @@ const WhatsApp = () => {
 
         {/* 3. CHAT AO VIVO */}
         <TabsContent value="chat" className="animate-in zoom-in-95 duration-300">
-           <WhatsAppChat />
+           <WhatsAppChat onStartNewChat={() => setActiveTab("send")} />
         </TabsContent>
 
         {/* 4. AUTOMAÇÃO */}
