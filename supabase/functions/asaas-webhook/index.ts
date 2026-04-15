@@ -183,6 +183,29 @@ serve(async (req) => {
                 headers: { 'access_token': config.api_key, 'Content-Type': 'application/json' }
               });
 
+              if (response.ok) {
+                const customerData = await response.json();
+                const { data: newDonor, error: insertErr } = await supabase
+                  .from('donors')
+                  .insert([{
+                    name: customerData.name || 'Doador Asaas ' + payment.customer,
+                    email: customerData.email || `contato_${payment.customer}@asaas.com`,
+                    phone: (customerData.mobilePhone || customerData.phone || '00000000000').replace(/\D/g, ""),
+                    document_id: customerData.cpfCnpj,
+                    asaas_customer_id: payment.customer,
+                    type: 'unico',
+                    total_donated: 0,
+                    donation_count: 0
+                  }])
+                  .select()
+                  .single();
+
+                if (!insertErr && newDonor) {
+                  donorId = newDonor.id;
+                  console.log(`[Webhook] Successfully registered new donor: ${customerData.name} (${donorId})`);
+                } else {
+                  console.error('[Webhook] Error inserting new donor:', insertErr);
+                }
               } else {
                 console.error(`[Webhook] Asaas API returned ${response.status} for ${payment.customer}`);
                 // Fallback: Create generic donor if API fails
@@ -313,7 +336,7 @@ serve(async (req) => {
               } else {
                 console.log(`[Webhook WhatsApp] Success! Message sent to ${donorData.name} (${cleanPhone})`);
 
-                // Log the message in whatsapp_messages
+                // Log the message in whatsapp_messages (for chat)
                 await supabase.from('whatsapp_messages').insert([{
                   donor_id: donorId,
                   sender_id: 'me',
@@ -324,6 +347,15 @@ serve(async (req) => {
                     template_name: 'fapagra',
                     trigger: 'asaas_webhook_auto'
                   }
+                }]);
+
+                // Also log to whatsapp_historicos (for audit tab)
+                await supabase.from('whatsapp_historicos').insert([{
+                  donor_id: donorId,
+                  destinatario: cleanPhone,
+                  template: 'fapagra',
+                  status: 'sent',
+                  meta_msg_id: waResult.messages?.[0]?.id,
                 }]);
               }
             } else {

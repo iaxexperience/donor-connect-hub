@@ -95,6 +95,7 @@ const WhatsApp = () => {
   const [batchClassification, setBatchClassification] = useState("all");
   const [isBatchSending, setIsBatchSending] = useState(false);
   const [batchProgress, setBatchProgress] = useState(0);
+  const [templateParams, setTemplateParams] = useState<Record<string, string>>({});
 
   // 5. Histórico States
   const [history, setHistory] = useState<any[]>([]);
@@ -319,19 +320,35 @@ const WhatsApp = () => {
 
     setIsSending(true);
     try {
+      // Find donor by phone if possible to link history
+      const cleanTarget = selectedRecipient.replace(/\D/g, "");
+      const donor = donors.find(d => d.phone?.replace(/\D/g, "") === cleanTarget);
+      const donorId = donor?.id;
+
       if (messageType === 'text') {
         if (selectedTemplate) {
-          await metaService.sendTemplateMessage(selectedRecipient, selectedTemplate.name, selectedTemplate.language, [], config);
+          // Format components for template
+          const bodyParams = Object.keys(templateParams)
+            .sort((a, b) => Number(a) - Number(b))
+            .map(key => ({ type: 'text', text: templateParams[key] }));
+
+          const components = bodyParams.length > 0 ? [{
+            type: 'body',
+            parameters: bodyParams
+          }] : [];
+
+          await metaService.sendTemplateMessage(selectedRecipient, selectedTemplate.name, selectedTemplate.language, components, config, donorId);
         } else {
-          await metaService.sendTextMessage(selectedRecipient, messageBody, config);
+          await metaService.sendTextMessage(selectedRecipient, messageBody, config, donorId);
         }
       } else {
-        await metaService.sendMediaMessage(selectedRecipient, mediaUrl, messageType, config);
+        await metaService.sendMediaMessage(selectedRecipient, mediaUrl, messageType, config, donorId);
       }
       
       toast({ title: "Mensagem Enviada!", description: `Para: ${selectedRecipient}` });
       setMessageBody("");
       setMediaUrl("");
+      setTemplateParams({});
       loadHistory();
     } catch (err: any) {
       toast({ title: "Erro ao enviar", description: err.message, variant: "destructive" });
@@ -358,15 +375,32 @@ const WhatsApp = () => {
 
       try {
         if (selectedTemplate) {
-           await metaService.sendTemplateMessage(
-             donor.phone, 
-             selectedTemplate.name, 
-             selectedTemplate.language, 
-             [], 
-             config, 
-             donor.id, 
-             batchId
-           );
+          // Basic auto-mapping for Batch: {{1}} = Donor Name, others = manual inputs
+          const bodyParams = [];
+          
+          // Check if we have variables in template
+          const bodyText = selectedTemplate.components?.find((c: any) => c.type === 'BODY')?.text || "";
+          const vars = bodyText.match(/\{\{(\d+)\}\}/g) || [];
+          
+          for (let v = 1; v <= vars.length; v++) {
+            if (v === 1 && donor.name) {
+               bodyParams.push({ type: 'text', text: donor.name });
+            } else {
+               bodyParams.push({ type: 'text', text: templateParams[v] || "-" });
+            }
+          }
+
+          const components = bodyParams.length > 0 ? [{ type: 'body', parameters: bodyParams }] : [];
+
+          await metaService.sendTemplateMessage(
+            donor.phone, 
+            selectedTemplate.name, 
+            selectedTemplate.language, 
+            components, 
+            config, 
+            donor.id, 
+            batchId
+          );
         } else {
            await metaService.sendTextMessage(donor.phone, messageBody, config, donor.id);
         }
@@ -637,10 +671,39 @@ const WhatsApp = () => {
 
                        {messageType === 'text' && (
                           <div className="space-y-2">
-                             <Label>Mensagem / Corpo</Label>
                              {selectedTemplate ? (
-                                <div className="p-4 bg-muted rounded-md text-sm italic opacity-70 border border-dashed">
-                                   {selectedTemplate.components?.find((c: any) => c.type === 'BODY')?.text || "Template sem corpo de texto"}
+                                <div className="space-y-4">
+                                  <div className="p-4 bg-muted rounded-md text-sm italic opacity-70 border border-dashed">
+                                    {selectedTemplate.components?.find((c: any) => c.type === 'BODY')?.text || "Template sem corpo de texto"}
+                                  </div>
+                                  
+                                  {/* Dynamic Variable Inputs */}
+                                  {(() => {
+                                    const bodyText = selectedTemplate.components?.find((c: any) => c.type === 'BODY')?.text || "";
+                                    const matches = bodyText.match(/\{\{(\d+)\}\}/g) || [];
+                                    const varCount = matches.length > 0 ? Math.max(...matches.map((m: any) => {
+                                      const num = m.match(/\d+/);
+                                      return num ? parseInt(num[0]) : 0;
+                                    })) : 0;
+                                    
+                                    if (varCount === 0) return null;
+                                    
+                                    return (
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2">
+                                        {Array.from({ length: varCount }).map((_, i) => (
+                                          <div key={i} className="space-y-1">
+                                            <Label className="text-[10px] uppercase font-bold text-primary opacity-70">Valor para {"{{"}{i+1}{"}}"}</Label>
+                                            <Input 
+                                              placeholder={`Ex: ${i === 0 ? 'João' : (i === 1 ? 'R$ 50,00' : 'valor')}`}
+                                              className="h-9 text-xs"
+                                              value={templateParams[i + 1] || ""}
+                                              onChange={(e) => setTemplateParams({...templateParams, [i + 1]: e.target.value})}
+                                            />
+                                          </div>
+                                        ))}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                              ) : (
                                 <textarea 
@@ -652,7 +715,7 @@ const WhatsApp = () => {
                              )}
                              <div className="flex justify-between text-[10px] text-muted-foreground">
                                 <span>Suporta emojis e Markdown simples</span>
-                                <span>{messageBody.length} caracteres</span>
+                                <span>{selectedTemplate ? "Template Ativo" : `${messageBody.length} caracteres`}</span>
                              </div>
                           </div>
                         )}

@@ -103,6 +103,15 @@ serve(async (req) => {
         trigger: 'manual_send'
       }
     }]);
+    
+    // Also log to whatsapp_historicos (for audit tab)
+    await supabase.from('whatsapp_historicos').insert([{
+      donor_id: donor.id,
+      destinatario: cleanPhone,
+      template: template_name,
+      status: 'sent',
+      meta_msg_id: waResult.messages?.[0]?.id,
+    }]);
 
     return new Response(JSON.stringify({ 
       success: true, 

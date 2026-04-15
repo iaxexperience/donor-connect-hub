@@ -160,6 +160,10 @@ serve(async (req) => {
                   status: 'sent',
                   message_id: wamId,
                   donor_id: donorId,
+                  metadata: {
+                    trigger: body.batch_id ? 'batch_send' : 'manual_send',
+                    waba_message_id: wamId
+                  }
                 }]);
               if (msgErr) {
                 console.error('[api-proxy] whatsapp_messages insert error:', JSON.stringify(msgErr));
