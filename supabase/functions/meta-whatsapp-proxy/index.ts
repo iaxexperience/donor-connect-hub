@@ -112,10 +112,13 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     console.log('Evento Recebido:', JSON.stringify(body, null, 2));
 
-    // Ponte para Agente Externo (GPTMaker / Theo)
+    // A. IDENTIFICAÇÃO DO PROVEDOR E REPASSE
+    const isMeta = !!body.entry?.[0]?.changes?.[0]?.value;
+    const isGPTMaker = !!body.event || !!body.message_id || (!!body.contact && !!body.message);
+
+    // Ponte para GPTMaker (Apenas se vier da Meta, para evitar loop infinito)
     const forwardUrl = Deno.env.get('FORWARD_WEBHOOK_URL');
-    if (forwardUrl && body && Object.keys(body).length > 0) {
-      // Repasse assíncrono (Deno serve não suporta ctx.waitUntil, mas o promise corre solto)
+    if (isMeta && forwardUrl && body && Object.keys(body).length > 0) {
       forwardToAgent(forwardUrl, body, req.headers);
     }
     
@@ -128,289 +131,61 @@ serve(async (req) => {
       }
     }
 
-    // A. WEBHOOK (Incoming from Meta)
-    if (body.entry?.[0]?.changes?.[0]?.value) {
+    // B. PROCESSAMENTO META (Padrão)
+    if (isMeta) {
       const value = body.entry[0].changes[0].value;
       
-      // 1. Process Statuses (Read Receipts / Delivery)
+      // 1. Statuses
       if (value.statuses && value.statuses.length > 0) {
         for (const statusUpdate of value.statuses) {
           const messageId = statusUpdate.id;
           const newStatus = statusUpdate.status;
-          console.log(`[Webhook] Status update: ${messageId} -> ${newStatus}`);
-          
-          await supabase
-            .from('whatsapp_messages')
-            .update({ status: newStatus })
-            .eq('message_id', messageId);
+          await supabase.from('whatsapp_messages').update({ status: newStatus }).eq('message_id', messageId);
         }
       }
 
-      // 2. Process Messages (Incoming and Echoes)
+      // 2. Messages
       const message = value.messages?.[0];
       if (message) {
         const messageId = message.id;
         const msgType = message.type;
-        
-        // Detecta se é um "Echo" (Mensagem enviada pelo robô/empresa)
-        // No Echo, o destinatário (to) está no campo 'from' ou o objeto tem 'from' igual ao número da empresa
-        const rawPhone = message.from;
         const isEcho = body.entry[0].id === message.from || (message.metadata?.display_phone_number && message.metadata.display_phone_number.includes(message.from));
         
-        // Se for Echo, o telefone do chat é o 'message.to' (se disponível) ou o context.from
-        // Na prática, para simplificar: se for Echo, ignoramos ou tratamos como 'is_from_me'
-        // Mas o mais comum é: se message.from é a empresa, ele está falando COM alguém.
-        
-        let targetPhone = rawPhone;
-        if (isEcho && message.to) {
-          targetPhone = message.to;
-        }
+        let targetPhone = message.from;
+        if (isEcho && message.to) targetPhone = message.to;
         
         const phoneNormalized = normalizePhone(targetPhone);
         const profileName = value.contacts?.[0]?.profile?.name || 'WhatsApp Contact';
+        let text = msgType === 'text' ? (message.text?.body ?? '') : `[${msgType}]`;
 
-        console.log(`[Webhook] Processando mensagem (ID: ${messageId}, Echo: ${isEcho}, Fone: ${phoneNormalized})`);
-
-        // Determine text from message type
-        let text = '';
-        if (msgType === 'text') {
-          text = message.text?.body ?? '';
-        } else if (msgType === 'image') {
-          text = '📷 Imagem';
-        } else if (msgType === 'audio') {
-          text = '🎙️ Áudio';
-        } else if (msgType === 'video') {
-          text = '🎬 Vídeo';
-        } else if (msgType === 'document') {
-          text = `📄 Documento: ${message.document?.filename ?? ''}`;
-        } else {
-          text = `[${msgType}]`;
-        }
-
-        // Match Donor
-        let matchedDonorId = null;
-        let matchedDonorName = profileName;
-
-        const { data: donors } = await supabase
-          .from('donors')
-          .select('id, name')
-          .or(`phone.like.%${phoneNormalized.slice(-8)},phone.eq.${phoneNormalized}`)
-          .limit(1);
-
-        if (donors && donors.length > 0) {
-          matchedDonorId = donors[0].id;
-          matchedDonorName = donors[0].name;
-        }
-
-        // Check/Create Chat
-        let { data: chat } = await supabase
-          .from('whatsapp_chats')
-          .select('id, unread_count')
-          .eq('telefone', phoneNormalized)
-          .maybeSingle();
-
-        if (!chat) {
-          const { data: newChat } = await supabase
-            .from('whatsapp_chats')
-            .upsert([{ 
-              telefone: phoneNormalized, 
-              nome: matchedDonorName,
-              last_message: text,
-              unread_count: isEcho ? 0 : 1,
-              donor_id: matchedDonorId
-            }], { onConflict: 'telefone' })
-            .select()
-            .single();
-          chat = newChat;
-        } else {
-          await supabase
-            .from('whatsapp_chats')
-            .update({ 
-              last_message: text, 
-              last_message_at: new Date().toISOString(),
-              unread_count: isEcho ? chat.unread_count : (chat.unread_count || 0) + 1,
-              donor_id: matchedDonorId
-            })
-            .eq('id', chat.id);
-        }
-
-        // Insert Message (Deduplicated with upsert)
-        if (chat) {
-          const { error: insertErr } = await supabase
-            .from('whatsapp_messages')
-            .upsert([{
-              chat_id: chat.id,
-              telefone: phoneNormalized,
-              text_body: text,
-              is_from_me: isEcho, // Se for echo, True
-              message_id: messageId,
-              status: isEcho ? 'sent' : 'received',
-              donor_id: matchedDonorId
-            }], { onConflict: 'message_id' });
-            
-          if (insertErr) {
-            console.error(`[Webhook] Erro ao salvar mensagem (Deduplicação?):`, insertErr.message);
-          } else {
-            console.log(`[Webhook] Mensagem processada com sucesso (ID: ${messageId})`);
-          }
-        }
+        await handleMessageSync(supabase, {
+          messageId, phoneNormalized, text, isEcho, profileName, status: isEcho ? 'sent' : 'received'
+        });
       }
-
-      return new Response(JSON.stringify({ success: true }), { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
     }
-
-    // B. PROXY (Outgoing from Frontend)
-    const { action, meta_data, config } = body;
-    const payload = meta_data; // Mapping for compatibility with internal logic
-
-    if (action === 'send_message' || action === 'send_template') {
-      const { phone_number_id, access_token } = config;
-      const url = `https://graph.facebook.com/v22.0/${phone_number_id}/messages`;
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const metaResult = await response.json();
+    
+    // C. PROCESSAMENTO GPTMAKER (Plano B - Respostas do Theo)
+    else if (isGPTMaker) {
+      console.log('[Webhook] Processando formato GPTMaker/Externo');
       
-      if (!response.ok) {
-        return new Response(JSON.stringify({ error: metaResult }), { 
-          status: response.status,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-
-      // If successful sending, Log it
-      if (payload.messaging_product === 'whatsapp') {
-        let textBody = '';
-        if (payload.type === 'text') textBody = payload.text?.body || '';
-        else if (payload.type === 'image') textBody = `Arquivo de Imagem: ${payload.image?.link || 'Media ID'}`;
-        else if (payload.type === 'video') textBody = `Arquivo de Vídeo: ${payload.video?.link || 'Media ID'}`;
-        else if (action === 'send_template') textBody = `Template: ${payload.template?.name}`;
-        const toRaw = payload.to;
-        const toNormalized = normalizePhone(toRaw);
-        const messageId = metaResult.messages?.[0]?.id;
-
-        // Find/Create Chat
-        let { data: chat } = await supabase
-          .from('whatsapp_chats')
-          .select('id')
-          .eq('telefone', toNormalized)
-          .maybeSingle();
-
-        if (!chat) {
-          const { data: newChat } = await supabase
-            .from('whatsapp_chats')
-            .upsert([{ telefone: toNormalized, nome: 'Contato' }], { onConflict: 'telefone' })
-            .select()
-            .single();
-          chat = newChat;
-        }
-
-        // Save to whatsapp_messages
-        await supabase.from('whatsapp_messages').insert([{
-          chat_id: chat?.id,
-          telefone: toNormalized,
-          text_body: textBody,
-          is_from_me: true,
-          message_id: messageId,
-          status: 'sent'
-        }]);
-
-        // Update Chat head info
-        await supabase.from('whatsapp_chats').update({
-          last_message: textBody,
-          last_message_at: new Date().toISOString()
-        }).eq('id', chat?.id);
-
-        // Save up to historical logs
-        await supabase.from('whatsapp_historicos').insert([{
-          donor_id: body.donor_id,
-          destinatario: toNormalized,
-          template: payload.template?.name,
-          mensagem: textBody,
-          status: 'sent',
-          message_id: messageId,
-          lote: body.batch_id
-        }]);
-      }
-
-      return new Response(JSON.stringify(metaResult), { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
-    }
-
-    // General Action Handler
-    if (action === 'get_templates' || action === 'create_template') {
-      const { waba_id, access_token } = config || {};
+      // Mapeamento flexível de campos do GPTMaker
+      const messageId = body.id || body.message_id || `gtp_${Date.now()}`;
+      const rawPhone = body.contact?.phone || body.sender?.phone || body.phone || body.from;
+      const text = body.message?.text || body.content || body.text || body.message || '';
+      const isEcho = body.direction === 'outbound' || body.event?.includes('sent') || !!body.user_id || true; // Geralmente se o GPTMaker nos avisa, é porque ele respondeu
       
-      if (!waba_id || !access_token) {
-        return new Response(JSON.stringify({ error: 'WABA ID e Access Token são necessários para esta ação.' }), { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
-      }
-
-      const url = `https://graph.facebook.com/v22.0/${waba_id}/message_templates`;
-      const method = action === 'get_templates' ? 'GET' : 'POST';
-      
-      console.log(`[Meta Proxy] Executing ${action} via ${method} at ${url}`);
-      if (action === 'create_template') {
-        console.log('[Meta Proxy] Create Template Payload Summary:', JSON.stringify({
-          name: meta_data?.name,
-          category: meta_data?.category,
-          language: meta_data?.language,
-          components_count: meta_data?.components?.length
-        }));
-      }
-
-      try {
-        const fetchOptions: any = {
-          method: method,
-          headers: {
-            'Authorization': `Bearer ${access_token}`,
-            'Content-Type': 'application/json'
-          }
-        };
-
-        if (method === 'POST' && meta_data) {
-          fetchOptions.body = JSON.stringify(meta_data);
-        }
-
-        const response = await fetch(url, fetchOptions);
-        const data = await response.json().catch(() => ({}));
-        
-        console.log(`[Meta Proxy] Status: ${response.status}`, JSON.stringify(data));
-
-        return new Response(JSON.stringify(data), { 
-          status: response.status,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      } catch (fetchErr: any) {
-        console.error('[Meta Proxy] Fetch Error:', fetchErr);
-        return new Response(JSON.stringify({ error: { message: fetchErr.message } }), { 
-          status: 502,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      if (rawPhone && text) {
+        const phoneNormalized = normalizePhone(rawPhone);
+        await handleMessageSync(supabase, {
+          messageId, phoneNormalized, text, isEcho, profileName: 'IAX - Theo', status: 'sent'
         });
       }
     }
 
-    if (action === 'ping') {
-      return new Response(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }), { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
-    }
-
-    return new Response(JSON.stringify({ error: 'Ação não reconhecida' }), { status: 400, headers: corsHeaders });
+    return new Response(JSON.stringify({ success: true }), { 
+      status: 200, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    });
 
   } catch (err: any) {
     console.error('Erro:', err);
@@ -420,3 +195,36 @@ serve(async (req) => {
     });
   }
 });
+
+/**
+ * Função unificada para salvar mensagens e atualizar chats
+ */
+async function handleMessageSync(supabase: any, data: any) {
+  const { messageId, phoneNormalized, text, isEcho, profileName, status } = data;
+
+  // 1. Doador
+  let matchedDonorId = null;
+  const { data: donors } = await supabase.from('donors').select('id, name').or(`phone.like.%${phoneNormalized.slice(-8)},phone.eq.${phoneNormalized}`).limit(1);
+  if (donors && donors.length > 0) matchedDonorId = donors[0].id;
+
+  // 2. Chat
+  let { data: chat } = await supabase.from('whatsapp_chats').select('id, unread_count').eq('telefone', phoneNormalized).maybeSingle();
+
+  if (!chat) {
+    const { data: newChat } = await supabase.from('whatsapp_chats').upsert([{ 
+      telefone: phoneNormalized, nome: profileName, last_message: text, unread_count: isEcho ? 0 : 1, donor_id: matchedDonorId
+    }], { onConflict: 'telefone' }).select().single();
+    chat = newChat;
+  } else {
+    await supabase.from('whatsapp_chats').update({ 
+      last_message: text, last_message_at: new Date().toISOString(), unread_count: isEcho ? chat.unread_count : (chat.unread_count || 0) + 1, donor_id: matchedDonorId
+    }).eq('id', chat.id);
+  }
+
+  // 3. Mensagem (Deduplicada)
+  if (chat) {
+    await supabase.from('whatsapp_messages').upsert([{
+      chat_id: chat.id, telefone: phoneNormalized, text_body: text, is_from_me: isEcho, message_id: messageId, status, donor_id: matchedDonorId
+    }], { onConflict: 'message_id' });
+  }
+}
