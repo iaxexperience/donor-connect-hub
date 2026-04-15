@@ -101,6 +101,7 @@ serve(async (req) => {
         amount: payment.value,
         status: newStatus,
         asaas_payment_id: asaasPaymentId,
+        asaas_customer_id: payment.customer, // Save customer ID for easier sync later
         billing_type: payment.billingType || 'UNDEFINED',
         due_date: payment.dueDate,
         donation_date: payment.dateCreated || new Date().toISOString(),
