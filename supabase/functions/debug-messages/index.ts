@@ -8,47 +8,64 @@ const corsHeaders = {
 
 serve(async (req) => {
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // 1. Pega os últimos chats
-    const { data: chats } = await supabase.from('whatsapp_chats').select('*').order('last_message_at', { ascending: false }).limit(5);
+    const { data: chats, error: chatErr } = await supabase.from('whatsapp_chats').select('*').order('last_message_at', { ascending: false }).limit(10);
 
     // 2. Pega as últimas mensagens
-    const { data: msgs } = await supabase.from('whatsapp_messages').select('*').order('created_at', { ascending: false }).limit(20);
+    const { data: msgs, error: msgErr } = await supabase.from('whatsapp_messages').select('*').order('created_at', { ascending: false }).limit(30);
 
     const html = `
       <html>
         <head>
           <title>Diagnóstico Donor Connect</title>
           <style>
-            body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
-            h2 { color: #333; }
-            table { width: 100%; border-collapse: collapse; background: white; margin-bottom: 30px; }
-            th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 12px; }
-            th { background: #eee; }
-            .bot { background: #e3f2fd; }
+            body { font-family: sans-serif; padding: 20px; background: #f4f4f4; line-height: 1.6; }
+            .container { max-width: 1000px; margin: auto; }
+            h2 { color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 5px; }
+            table { width: 100%; border-collapse: collapse; background: white; margin-bottom: 30px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+            th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 13px; }
+            th { background: #f8fafc; color: #64748b; }
+            .bot { background: #eff6ff; }
+            .error { color: #dc2626; background: #fee2e2; padding: 10px; border-radius: 5px; font-weight: bold; }
+            .success-badge { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 99px; font-size: 11px; }
           </style>
         </head>
         <body>
-          <h1>Relatório de Diagnóstico Real-Time</h1>
-          
-          <h2>Chats Recentes (Para conferir IDs e Telefones)</h2>
-          <table>
-            <tr><th>ID</th><th>Telefone</th><th>Nome</th><th>Última Msg</th><th>Data</th></tr>
-            ${chats?.map(c => `<tr><td>${c.id}</td><td>${c.telefone}</td><td>${c.nome}</td><td>${c.last_message}</td><td>${c.last_message_at}</td></tr>`).join('')}
-          </table>
+          <div class="container">
+            <h1>🔍 Relatório de Diagnóstico WhatsApp</h1>
+            
+            ${chatErr ? `<p class="error">Erro ao ler chats: ${chatErr.message}</p>` : ''}
+            <h2>Conversas Ativas</h2>
+            <table>
+              <tr><th>Telefone</th><th>Nome</th><th>Última Msg</th><th>Data</th></tr>
+              ${chats?.map(c => `<tr>
+                <td><strong>${c.telefone}</strong></td>
+                <td>${c.nome || '-'}</td>
+                <td>${c.last_message || '<i>Sem msg</i>'}</td>
+                <td>${new Date(c.last_message_at).toLocaleString('pt-BR')}</td>
+              </tr>`).join('') || '<tr><td colspan="4">Nenhum chat encontrado</td></tr>'}
+            </table>
 
-          <h2>Últimas 20 Mensagens (O Theo deve estar aqui!)</h2>
-          <table>
-            <tr><th>Data</th><th>Chat ID</th><th>Telefone</th><th>Texto</th><th>Enviada por Mim?</th><th>ID Mensagem</th></tr>
-            ${msgs?.map(m => `<tr class="${m.is_from_me ? 'bot' : ''}">
-              <td>${m.created_at}</td><td>${m.chat_id}</td><td>${m.telefone}</td><td>${m.text_body}</td><td>${m.is_from_me}</td><td>${m.message_id}</td>
-            </tr>`).join('')}
-          </table>
-          <p>Se as mensagens do Theo aparecerem em azul, o banco está funcionando e o problema é na tela.</p>
+            ${msgErr ? `<p class="error">Erro ao ler mensagens: ${msgErr.message}</p>` : ''}
+            <h2>Histórico de Mensagens (O Theo está aqui?)</h2>
+            <table>
+              <tr><th>Data</th><th>De/Para</th><th>Texto</th><th>Status</th><th>ID</th></tr>
+              ${msgs?.map(m => `<tr class="${m.is_from_me ? 'bot' : ''}">
+                <td>${new Date(m.created_at).toLocaleString('pt-BR')}</td>
+                <td>${m.is_from_me ? '<span class="success-badge">Enviada pelo Robô</span>' : 'Recebida do Cliente'}</td>
+                <td>${m.text_body}</td>
+                <td>${m.status || '-'}</td>
+                <td><small>${m.message_id?.substring(0, 10)}...</small></td>
+              </tr>`).join('') || '<tr><td colspan="5">Nenhuma mensagem encontrada</td></tr>'}
+            </table>
+            
+            <p>ℹ️ <i>Se as mensagens do Theo aparecerem em azul, o backend está perfeito e o problema é apenas na atualização da sua tela.</i></p>
+          </div>
         </body>
       </html>
     `;
@@ -58,6 +75,6 @@ serve(async (req) => {
     });
 
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    return new Response(`<h1>Erro Fatal: ${err.message}</h1>`, { status: 500 });
   }
 });
