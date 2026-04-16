@@ -116,6 +116,11 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     console.log('Evento Recebido:', JSON.stringify(body, null, 2));
 
+    // Debug Log (Temporário para análise de mapeamento)
+    if (Object.keys(body).length > 0) {
+      await supabase.from('whatsapp_webhook_debug').insert([{ payload: body }]);
+    }
+
     // A. IDENTIFICAÇÃO DO PROVEDOR E REPASSE
     const isMeta = !!body.entry?.[0]?.changes?.[0]?.value;
     const isGPTMaker = !!body.assistantId || !!body.role || !!body.event || !!body.messageId || !!body.message;
