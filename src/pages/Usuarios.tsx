@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Shield, User, Mail, UserPlus, Loader2, Key, Smartphone, FileText, Eye, EyeOff, Check, X } from "lucide-react";
+import { Plus, Search, Shield, User, Mail, UserPlus, Loader2, Key, Smartphone, FileText, Eye, EyeOff, Check, X, Edit2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -63,9 +63,10 @@ const PasswordRequirement = ({ met, text }: { met: boolean; text: string }) => (
 );
 
 const Usuarios = () => {
-  const { profiles, isLoading, createProfile } = useProfiles();
+  const { profiles, isLoading, createProfile, updateProfile } = useProfiles();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [editingUser, setEditingUser] = useState<any>(null);
   const { toast } = useToast();
 
   const [newName, setNewName] = useState("");
@@ -87,8 +88,29 @@ const Usuarios = () => {
   const isPasswordValid = Object.values(passwordRules).every(Boolean);
   const passwordsMatch = newPassword === confirmPassword && newPassword !== "";
 
+  const handleOpenDialog = (user?: any) => {
+    if (user) {
+      setEditingUser(user);
+      setNewName(user.name);
+      setNewEmail(user.email);
+      setNewCPF(user.cpf || "");
+      setNewPhone(user.phone || "");
+      setNewRole(user.role);
+    } else {
+      setEditingUser(null);
+      setNewName("");
+      setNewEmail("");
+      setNewCPF("");
+      setNewPhone("");
+      setNewRole("");
+    }
+    setNewPassword("");
+    setConfirmPassword("");
+    setIsDialogOpen(true);
+  };
+
   const handleCreateUser = async () => {
-    if (!newName || !newEmail || !newRole || !newPassword) {
+    if (!newName || !newEmail || !newRole || (!editingUser && !newPassword)) {
       toast({
         title: "Campos obrigatórios",
         description: "Preencha os campos essenciais para cadastrar o usuário.",
@@ -107,13 +129,27 @@ const Usuarios = () => {
     }
 
     try {
-      await createProfile({
-        name: newName,
-        email: newEmail,
-        cpf: newCPF,
-        phone: newPhone,
-        role: newRole,
-      });
+      if (editingUser) {
+        await updateProfile({
+          id: editingUser.id,
+          name: newName,
+          email: newEmail,
+          cpf: newCPF,
+          phone: newPhone,
+          role: newRole,
+        });
+        toast({ title: "Usuário Atualizado!", description: `${newName} foi atualizado com sucesso.` });
+      } else {
+        await createProfile({
+          name: newName,
+          email: newEmail,
+          cpf: newCPF,
+          phone: newPhone,
+          role: newRole,
+          must_change_password: true,
+        });
+        toast({ title: "Usuário Cadastrado!", description: `O perfil de ${newName} foi criado com sucesso.` });
+      }
 
       setIsDialogOpen(false);
       setNewName("");
@@ -123,15 +159,29 @@ const Usuarios = () => {
       setNewPassword("");
       setConfirmPassword("");
       setNewRole("");
-
+    } catch (error: any) {
       toast({
-        title: "Usuário Cadastrado!",
-        description: `O perfil de ${newName} foi criado com sucesso.`,
+        title: "Erro ao salvar",
+        description: error.message || "Não foi possível sincronizar com o banco de dados.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleResetPassword = async (user: any) => {
+    try {
+      await updateProfile({
+        id: user.id,
+        must_change_password: true
+      });
+      toast({
+        title: "Senha Redefinida!",
+        description: `O usuário ${user.name} será obrigado a trocar a senha no próximo acesso.`,
       });
     } catch (error: any) {
       toast({
-        title: "Erro ao cadastrar",
-        description: error.message || "Não foi possível sincronizar com o banco de dados.",
+        title: "Erro ao redefinir",
+        description: error.message,
         variant: "destructive",
       });
     }
@@ -151,20 +201,21 @@ const Usuarios = () => {
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90 shadow-glow transition-all">
-              <Plus className="w-4 h-4 mr-2" />
-              Novo Usuário
-            </Button>
-          </DialogTrigger>
+          <Button 
+            onClick={() => handleOpenDialog()}
+            className="bg-primary hover:bg-primary/90 shadow-glow transition-all"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Usuário
+          </Button>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-primary" />
-                Cadastrar Novo Usuário
+                {editingUser ? <Edit2 className="w-5 h-5 text-primary" /> : <UserPlus className="w-5 h-5 text-primary" />}
+                {editingUser ? "Editar Usuário" : "Cadastrar Novo Usuário"}
               </DialogTitle>
               <DialogDescription>
-                Crie um novo perfil de acesso para a plataforma Donor Connect.
+                {editingUser ? "Altere as informações do usuário selecionado." : "Crie um novo perfil de acesso para a plataforma Donor Connect."}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -225,7 +276,7 @@ const Usuarios = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="password">Senha Temporária</Label>
+                  <Label htmlFor="password">{editingUser ? "Nova Senha (opcional)" : "Senha Temporária"}</Label>
                   <div className="relative">
                     <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
@@ -285,7 +336,7 @@ const Usuarios = () => {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={handleCreateUser}>Salvar Usuário</Button>
+              <Button onClick={handleCreateUser}>{editingUser ? "Salvar Alterações" : "Salvar Usuário"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -310,12 +361,13 @@ const Usuarios = () => {
               <TableHead>Papel</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Último Acesso</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-48 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
                   <div className="flex flex-col items-center gap-2 justify-center">
                     <Loader2 className="w-6 h-6 animate-spin text-primary" />
                     <span>Carregando usuários...</span>
@@ -324,7 +376,7 @@ const Usuarios = () => {
               </TableRow>
             ) : filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-48 text-center text-muted-foreground italic">
+                <TableCell colSpan={6} className="h-48 text-center text-muted-foreground italic">
                   Nenhum usuário encontrado.
                 </TableCell>
               </TableRow>
@@ -356,6 +408,28 @@ const Usuarios = () => {
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs">
                       {user.last_access ? new Date(user.last_access).toLocaleDateString("pt-BR") : "Nunca"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                          onClick={() => handleOpenDialog(user)}
+                          title="Editar Usuário"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className={`h-8 w-8 ${user.must_change_password ? "text-amber-500 bg-amber-50" : "text-slate-400 hover:text-amber-500 hover:bg-amber-50"}`}
+                          onClick={() => handleResetPassword(user)}
+                          title="Forçar troca de senha"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

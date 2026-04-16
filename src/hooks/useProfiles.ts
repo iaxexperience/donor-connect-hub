@@ -8,6 +8,7 @@ export interface Profile {
   role: "admin" | "gestor" | "operador" | "visualizador";
   cpf?: string;
   phone?: string;
+  must_change_password?: boolean;
   status: string;
   last_access?: string;
 }
@@ -49,9 +50,27 @@ export const useProfiles = () => {
     },
   });
 
+  const updateProfileMutation = useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<Profile> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+    },
+  });
+
   return {
     profiles,
     isLoading,
     createProfile: createProfileMutation.mutateAsync,
+    updateProfile: updateProfileMutation.mutateAsync,
   };
 };

@@ -9,8 +9,10 @@ interface AuthContextType {
   user: User | null;
   profileName: string | null;
   role: UserRole | null;
+  mustChangePassword: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
+  updateMustChangePassword: (val: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,6 +22,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
+  const [mustChangePassword, setMustChangePassword] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,6 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setRole(null);
         setProfileName(null);
+        setMustChangePassword(false);
         setLoading(false);
       }
     });
@@ -57,7 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Primeiro tentamos pelo ID (forma oficial)
       let { data, error } = await supabase
         .from('profiles')
-        .select('role, name')
+        .select('role, name, must_change_password')
         .eq('id', userId)
         .maybeSingle();
       
@@ -83,6 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else if (data) {
         setRole(data.role as UserRole);
         setProfileName(data.name || userEmail.split('@')[0]);
+        setMustChangePassword(!!data.must_change_password);
       } else {
         setRole('visualizador');
         setProfileName(userEmail.split('@')[0]);
@@ -100,7 +105,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profileName, role, loading, signOut }}>
+    <AuthContext.Provider value={{ 
+      session, 
+      user, 
+      profileName, 
+      role, 
+      mustChangePassword, 
+      loading, 
+      signOut,
+      updateMustChangePassword: setMustChangePassword
+    }}>
       {children}
     </AuthContext.Provider>
   );
