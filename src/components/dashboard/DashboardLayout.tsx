@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { AsaasAutomationWorker } from "../automation/AsaasAutomationWorker";
 import { FollowUpAutomationWorker } from "@/components/automation/FollowUpAutomationWorker";
 
+import { UserMenu } from "./UserMenu";
+
 export function DashboardLayout() {
   return (
     <SidebarProvider>
@@ -14,21 +16,21 @@ export function DashboardLayout() {
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col">
-          <header className="h-14 flex items-center justify-between border-b bg-card px-4">
-            <div className="flex items-center gap-2">
+          <header className="h-16 flex items-center justify-between border-b bg-card px-8 shadow-sm">
+            <div className="flex items-center gap-4">
               <SidebarTrigger className="ml-0" />
-              <span className="text-sm text-muted-foreground font-body">
+              <div className="h-4 w-px bg-border mx-2" />
+              <span className="text-sm text-muted-foreground font-medium tracking-tight">
                 Plataforma de Gestão de Doações
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-4 w-4" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" className="relative hover:bg-muted transition-colors">
+                <Bell className="h-5 w-5 text-muted-foreground" />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-primary animate-pulse rounded-full" />
               </Button>
-              <Button variant="ghost" size="icon">
-                <User className="h-4 w-4" />
-              </Button>
+              <div className="h-8 w-px bg-border mx-2" />
+              <UserMenu />
             </div>
           </header>
           <main className="flex-1 overflow-auto bg-background p-6">

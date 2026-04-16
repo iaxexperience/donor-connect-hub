@@ -7,6 +7,7 @@ type UserRole = 'admin' | 'gestor' | 'operador' | 'visualizador';
 interface AuthContextType {
   session: Session | null;
   user: User | null;
+  profileName: string | null;
   role: UserRole | null;
   loading: boolean;
   signOut: () => Promise<void>;
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [profileName, setProfileName] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -40,6 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetchRole(session.user.email!, session.user.id);
       } else {
         setRole(null);
+        setProfileName(null);
         setLoading(false);
       }
     });
@@ -54,7 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Primeiro tentamos pelo ID (forma oficial)
       let { data, error } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, name')
         .eq('id', userId)
         .maybeSingle();
       
@@ -62,7 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!data && !error) {
         const { data: emailData, error: emailError } = await supabase
           .from('profiles')
-          .select('role')
+          .select('role, name')
           .eq('email', userEmail)
           .maybeSingle();
           
@@ -76,10 +79,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         console.error('Error fetching role:', error);
         setRole('visualizador');
+        setProfileName(userEmail.split('@')[0]);
       } else if (data) {
         setRole(data.role as UserRole);
+        setProfileName(data.name || userEmail.split('@')[0]);
       } else {
         setRole('visualizador');
+        setProfileName(userEmail.split('@')[0]);
       }
     } catch (err) {
       console.error('Unexpected error fetching role:', err);
@@ -94,7 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, role, loading, signOut }}>
+    <AuthContext.Provider value={{ session, user, profileName, role, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );
