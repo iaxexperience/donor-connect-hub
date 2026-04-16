@@ -110,7 +110,7 @@ serve(async (req) => {
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
     const body = await req.json().catch(() => ({}));
@@ -211,58 +211,74 @@ serve(async (req) => {
 async function handleMessageSync(supabase: any, data: any) {
   const { messageId, phoneNormalized, text, isEcho, profileName, status } = data;
 
-  console.log(`[Sync] Iniciando sincronização para ${phoneNormalized}`);
+  console.log(`[Sync] Iniciando sincronização para o telefone ${phoneNormalized}`);
 
-  // 1. Busca ou cria o chat de forma segura (sem travar por causa de duplicados)
-  const { data: allRelatedChats } = await supabase.from('whatsapp_chats')
-    .select('id, telefone, unread_count')
-    .or(`telefone.eq.${phoneNormalized},telefone.like.%${phoneNormalized.slice(-8)}`)
-    .order('created_at', { ascending: true });
+  try {
+    // 1. TENTA LOCALIZAR OU CRIAR CHAT
+    const { data: allRelatedChats, error: chatError } = await supabase.from('whatsapp_chats')
+      .select('id, telefone, unread_count')
+      .or(`telefone.eq.${phoneNormalized},telefone.like.%${phoneNormalized.slice(-8)}`)
+      .order('created_at', { ascending: true });
 
-  let chat = null;
+    if (chatError) console.error(`[Sync] Erro ao buscar chats:`, chatError);
 
-  if (allRelatedChats && allRelatedChats.length > 0) {
-    chat = allRelatedChats[0]; // Chat oficial (mais antigo)
-  } else {
-    // Cria novo se não existir nenhum
-    const { data: newChat } = await supabase.from('whatsapp_chats').insert([{ 
-      telefone: phoneNormalized, nome: profileName, last_message: text, unread_count: isEcho ? 0 : 1
-    }]).select().single();
-    chat = newChat;
-  }
+    let chat = (allRelatedChats && allRelatedChats.length > 0) ? allRelatedChats[0] : null;
 
-  if (chat) {
-    // 2. SALVA A MENSAGEM PRIMEIRO (Prioridade Total)
-    await supabase.from('whatsapp_messages').upsert([{
-      chat_id: chat.id, telefone: phoneNormalized, text_body: text, is_from_me: isEcho, message_id: messageId, status
+    if (!chat) {
+      console.log(`[Sync] Chat não encontrado para ${phoneNormalized}. Criando agora...`);
+      const { data: newChat, error: createError } = await supabase.from('whatsapp_chats').insert([{ 
+        telefone: phoneNormalized, 
+        nome: profileName || 'Contato Novo', 
+        last_message: text, 
+        unread_count: isEcho ? 0 : 1
+      }]).select().single();
+      
+      if (createError) {
+        console.error(`[Sync] Falha ao criar chat para ${phoneNormalized}:`, createError);
+      } else {
+        chat = newChat;
+      }
+    }
+
+    // 2. SALVA A MENSAGEM (Com ou sem chat_id de fallback)
+    console.log(`[Sync] Salvando mensagem ID: ${messageId}`);
+    const { error: msgError } = await supabase.from('whatsapp_messages').upsert([{
+      chat_id: chat?.id || null, // Fallback para null se chat falhou
+      telefone: phoneNormalized, 
+      text_body: text, 
+      is_from_me: isEcho, 
+      message_id: messageId, 
+      status: status || (isEcho ? 'sent' : 'received')
     }], { onConflict: 'message_id' });
 
-    console.log(`[Sync] Mensagem salva com sucesso no chat ${chat.id}`);
-
-    // 3. TENTA A FAXINA EM SEGUNDO PLANO (Se der erro, não trava a mensagem)
-    try {
-      const otherChatIds = allRelatedChats?.slice(1).map(c => c.id) || [];
-      if (otherChatIds.length > 0) {
-        console.log(`[Cleaner] Tentando fundir ${otherChatIds.length} duplicados...`);
-        
-        // Move mensagens
-        await supabase.from('whatsapp_messages').update({ chat_id: chat.id }).in('chat_id', otherChatIds);
-        
-        // Apaga chats antigos
-        await supabase.from('whatsapp_chats').delete().in('id', otherChatIds);
-        
-        console.log(`[Cleaner] Fusão concluída.`);
-      }
-
-      // Atualiza o resumo do chat oficial
-      await supabase.from('whatsapp_chats').update({ 
-        telefone: phoneNormalized,
-        last_message: text, 
-        last_message_at: new Date().toISOString()
-      }).eq('id', chat.id);
-
-    } catch (cleanErr) {
-      console.warn(`[Cleaner] Falha na faxina (não crítico):`, cleanErr.message);
+    if (msgError) {
+      console.error(`[Sync] ERRO CRÍTICO ao salvar mensagem ${messageId}:`, msgError);
+    } else {
+      console.log(`[Sync] Mensagem ${messageId} salva com sucesso.`);
     }
+
+    // 3. FAXINA E ATUALIZAÇÃO (SEGUNDO PLANO)
+    if (chat) {
+      try {
+        // Atualiza resumo do chat
+        await supabase.from('whatsapp_chats').update({ 
+          last_message: text, 
+          last_message_at: new Date().toISOString(),
+          unread_count: isEcho ? chat.unread_count : (chat.unread_count || 0) + 1
+        }).eq('id', chat.id);
+
+        // Limpeza de duplicados
+        const otherChatIds = allRelatedChats?.slice(1).map(c => c.id) || [];
+        if (otherChatIds.length > 0) {
+          console.log(`[Cleaner] Fundindo ${otherChatIds.length} chats para ${phoneNormalized}`);
+          await supabase.from('whatsapp_messages').update({ chat_id: chat.id }).in('chat_id', otherChatIds);
+          await supabase.from('whatsapp_chats').delete().in('id', otherChatIds);
+        }
+      } catch (subErr) {
+        console.warn(`[Sync] Erro menor em tarefas de limpeza:`, subErr);
+      }
+    }
+  } catch (err) {
+    console.error(`[Sync] FALHA TOTAL NO handleMessageSync:`, err);
   }
 }
