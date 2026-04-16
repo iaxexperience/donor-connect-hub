@@ -13,7 +13,7 @@ async function checkMessages() {
     .from('whatsapp_messages')
     .select('created_at, text_body, is_from_me, telefone')
     .order('created_at', { ascending: false })
-    .limit(10);
+    .limit(50);
 
   if (error) {
     console.error("❌ Erro no Supabase:", error.message);
