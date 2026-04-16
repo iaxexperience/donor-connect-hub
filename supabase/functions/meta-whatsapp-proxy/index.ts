@@ -210,60 +210,67 @@ serve(async (req) => {
 async function handleMessageSync(supabase: any, data: any) {
   const { messageId, phoneNormalized, text, isEcho, profileName, status } = data;
 
-  console.log(`[Sync] Processando mensagem ${messageId} para ${phoneNormalized}. isEcho: ${isEcho}`);
+  console.log(`[Sync] Iniciando Auto-Faxina para ${phoneNormalized}`);
 
-  // 1. Doador
-  let matchedDonorId = null;
-  const { data: donors } = await supabase.from('donors')
-    .select('id, name')
-    .or(`phone.like.%${phoneNormalized.slice(-8)},phone.eq.${phoneNormalized}`)
-    .limit(1);
-  if (donors && donors.length > 0) matchedDonorId = donors[0].id;
-
-  // 2. Chat - Busca agressiva para evitar duplicados
-  let chat = null;
-  const { data: existingChats } = await supabase.from('whatsapp_chats')
+  // 1. Busca todos os chats que possam ser do mesmo dono (mesmo número ou variações com 9)
+  const { data: allRelatedChats } = await supabase.from('whatsapp_chats')
     .select('id, telefone, unread_count')
     .or(`telefone.eq.${phoneNormalized},telefone.like.%${phoneNormalized.slice(-8)}`)
-    .order('last_message_at', { ascending: false });
+    .order('created_at', { ascending: true });
 
-  if (existingChats && existingChats.length > 0) {
-    chat = existingChats[0];
-    console.log(`[Sync] Chat existente encontrado: ${chat.id}`);
-    
-    // Atualiza chat existente
+  let chat = null;
+
+  if (allRelatedChats && allRelatedChats.length > 0) {
+    // Definimos o primeiro como o "Chat Oficial"
+    chat = allRelatedChats[0];
+    const otherChatIds = allRelatedChats.slice(1).map(c => c.id);
+
+    console.log(`[Sync] Chat oficial definido: ${chat.id}. Detectados ${otherChatIds.length} duplicados.`);
+
+    if (otherChatIds.length > 0) {
+      // MOVE todas as mensagens dos duplicados para o oficial
+      await supabase.from('whatsapp_messages')
+        .update({ chat_id: chat.id })
+        .in('chat_id', otherChatIds);
+      
+      // APAGA os duplicados
+      await supabase.from('whatsapp_chats')
+        .delete()
+        .in('id', otherChatIds);
+        
+      console.log(`[Sync] Duplicados eliminados.`);
+    }
+
+    // Atualiza o chat oficial com a última mensagem
     await supabase.from('whatsapp_chats').update({ 
-      telefone: phoneNormalized, // Normaliza o telefone do chat antigo se necessário
+      telefone: phoneNormalized,
       last_message: text, 
       last_message_at: new Date().toISOString(), 
-      unread_count: isEcho ? chat.unread_count : (chat.unread_count || 0) + 1, 
-      donor_id: matchedDonorId
+      unread_count: isEcho ? chat.unread_count : (chat.unread_count || 0) + 1
     }).eq('id', chat.id);
   } else {
-    console.log(`[Sync] Criando novo chat para ${phoneNormalized}`);
+    // Cria um novo se realmente não existir nada
+    console.log(`[Sync] Criando novo chat primário.`);
     const { data: newChat } = await supabase.from('whatsapp_chats').insert([{ 
       telefone: phoneNormalized, 
       nome: profileName, 
       last_message: text, 
-      unread_count: isEcho ? 0 : 1, 
-      donor_id: matchedDonorId
+      unread_count: isEcho ? 0 : 1
     }]).select().single();
     chat = newChat;
   }
 
-  // 3. Mensagem (Deduplicada por message_id)
+  // 2. Salva a mensagem garantindo o chat_id correto
   if (chat) {
-    const { error: msgErr } = await supabase.from('whatsapp_messages').upsert([{
+    await supabase.from('whatsapp_messages').upsert([{
       chat_id: chat.id, 
       telefone: phoneNormalized, 
       text_body: text, 
       is_from_me: isEcho, 
       message_id: messageId, 
-      status, 
-      donor_id: matchedDonorId
+      status
     }], { onConflict: 'message_id' });
     
-    if (msgErr) console.error('[Sync] Erro ao salvar mensagem:', msgErr);
-    else console.log(`[Sync] Sucesso: Mensagem salva no chat ${chat.id}`);
+    console.log(`[Sync] Mensagem salva no chat unificado: ${chat.id}`);
   }
 }
