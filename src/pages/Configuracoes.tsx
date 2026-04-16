@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Bell, Globe, Lock, Palette, Save, 
   Upload, Sparkles, Building2, Clock,
@@ -49,6 +49,7 @@ const Configuracoes = () => {
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const passwordRules = {
     length: newPassword.length >= 8,
@@ -160,6 +161,94 @@ const Configuracoes = () => {
       toast({ title: "Erro ao atualizar senha", description: error.message, variant: "destructive" });
     } finally {
       setIsUpdatingPassword(false);
+    }
+  };
+
+  const triggerLogoUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/png,image/jpeg,image/svg+xml';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) processLogoFile(file);
+    };
+    input.click();
+  };
+
+  const processLogoFile = async (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Arquivo muito grande", description: "Máximo 5MB.", variant: "destructive" });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (ev.target?.result) setLogoUrl(ev.target.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    setIsUploadingLogo(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const fileName = `logo_${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from('logos').upload(fileName, file, { upsert: true });
+      if (!error) {
+        const { data: urlData } = supabase.storage.from('logos').getPublicUrl(fileName);
+        setLogoUrl(urlData.publicUrl);
+      }
+      toast({ title: "Logo carregado!", description: "Clique em Salvar para aplicar." });
+    } catch {
+      toast({ title: "Logo carregado localmente", description: "Clique em Salvar para aplicar." });
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Arquivo muito grande", description: "Máximo 5MB.", variant: "destructive" });
+      return;
+    }
+
+    // Mostra prévia local imediatamente
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (ev.target?.result) setLogoUrl(ev.target.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Tenta enviar para o Storage em segundo plano
+    setIsUploadingLogo(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const fileName = `logo_${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from('logos').upload(fileName, file, { upsert: true });
+      if (!error) {
+        const { data: urlData } = supabase.storage.from('logos').getPublicUrl(fileName);
+        setLogoUrl(urlData.publicUrl);
+      }
+      toast({ title: "Logo carregado!", description: "Clique em Salvar para aplicar." });
+    } catch {
+      toast({ title: "Logo carregado localmente", description: "Clique em Salvar para aplicar." });
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoUrl("");
+    toast({ title: "Logo removido", description: "Clique em Salvar para aplicar." });
+  };
+
+  const handleSignOutAllSessions = async () => {
+    try {
+      await supabase.auth.signOut({ scope: 'others' });
+      toast({ title: "Sessões encerradas", description: "Todos os outros dispositivos foram desconectados." });
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
     }
   };
 
@@ -342,8 +431,10 @@ const Configuracoes = () => {
                 </div>
                 <div className="space-y-4 flex-1">
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="rounded-xl border-slate-200 font-bold h-10"><Upload className="w-4 h-4 mr-2" /> Upload Logo</Button>
-                    <Button variant="ghost" size="sm" className="rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 font-bold h-10">Remover</Button>
+                    <Button variant="outline" size="sm" className="rounded-xl border-slate-200 font-bold h-10" disabled={isUploadingLogo} onClick={triggerLogoUpload}>
+                      <Upload className="w-4 h-4 mr-2" /> {isUploadingLogo ? "Enviando..." : "Upload Logo"}
+                    </Button>
+                    <Button variant="ghost" size="sm" className="rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 font-bold h-10" onClick={handleRemoveLogo}>Remover</Button>
                   </div>
                   <p className="text-[11px] text-slate-400 font-medium leading-tight">PNG, JPG ou SVG. Máx. 5MB.</p>
                 </div>
@@ -517,7 +608,7 @@ const Configuracoes = () => {
                     <CardDescription className="text-[11px]">Gerencie os dispositivos conectados à sua conta.</CardDescription>
                   </div>
                 </div>
-                <Button variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50 text-xs font-bold rounded-xl gap-2">
+                <Button variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50 text-xs font-bold rounded-xl gap-2" onClick={handleSignOutAllSessions}>
                   Encerrar todas as outras sessões
                 </Button>
               </div>
