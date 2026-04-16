@@ -42,31 +42,85 @@ function normalizePhone(phone: string): string {
 }
 
 /**
- * Repassa o webhook para um agente externo (ex: GPTMaker)
+ * Chama a API de conversação do GPTMaker e retorna o texto da resposta do bot.
+ * Requer as env vars: GPTMAKER_AGENT_ID e GPTMAKER_TOKEN
  */
-async function forwardToAgent(url: string, body: any, headers: Headers) {
-  if (!url || url.includes('LINK_DO_GPTMAKER')) {
-    console.log('[Bridge] URL de repasse inválida ou ainda em placeholder. Ignorando.');
-    return;
-  }
-  
-  try {
-    const forwardHeaders = new Headers();
-    forwardHeaders.set('Content-Type', 'application/json');
-    const sig = headers.get('x-hub-signature-256');
-    if (sig) forwardHeaders.set('x-hub-signature-256', sig);
+async function callGPTMaker(phone: string, prompt: string, chatName: string): Promise<string | null> {
+  const agentId = Deno.env.get('GPTMAKER_AGENT_ID');
+  const token = Deno.env.get('GPTMAKER_TOKEN');
 
-    console.log(`[Bridge] Repassando para: ${url.substring(0, 20)}...`);
-    
-    const response = await fetch(url, {
+  if (!agentId || !token) {
+    console.log('[GPTMaker] GPTMAKER_AGENT_ID ou GPTMAKER_TOKEN não configurados. Pulando.');
+    return null;
+  }
+
+  try {
+    console.log(`[GPTMaker] Chamando agente ${agentId} para contextId=${phone}`);
+    const res = await fetch(`https://api.gptmaker.ai/v2/agent/${agentId}/conversation`, {
       method: 'POST',
-      headers: forwardHeaders,
-      body: JSON.stringify(body)
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contextId: phone,
+        prompt,
+        chatName: chatName || 'WhatsApp Contact',
+        phone,
+      }),
     });
-    
-    console.log(`[Bridge] Resposta: ${response.status}`);
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      console.error(`[GPTMaker] Erro HTTP ${res.status}: ${errText}`);
+      return null;
+    }
+
+    const data = await res.json();
+    const reply = data?.message ?? null;
+    console.log(`[GPTMaker] Resposta recebida: "${reply?.substring(0, 80)}..."`);
+    return reply;
   } catch (err) {
-    console.error(`[Bridge] Falha:`, err);
+    console.error('[GPTMaker] Falha na chamada:', err);
+    return null;
+  }
+}
+
+/**
+ * Envia uma mensagem de texto de volta ao usuário via Meta API.
+ * Retorna o ID real da mensagem (wam_xxx) para evitar duplicatas com o echo.
+ * Requer as env vars: WHATSAPP_PHONE_NUMBER_ID e WHATSAPP_ACCESS_TOKEN
+ */
+async function sendMetaReply(toPhone: string, text: string): Promise<string | null> {
+  const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
+  const accessToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
+
+  if (!phoneNumberId || !accessToken) {
+    console.log('[Meta Reply] WHATSAPP_PHONE_NUMBER_ID ou WHATSAPP_ACCESS_TOKEN não configurados. Não enviando resposta ao usuário.');
+    return null;
+  }
+
+  try {
+    const res = await fetch(`https://graph.facebook.com/v22.0/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: toPhone,
+        type: 'text',
+        text: { body: text },
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    const wamId = data?.messages?.[0]?.id ?? null;
+    console.log(`[Meta Reply] Enviado ao usuário ${toPhone}: HTTP ${res.status}, wam_id=${wamId}`);
+    return wamId;
+  } catch (err) {
+    console.error('[Meta Reply] Falha ao enviar resposta:', err);
+    return null;
   }
 }
 
@@ -121,21 +175,14 @@ serve(async (req) => {
       await supabase.from('whatsapp_webhook_debug').insert([{ payload: body }]);
     }
 
-    // A. IDENTIFICAÇÃO DO PROVEDOR E REPASSE
+    // A. IDENTIFICAÇÃO DO PROVEDOR
     const isMeta = !!body.entry?.[0]?.changes?.[0]?.value;
-    const isGPTMaker = !!body.assistantId || !!body.role || !!body.event || !!body.messageId || !!body.message;
 
-    // Ponte para GPTMaker (Apenas se vier da Meta, para evitar loop infinito)
-    const forwardUrl = Deno.env.get('FORWARD_WEBHOOK_URL');
-    if (isMeta && forwardUrl && body && Object.keys(body).length > 0) {
-      forwardToAgent(forwardUrl, body, req.headers);
-    }
-    
     if (!body || Object.keys(body).length === 0) {
       if (req.method === 'POST') {
-        return new Response(JSON.stringify({ error: 'Corpo da requisição vazio' }), { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        return new Response(JSON.stringify({ error: 'Corpo da requisição vazio' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
     }
@@ -143,8 +190,8 @@ serve(async (req) => {
     // B. PROCESSAMENTO META (Padrão)
     if (isMeta) {
       const value = body.entry[0].changes[0].value;
-      
-      // 1. Statuses
+
+      // 1. Statuses (atualizações de entrega/leitura)
       if (value.statuses && value.statuses.length > 0) {
         for (const statusUpdate of value.statuses) {
           const messageId = statusUpdate.id;
@@ -153,46 +200,48 @@ serve(async (req) => {
         }
       }
 
-      // 2. Messages
+      // 2. Nova mensagem recebida
       const message = value.messages?.[0];
       if (message) {
         const messageId = message.id;
         const msgType = message.type;
-        const isEcho = body.entry[0].id === message.from || (message.metadata?.display_phone_number && message.metadata.display_phone_number.includes(message.from));
-        
+        const isEcho = body.entry[0].id === message.from ||
+          (value.metadata?.display_phone_number && value.metadata.display_phone_number.includes(message.from));
+
         let targetPhone = message.from;
         if (isEcho && message.to) targetPhone = message.to;
-        
+
         const phoneNormalized = normalizePhone(targetPhone);
         const profileName = value.contacts?.[0]?.profile?.name || 'WhatsApp Contact';
-        let text = msgType === 'text' ? (message.text?.body ?? '') : `[${msgType}]`;
+        const text = msgType === 'text' ? (message.text?.body ?? '') : `[${msgType}]`;
 
+        // 2a. Salva mensagem do usuário no banco
         await handleMessageSync(supabase, {
           messageId, phoneNormalized, text, isEcho, profileName, status: isEcho ? 'sent' : 'received'
         });
-      }
-    }
-    
-    // C. PROCESSAMENTO EXTERNO (GPTMaker / Irrah / Bot)
-    else if (isGPTMaker) {
-      console.log('[Webhook] Recebido aviso externo (Theo)');
-      const msgId = body.id || body.message_id || body.messageId || body.data?.message_id || `ext_${Date.now()}`;
-      
-      // Mapeamento agressivo e específico (visto nos logs)
-      const rawPhone = body.contactPhone || body.phone || body.from || body.sender?.phone || body.contact?.phone || body.data?.phone;
-      
-      // Mapeamento de texto (visto nos logs)
-      const text = body.message || body.content || body.text || body.message?.text || body.data?.content || '';
-      
-      // Detecta se é echo (Bot enviando) ou Recebida (Usuário)
-      // Ajuste Crítico: Só é echo se vier explicitamente como assistente/outbound
-      const isEcho = body.role === 'assistant' || body.role === 'bot' || body.direction === 'outbound' || body.is_reply === true;
 
-      if (rawPhone && text) {
-        const phone = normalizePhone(rawPhone);
-        await handleMessageSync(supabase, {
-          messageId: msgId, phoneNormalized: phone, text, isEcho, profileName: isEcho ? 'IAX - Theo' : 'WhatsApp Contact', status: 'sent'
-        });
+        // 2b. Se for mensagem RECEBIDA do usuário (não eco), chama o GPTMaker
+        if (!isEcho && text && !text.startsWith('[')) {
+          console.log(`[GPTMaker] Mensagem recebida do usuário: "${text}". Solicitando resposta do bot...`);
+          const botReply = await callGPTMaker(phoneNormalized, text, profileName);
+
+          if (botReply) {
+            // Envia de volta ao usuário via Meta API e obtém o ID real (wam_xxx)
+            // Usar o ID real evita duplicata quando a Meta mandar o echo desta mensagem
+            const wamId = await sendMetaReply(phoneNormalized, botReply);
+
+            // Salva resposta do bot com o ID real (wam_xxx) se disponível,
+            // ou com ID gerado como fallback (quando não há credenciais Meta)
+            await handleMessageSync(supabase, {
+              messageId: wamId ?? `gpt_${messageId}_${Date.now()}`,
+              phoneNormalized,
+              text: botReply,
+              isEcho: true,  // is_from_me = true (resposta do bot)
+              profileName: 'GPTMaker Bot',
+              status: 'sent'
+            });
+          }
+        }
       }
     }
 
