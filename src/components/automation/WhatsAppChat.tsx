@@ -129,9 +129,24 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
       }
     });
 
-    setChats(Object.values(uniqueChats).sort((a,b) => 
+    const newChats = Object.values(uniqueChats).sort((a,b) => 
       new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
-    ));
+    );
+
+    setChats(newChats);
+
+    // Auto-update selectedChat if its ID changed during merge but phone matches
+    if (selectedChat) {
+      const currentNorm = normalizePhone(selectedChat.telefone);
+      const matchingChat = newChats.find(c => normalizePhone(c.telefone) === currentNorm);
+      if (matchingChat && matchingChat.id !== selectedChat.id) {
+        console.log(`[WhatsAppChat] Selection migrated from ${selectedChat.id} to ${matchingChat.id}`);
+        setSelectedChat(matchingChat);
+      } else if (!matchingChat) {
+        // Chat was deleted and no substitute found (unlikely but possible)
+        setSelectedChat(null);
+      }
+    }
   };
 
   const fetchMessages = async (chat: Chat) => {
@@ -191,10 +206,14 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
   useEffect(() => {
     fetchChats();
 
-    // Subscribe to chats changes
+    // Subscribe to chats changes (INSERT, UPDATE, DELETE)
     const chatSubscription = supabase
       .channel('chat-list-changes')
-      .on('postgres_changes', { event: '*', table: 'whatsapp_chats' }, () => {
+      .on('postgres_changes', { 
+        event: '*', 
+        table: 'whatsapp_chats' 
+      }, (payload) => {
+        console.log('[WhatsAppChat] Chat list change detected:', payload.eventType);
         fetchChats();
       })
       .subscribe();
@@ -202,7 +221,7 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
     return () => {
       supabase.removeChannel(chatSubscription);
     };
-  }, []);
+  }, [selectedChat?.id]); // Re-subscribe if selectedChat changes to keep context fresh
 
   useEffect(() => {
     if (selectedChat) {
@@ -211,18 +230,16 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
 
       const normContact = normalizePhone(selectedChat.telefone);
 
-      // Subscribe to all messages and filter locally for related IDs
+      // Subscribe to all messages changes for related IDs
       const msgSubscription = supabase
         .channel(`chat-msgs-${selectedChat.id}`)
         .on('postgres_changes', 
           { 
-            event: 'INSERT', 
+            event: '*', // Listen to INSERT, UPDATE, DELETE
             table: 'whatsapp_messages'
           }, 
           async (payload) => {
-            const incoming = payload.new as Message;
-            
-            // Buscar IDs relacionados para este contato NO MOMENTO do recebimento
+            // Re-fetch related IDs to ensure we are filtering correctly
             const { data: relatedChats } = await supabase
               .from('whatsapp_chats')
               .select('id, telefone');
@@ -231,13 +248,29 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
               .filter(c => normalizePhone(c.telefone) === normContact)
               .map(c => c.id);
 
-            // Verificar se a mensagem pertence a este grupo de IDs
-            if (relatedIds.includes(incoming.chat_id)) {
-              setMessages(prev => {
-                if (prev.some(m => m.id === incoming.id)) return prev;
-                return [...prev, incoming];
-              });
-              markAsRead(selectedChat);
+            if (payload.eventType === 'INSERT') {
+              const incoming = payload.new as Message;
+              if (relatedIds.includes(incoming.chat_id)) {
+                setMessages(prev => {
+                  if (prev.some(m => m.id === incoming.id)) return prev;
+                  return [...prev, incoming];
+                });
+                markAsRead(selectedChat);
+              }
+            } 
+            else if (payload.eventType === 'UPDATE') {
+              const updated = payload.new as Message;
+              // If message was moved to one of our related IDs, or status updated
+              if (relatedIds.includes(updated.chat_id)) {
+                setMessages(prev => prev.map(m => m.id === updated.id ? updated : m));
+              } else {
+                // If it was moved OUT of our related IDs (unlikely)
+                setMessages(prev => prev.filter(m => m.id !== updated.id));
+              }
+            }
+            else if (payload.eventType === 'DELETE') {
+              const deletedId = payload.old.id;
+              setMessages(prev => prev.filter(m => m.id !== deletedId));
             }
           }
         )
