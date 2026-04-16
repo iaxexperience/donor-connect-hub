@@ -68,6 +68,7 @@ export function AppSidebar() {
   const filteredMainItems = mainItems.filter(item => {
     if (item.title === "Usuários") return role === "admin";
     if (item.title === "Relatórios") return role === "admin" || role === "gestor";
+    if (item.title === "Agente IA") return role === "admin" || role === "gestor";
     return true;
   });
 
