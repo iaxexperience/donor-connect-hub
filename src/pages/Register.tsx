@@ -65,7 +65,7 @@ const Register = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
