@@ -7,12 +7,14 @@ import { AsaasAutomationWorker } from "../automation/AsaasAutomationWorker";
 import { FollowUpAutomationWorker } from "@/components/automation/FollowUpAutomationWorker";
 
 import { UserMenu } from "./UserMenu";
+import { ForcePasswordChangeModal } from "../auth/ForcePasswordChangeModal";
 
 export function DashboardLayout() {
   return (
     <SidebarProvider>
       <AsaasAutomationWorker />
       <FollowUpAutomationWorker />
+      <ForcePasswordChangeModal />
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col">
