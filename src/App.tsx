@@ -61,47 +61,51 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
 
 const queryClient = new QueryClient();
 
+import { DynamicThemeProvider } from "./components/theme/DynamicThemeProvider";
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/cadastro" element={<Register />} />
-              
-              {/* Rota Protegida do Dashboard */}
-              <Route path="/dashboard" element={<ProtectedRoute />}>
-                <Route element={<DashboardLayout />}>
-                  <Route index element={<Dashboard />} />
-                  <Route path="doadores" element={<Doadores />} />
-                  <Route path="doadores/novo" element={<DonorForm />} />
-                  <Route path="doadores/editar/:id" element={<DonorForm />} />
-                  <Route path="kanbam" element={<Pipeline />} />
-                  <Route path="campanhas" element={<Campanhas />} />
-                  <Route path="telemarketing" element={<Telemarketing />} />
-                  <Route path="followups" element={<FollowUps />} />
-                  <Route path="usuarios" element={<Usuarios />} />
-                  <Route path="relatorios" element={<Relatorios />} />
-                  <Route path="configuracoes" element={<Configuracoes />} />
-                  <Route path="integracoes" element={<Integracoes />} />
-                  <Route path="whatsapp" element={<WhatsApp />} />
-                  <Route path="asaas" element={<IntegracaoAsaas />} />
-                  <Route path="bb" element={<IntegracaoBB />} />
-                  <Route path="api-aberta" element={<ApiAberta />} />
-                  <Route path="api-documentacao" element={<ApiDocumentation />} />
-                  <Route path="agente-ia" element={<AgenteIA />} />
+        <DynamicThemeProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/cadastro" element={<Register />} />
+                
+                {/* Rota Protegida do Dashboard */}
+                <Route path="/dashboard" element={<ProtectedRoute />}>
+                  <Route element={<DashboardLayout />}>
+                    <Route index element={<Dashboard />} />
+                    <Route path="doadores" element={<Doadores />} />
+                    <Route path="doadores/novo" element={<DonorForm />} />
+                    <Route path="doadores/editar/:id" element={<DonorForm />} />
+                    <Route path="kanbam" element={<Pipeline />} />
+                    <Route path="campanhas" element={<Campanhas />} />
+                    <Route path="telemarketing" element={<Telemarketing />} />
+                    <Route path="followups" element={<FollowUps />} />
+                    <Route path="usuarios" element={<Usuarios />} />
+                    <Route path="relatorios" element={<Relatorios />} />
+                    <Route path="configuracoes" element={<Configuracoes />} />
+                    <Route path="integracoes" element={<Integracoes />} />
+                    <Route path="whatsapp" element={<WhatsApp />} />
+                    <Route path="asaas" element={<IntegracaoAsaas />} />
+                    <Route path="bb" element={<IntegracaoBB />} />
+                    <Route path="api-aberta" element={<ApiAberta />} />
+                    <Route path="api-documentacao" element={<ApiDocumentation />} />
+                    <Route path="agente-ia" element={<AgenteIA />} />
+                  </Route>
                 </Route>
-              </Route>
 
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </DynamicThemeProvider>
       </AuthProvider>
     </QueryClientProvider>
   </ErrorBoundary>

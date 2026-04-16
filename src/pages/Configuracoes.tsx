@@ -35,6 +35,24 @@ const Configuracoes = () => {
   useEffect(() => {
     const loadSettings = async () => {
       try {
+        // Tenta carregar do LocalStorage primeiro (Modo Offline/Local)
+        const localData = localStorage.getItem('white_label_settings');
+        if (localData) {
+          const parsed = JSON.parse(localData);
+          setSystemName(parsed.system_name || "Pulse Doações");
+          setPrimaryColor(parsed.primary_color || "#0066CC");
+          setSecondaryColor(parsed.secondary_color || "#2a9d8f");
+          setLogoUrl(parsed.logo_url || "");
+          setCnpj(parsed.cnpj || "");
+          setPhone(parsed.phone || "");
+          setEmail(parsed.email || "");
+          setAddress(parsed.address || "");
+          setOpeningTime(parsed.opening_time || "08:00");
+          setClosingTime(parsed.closing_time || "18:00");
+          setIsLoading(false);
+        }
+
+        // Tenta carregar do Supabase (Apenas leitura no momento)
         const { data, error } = await supabase
           .from('white_label_settings')
           .select('*')
@@ -52,6 +70,9 @@ const Configuracoes = () => {
           setAddress(data.address || "");
           setOpeningTime(data.opening_time || "08:00");
           setClosingTime(data.closing_time || "18:00");
+          
+          // Sincroniza LocalStorage com o banco se houver dados
+          localStorage.setItem('white_label_settings', JSON.stringify(data));
         }
       } catch (err) {
         console.error("Erro ao carregar configurações White Label:", err);
@@ -63,28 +84,46 @@ const Configuracoes = () => {
   }, []);
 
   const handleSaveWhiteLabel = async () => {
+    const settings = {
+      id: 1,
+      system_name: systemName,
+      primary_color: primaryColor,
+      secondary_color: secondaryColor,
+      logo_url: logoUrl,
+      cnpj: cnpj,
+      phone: phone,
+      email: email,
+      address: address,
+      opening_time: openingTime,
+      closing_time: closingTime,
+      updated_at: new Date().toISOString()
+    };
+
+    // Salva SEMPRE no LocalStorage (Garante funcionamento imediato)
+    localStorage.setItem('white_label_settings', JSON.stringify(settings));
+
     try {
+      // Tenta salvar no Supabase (Pode falhar por restrição de escrita)
       const { error } = await supabase
         .from('white_label_settings')
-        .upsert({
-          id: 1,
-          system_name: systemName,
-          primary_color: primaryColor,
-          secondary_color: secondaryColor,
-          logo_url: logoUrl,
-          cnpj: cnpj,
-          phone: phone,
-          email: email,
-          address: address,
-          opening_time: openingTime,
-          closing_time: closingTime,
-          updated_at: new Date().toISOString()
-        });
+        .upsert(settings);
 
-      if (error) throw error;
-      toast({ title: "Configurações Salvas!", description: "A identidade visual foi atualizada com sucesso." });
+      if (error) {
+        console.warn("Restrição de escrita no banco detectada. Usando LocalStorage.");
+        toast({ 
+          title: "Salvo no Navegador", 
+          description: "Os dados foram salvos localmente pois o banco está em modo de leitura.", 
+          variant: "default" 
+        });
+      } else {
+        toast({ title: "Configurações Salvas!", description: "Dados sincronizados com o banco de dados." });
+      }
     } catch (err: any) {
-      toast({ title: "Erro ao Salvar", description: err.message, variant: "destructive" });
+      toast({ 
+        title: "Salvo (Modo Local)", 
+        description: "Salvo no seu navegador. O banco de dados recusou a gravação.", 
+        variant: "default" 
+      });
     }
   };
 
