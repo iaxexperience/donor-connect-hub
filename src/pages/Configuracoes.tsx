@@ -3,7 +3,7 @@ import {
   Bell, Globe, Lock, Palette, Save, 
   Upload, Sparkles, Building2, Clock,
   Shield, Key, Smartphone, Activity,
-  AlertTriangle
+  AlertTriangle, UserCircle, FileText, User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,18 @@ const Configuracoes = () => {
   const [address, setAddress] = useState("");
   const [openingTime, setOpeningTime] = useState("08:00");
   const [closingTime, setClosingTime] = useState("18:00");
+  
+  // States for User Profile
+  const [userProfile, setUserProfile] = useState({
+    name: "",
+    email: "",
+    cpf: "",
+    phone: "",
+  });
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -80,8 +92,79 @@ const Configuracoes = () => {
         setIsLoading(false);
       }
     };
+
+    const loadUserProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile) {
+          setUserProfile({
+            name: profile.name || "",
+            email: user.email || "",
+            cpf: profile.cpf || "",
+            phone: profile.phone || "",
+          });
+        }
+      }
+    };
+
     loadSettings();
+    loadUserProfile();
   }, []);
+
+  const handleUpdatePassword = async () => {
+    if (newPassword !== confirmNewPassword) {
+      toast({ title: "Senhas divergentes", description: "A nova senha e a confirmação não coincidem.", variant: "destructive" });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({ title: "Senha fraca", description: "A senha deve ter pelo menos 6 caracteres.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setIsUpdatingPassword(true);
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      
+      if (error) throw error;
+
+      toast({ title: "Senha atualizada!", description: "Sua senha foi alterada com sucesso." });
+      setNewPassword("");
+      setConfirmNewPassword("");
+      setCurrentPassword("");
+    } catch (error: any) {
+      toast({ title: "Erro ao atualizar senha", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
+  const handleUpdateProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          cpf: userProfile.cpf,
+          phone: userProfile.phone,
+          name: userProfile.name
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      toast({ title: "Perfil atualizado!", description: "Seus dados pessoais foram salvos." });
+    } catch (error: any) {
+      toast({ title: "Erro ao atualizar perfil", description: error.message, variant: "destructive" });
+    }
+  };
 
   const handleSaveAll = async () => {
     const settings = {
@@ -135,6 +218,10 @@ const Configuracoes = () => {
           <TabsTrigger value="aparencia" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
             <Palette className="w-4 h-4" />
             <span className="font-bold">Aparência</span>
+          </TabsTrigger>
+          <TabsTrigger value="perfil" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
+            <UserCircle className="w-4 h-4" />
+            <span className="font-bold">Meu Perfil</span>
           </TabsTrigger>
           <TabsTrigger value="seguranca" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
             <Lock className="w-4 h-4" />
@@ -251,6 +338,69 @@ const Configuracoes = () => {
           </Card>
         </TabsContent>
 
+        {/* TAB: MEU PERFIL */}
+        <TabsContent value="perfil" className="space-y-6 animate-in fade-in-50 duration-500">
+          <Card className="border-slate-100 shadow-sm rounded-2xl bg-white overflow-hidden">
+            <CardHeader className="border-b border-slate-50">
+              <div className="flex items-center gap-2">
+                <User className="w-5 h-5 text-primary" />
+                <CardTitle className="text-lg font-bold">Meus Dados Pessoais</CardTitle>
+              </div>
+              <CardDescription>Gerencie suas informações de contato e identificação.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-8 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-slate-500">Nome Completo</Label>
+                  <Input 
+                    value={userProfile.name} 
+                    onChange={(e) => setUserProfile({...userProfile, name: e.target.value})} 
+                    placeholder="Seu nome"
+                    className="h-12 rounded-xl bg-slate-50/30 border-slate-100"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-slate-500">E-mail</Label>
+                  <Input 
+                    value={userProfile.email} 
+                    disabled 
+                    className="h-12 rounded-xl bg-slate-100/50 border-slate-100 cursor-not-allowed"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-slate-500">CPF</Label>
+                  <div className="relative">
+                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input 
+                      value={userProfile.cpf} 
+                      onChange={(e) => setUserProfile({...userProfile, cpf: e.target.value})} 
+                      placeholder="000.000.000-00" 
+                      className="h-12 rounded-xl bg-slate-50/30 border-slate-100 pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-slate-500">Telefone</Label>
+                  <div className="relative">
+                    <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input 
+                      value={userProfile.phone} 
+                      onChange={(e) => setUserProfile({...userProfile, phone: e.target.value})} 
+                      placeholder="(00) 00000-0000" 
+                      className="h-12 rounded-xl bg-slate-50/30 border-slate-100 pl-10"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="pt-4">
+                <Button onClick={handleUpdateProfile} className="rounded-xl font-bold bg-slate-900 hover:bg-slate-800 text-white px-8 h-12">
+                  <Save className="w-4 h-4 mr-2" /> Salvar Perfil
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* TAB: SEGURANÇA */}
         <TabsContent value="seguranca" className="space-y-6 animate-in fade-in-50 duration-500">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -264,22 +414,44 @@ const Configuracoes = () => {
               </CardHeader>
               <CardContent className="p-6 space-y-4">
                 <div className="space-y-2">
-                  <Label>Senha Atual</Label>
-                  <Input type="password" placeholder="••••••••" className="rounded-xl bg-slate-50/50" />
+                  <Label>Senha Atual (para confirmação)</Label>
+                  <Input 
+                    type="password" 
+                    placeholder="••••••••" 
+                    className="rounded-xl bg-slate-50/50"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                  />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Nova Senha</Label>
-                    <Input type="password" placeholder="••••••••" className="rounded-xl bg-slate-50/50" />
+                    <Input 
+                      type="password" 
+                      placeholder="••••••••" 
+                      className="rounded-xl bg-slate-50/50"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Confirmar Nova Senha</Label>
-                    <Input type="password" placeholder="••••••••" className="rounded-xl bg-slate-50/50" />
+                    <Input 
+                      type="password" 
+                      placeholder="••••••••" 
+                      className="rounded-xl bg-slate-50/50"
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    />
                   </div>
                 </div>
                 <div className="pt-2">
-                  <Button className="rounded-xl font-bold bg-primary hover:bg-primary/90 text-white gap-2">
-                    <Key className="w-4 h-4" /> Atualizar Senha
+                  <Button 
+                    onClick={handleUpdatePassword}
+                    disabled={isUpdatingPassword}
+                    className="rounded-xl font-bold bg-primary hover:bg-primary/90 text-white gap-2"
+                  >
+                    <Key className="w-4 h-4" /> {isUpdatingPassword ? "Atualizando..." : "Atualizar Senha"}
                   </Button>
                 </div>
               </CardContent>

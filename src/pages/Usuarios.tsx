@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Shield, User, Mail, UserPlus, Loader2 } from "lucide-react";
+import { Plus, Search, Shield, User, Mail, UserPlus, Loader2, Key, Smartphone, FileText, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,22 @@ const roleMapping: Record<string, { label: string, color: string }> = {
   "visualizador": { label: "Visualizador", color: "outline" },
 };
 
+const formatCPF = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  return digits
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+};
+
+const formatPhone = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (!digits) return "";
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+};
+
 const Usuarios = () => {
   const { profiles, isLoading, createProfile } = useProfiles();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -47,13 +63,27 @@ const Usuarios = () => {
 
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const [newCPF, setNewCPF] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [newRole, setNewRole] = useState<any>("");
 
   const handleCreateUser = async () => {
-    if (!newName || !newEmail || !newRole) {
+    if (!newName || !newEmail || !newRole || !newPassword) {
       toast({
         title: "Campos obrigatórios",
-        description: "Preencha todos os campos para cadastrar o usuário.",
+        description: "Preencha os campos essenciais para cadastrar o usuário.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Senhas divergentes",
+        description: "A confirmação de senha não coincide com a senha digitada.",
         variant: "destructive",
       });
       return;
@@ -63,12 +93,18 @@ const Usuarios = () => {
       await createProfile({
         name: newName,
         email: newEmail,
+        cpf: newCPF,
+        phone: newPhone,
         role: newRole,
       });
 
       setIsDialogOpen(false);
       setNewName("");
       setNewEmail("");
+      setNewCPF("");
+      setNewPhone("");
+      setNewPassword("");
+      setConfirmPassword("");
       setNewRole("");
 
       toast({
@@ -128,6 +164,34 @@ const Usuarios = () => {
                   />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cpf">CPF</Label>
+                  <div className="relative">
+                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      id="cpf" 
+                      placeholder="000.000.000-00" 
+                      className="pl-9"
+                      value={newCPF}
+                      onChange={(e) => setNewCPF(formatCPF(e.target.value))}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Telefone</Label>
+                  <div className="relative">
+                    <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      id="phone" 
+                      placeholder="(00) 00000-0000" 
+                      className="pl-9"
+                      value={newPhone}
+                      onChange={(e) => setNewPhone(formatPhone(e.target.value))}
+                    />
+                  </div>
+                </div>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
                 <div className="relative">
@@ -140,6 +204,43 @@ const Usuarios = () => {
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
                   />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="password">Senha Temporária</Label>
+                  <div className="relative">
+                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      id="password" 
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••" 
+                      className="pl-9 pr-9"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+                  <div className="relative">
+                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      id="confirmPassword" 
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••" 
+                      className="pl-9"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
               <div className="space-y-2">

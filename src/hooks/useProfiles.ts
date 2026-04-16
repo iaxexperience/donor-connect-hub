@@ -6,6 +6,8 @@ export interface Profile {
   name: string;
   email: string;
   role: "admin" | "gestor" | "operador" | "visualizador";
+  cpf?: string;
+  phone?: string;
   status: string;
   last_access?: string;
 }
@@ -33,7 +35,8 @@ export const useProfiles = () => {
         .insert([{
           ...newProfile,
           id: crypto.randomUUID(), // Temporário até integrar com Auth real
-          status: 'Ativo'
+          status: 'Ativo',
+          created_at: new Date().toISOString()
         }])
         .select()
         .single();
