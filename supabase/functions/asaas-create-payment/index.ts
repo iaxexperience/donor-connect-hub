@@ -53,6 +53,23 @@ serve(async (req) => {
 
     const paymentId = data.id;
 
+    // For PIX payments, fetch the QR code / copia-e-cola
+    let pixQrCode = null;
+    if (billingType === 'PIX' && paymentId) {
+      try {
+        const pixRes = await fetch(`${baseUrl}/payments/${paymentId}/pixQrCode`, {
+          method: 'GET',
+          headers: { 'access_token': asaasApiKey, 'Content-Type': 'application/json' }
+        });
+        if (pixRes.ok) {
+          pixQrCode = await pixRes.json();
+          console.log('[Asaas] PIX QR Code obtido:', pixQrCode?.payload?.substring(0, 40));
+        }
+      } catch (pixErr) {
+        console.warn('[Asaas] Não foi possível obter PIX QR Code:', pixErr);
+      }
+    }
+
     // Create donation record in pending state
     const { data: donation, error: insertError } = await supabase
       .from('donations')
@@ -72,7 +89,7 @@ serve(async (req) => {
       throw insertError;
     }
 
-    return new Response(JSON.stringify({ success: true, payment: data, donation }), {
+    return new Response(JSON.stringify({ success: true, payment: data, donation, pixQrCode }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
