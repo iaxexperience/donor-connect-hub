@@ -3,7 +3,7 @@ import {
   Bell, Globe, Lock, Palette, Save, 
   Upload, Sparkles, Building2, Clock,
   Shield, Key, Smartphone, Activity,
-  AlertTriangle, UserCircle, FileText, User
+  AlertTriangle, UserCircle, FileText, User, Check, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +48,23 @@ const Configuracoes = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
+  const passwordRules = {
+    length: newPassword.length >= 8,
+    number: /\d/.test(newPassword),
+    upper: /[A-Z]/.test(newPassword),
+    special: /[!@#$%^&*(),.?":{}|<>]/.test(newPassword),
+  };
+
+  const isPasswordValid = Object.values(passwordRules).every(Boolean);
+  const passwordsMatch = newPassword === confirmNewPassword && newPassword !== "";
+
+  const PasswordRequirement = ({ met, text }: { met: boolean; text: string }) => (
+    <div className={`flex items-center gap-1.5 text-[10px] font-medium transition-colors ${met ? "text-emerald-500" : "text-muted-foreground"}`}>
+      {met ? <Check className="w-3 h-3" /> : <X className="w-3 h-3 opacity-50" />}
+      <span>{text}</span>
+    </div>
+  );
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -433,16 +450,27 @@ const Configuracoes = () => {
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                     />
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 p-3 rounded-lg bg-slate-50 border border-slate-100">
+                      <PasswordRequirement met={passwordRules.length} text="8+ caracteres" />
+                      <PasswordRequirement met={passwordRules.number} text="Um número" />
+                      <PasswordRequirement met={passwordRules.upper} text="Uma maiúscula" />
+                      <PasswordRequirement met={passwordRules.special} text="Um símbolo (!@#)" />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label>Confirmar Nova Senha</Label>
-                    <Input 
-                      type="password" 
-                      placeholder="••••••••" 
-                      className="rounded-xl bg-slate-50/50"
-                      value={confirmNewPassword}
-                      onChange={(e) => setConfirmNewPassword(e.target.value)}
-                    />
+                    <div className="relative">
+                      <Input 
+                        type="password" 
+                        placeholder="••••••••" 
+                        className={`rounded-xl transition-all duration-300 ${passwordsMatch ? "border-emerald-500 bg-emerald-50/30 ring-1 ring-emerald-500" : "bg-slate-50/50"}`}
+                        value={confirmNewPassword}
+                        onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      />
+                      {passwordsMatch && (
+                        <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500 animate-in fade-in zoom-in" />
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="pt-2">

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Shield, User, Mail, UserPlus, Loader2, Key, Smartphone, FileText, Eye, EyeOff } from "lucide-react";
+import { Plus, Search, Shield, User, Mail, UserPlus, Loader2, Key, Smartphone, FileText, Eye, EyeOff, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +55,13 @@ const formatPhone = (value: string) => {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 };
 
+const PasswordRequirement = ({ met, text }: { met: boolean; text: string }) => (
+  <div className={`flex items-center gap-1.5 text-[10px] font-medium transition-colors ${met ? "text-emerald-500" : "text-muted-foreground"}`}>
+    {met ? <Check className="w-3 h-3" /> : <X className="w-3 h-3 opacity-50" />}
+    <span>{text}</span>
+  </div>
+);
+
 const Usuarios = () => {
   const { profiles, isLoading, createProfile } = useProfiles();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -69,6 +76,16 @@ const Usuarios = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [newRole, setNewRole] = useState<any>("");
+
+  const passwordRules = {
+    length: newPassword.length >= 8,
+    number: /\d/.test(newPassword),
+    upper: /[A-Z]/.test(newPassword),
+    special: /[!@#$%^&*(),.?":{}|<>]/.test(newPassword),
+  };
+
+  const isPasswordValid = Object.values(passwordRules).every(Boolean);
+  const passwordsMatch = newPassword === confirmPassword && newPassword !== "";
 
   const handleCreateUser = async () => {
     if (!newName || !newEmail || !newRole || !newPassword) {
@@ -227,6 +244,12 @@ const Usuarios = () => {
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 p-3 rounded-lg bg-muted/30 border border-muted">
+                    <PasswordRequirement met={passwordRules.length} text="8+ caracteres" />
+                    <PasswordRequirement met={passwordRules.number} text="Um número" />
+                    <PasswordRequirement met={passwordRules.upper} text="Uma maiúscula" />
+                    <PasswordRequirement met={passwordRules.special} text="Um símbolo (!@#)" />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirmar Senha</Label>
@@ -236,10 +259,13 @@ const Usuarios = () => {
                       id="confirmPassword" 
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••" 
-                      className="pl-9"
+                      className={`pl-9 transition-all duration-300 ${passwordsMatch ? "border-emerald-500 bg-emerald-50/30 ring-1 ring-emerald-500" : ""}`}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                     />
+                    {passwordsMatch && (
+                      <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500 animate-in fade-in zoom-in" />
+                    )}
                   </div>
                 </div>
               </div>
