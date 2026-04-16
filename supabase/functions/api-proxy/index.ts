@@ -238,7 +238,16 @@ serve(async (req) => {
 
     // ── ASAAS ───────────────────────────────────────────────────────────────
     if (service === 'asaas') {
-      const { api_key, sandbox } = config || {};
+      let { api_key, sandbox } = config || {};
+      
+      // Sanitização de chave (remove espaços e metadados comuns de ferramentas de dump)
+      if (api_key) {
+        api_key = api_key.trim();
+        if (api_key.includes('::')) {
+          console.log('[api-proxy] Chave Asaas com metadados detectada. Extraindo prefixo...');
+          api_key = api_key.split('::')[0].trim();
+        }
+      }
       
       if (action === 'get_balance') {
         if (!api_key) {

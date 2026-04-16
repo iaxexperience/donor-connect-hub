@@ -192,8 +192,13 @@ export const useDashboard = () => {
     refetchInterval: 30000 
   });
 
-  // Mantemos fallback
-  const totalDonations = realBalance;
+  // Soma histórica total de doações confirmadas no banco
+  const confirmedDonationsTotal = donations
+    .filter(d => isConfirmedStatus(d.status))
+    .reduce((acc, d) => acc + Number(d.amount || 0), 0);
+
+  // Mantemos fallback: se o saldo real da API falhar ou for 0, usa a soma histórica do banco
+  const totalDonations = realBalance > 0 ? realBalance : confirmedDonationsTotal;
 
   return {
     isLoading: donationsLoading || balanceLoading,
