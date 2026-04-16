@@ -179,13 +179,14 @@ serve(async (req) => {
       // Mapeamento de texto (visto nos logs)
       const text = body.message || body.content || body.text || body.message?.text || body.data?.content || '';
       
-      // Detecta se é echo (Bot enviando)
-      const isEcho = body.role === 'assistant' || body.is_reply || body.direction === 'outbound' || body.event?.includes('sent') || !!body.user_id || true;
+      // Detecta se é echo (Bot enviando) ou Recebida (Usuário)
+      // Ajuste Crítico: Só é echo se vier explicitamente como assistente/outbound
+      const isEcho = body.role === 'assistant' || body.role === 'bot' || body.direction === 'outbound' || body.is_reply === true;
 
       if (rawPhone && text) {
         const phone = normalizePhone(rawPhone);
         await handleMessageSync(supabase, {
-          messageId: msgId, phoneNormalized: phone, text, isEcho, profileName: 'IAX - Theo', status: 'sent'
+          messageId: msgId, phoneNormalized: phone, text, isEcho, profileName: isEcho ? 'IAX - Theo' : 'WhatsApp Contact', status: 'sent'
         });
       }
     }
@@ -210,9 +211,9 @@ serve(async (req) => {
 async function handleMessageSync(supabase: any, data: any) {
   const { messageId, phoneNormalized, text, isEcho, profileName, status } = data;
 
-  console.log(`[Sync] Iniciando Auto-Faxina para ${phoneNormalized}`);
+  console.log(`[Sync] Iniciando sincronização para ${phoneNormalized}`);
 
-  // 1. Busca todos os chats que possam ser do mesmo dono (mesmo número ou variações com 9)
+  // 1. Busca ou cria o chat de forma segura (sem travar por causa de duplicados)
   const { data: allRelatedChats } = await supabase.from('whatsapp_chats')
     .select('id, telefone, unread_count')
     .or(`telefone.eq.${phoneNormalized},telefone.like.%${phoneNormalized.slice(-8)}`)
@@ -221,56 +222,47 @@ async function handleMessageSync(supabase: any, data: any) {
   let chat = null;
 
   if (allRelatedChats && allRelatedChats.length > 0) {
-    // Definimos o primeiro como o "Chat Oficial"
-    chat = allRelatedChats[0];
-    const otherChatIds = allRelatedChats.slice(1).map(c => c.id);
-
-    console.log(`[Sync] Chat oficial definido: ${chat.id}. Detectados ${otherChatIds.length} duplicados.`);
-
-    if (otherChatIds.length > 0) {
-      // MOVE todas as mensagens dos duplicados para o oficial
-      await supabase.from('whatsapp_messages')
-        .update({ chat_id: chat.id })
-        .in('chat_id', otherChatIds);
-      
-      // APAGA os duplicados
-      await supabase.from('whatsapp_chats')
-        .delete()
-        .in('id', otherChatIds);
-        
-      console.log(`[Sync] Duplicados eliminados.`);
-    }
-
-    // Atualiza o chat oficial com a última mensagem
-    await supabase.from('whatsapp_chats').update({ 
-      telefone: phoneNormalized,
-      last_message: text, 
-      last_message_at: new Date().toISOString(), 
-      unread_count: isEcho ? chat.unread_count : (chat.unread_count || 0) + 1
-    }).eq('id', chat.id);
+    chat = allRelatedChats[0]; // Chat oficial (mais antigo)
   } else {
-    // Cria um novo se realmente não existir nada
-    console.log(`[Sync] Criando novo chat primário.`);
+    // Cria novo se não existir nenhum
     const { data: newChat } = await supabase.from('whatsapp_chats').insert([{ 
-      telefone: phoneNormalized, 
-      nome: profileName, 
-      last_message: text, 
-      unread_count: isEcho ? 0 : 1
+      telefone: phoneNormalized, nome: profileName, last_message: text, unread_count: isEcho ? 0 : 1
     }]).select().single();
     chat = newChat;
   }
 
-  // 2. Salva a mensagem garantindo o chat_id correto
   if (chat) {
+    // 2. SALVA A MENSAGEM PRIMEIRO (Prioridade Total)
     await supabase.from('whatsapp_messages').upsert([{
-      chat_id: chat.id, 
-      telefone: phoneNormalized, 
-      text_body: text, 
-      is_from_me: isEcho, 
-      message_id: messageId, 
-      status
+      chat_id: chat.id, telefone: phoneNormalized, text_body: text, is_from_me: isEcho, message_id: messageId, status
     }], { onConflict: 'message_id' });
-    
-    console.log(`[Sync] Mensagem salva no chat unificado: ${chat.id}`);
+
+    console.log(`[Sync] Mensagem salva com sucesso no chat ${chat.id}`);
+
+    // 3. TENTA A FAXINA EM SEGUNDO PLANO (Se der erro, não trava a mensagem)
+    try {
+      const otherChatIds = allRelatedChats?.slice(1).map(c => c.id) || [];
+      if (otherChatIds.length > 0) {
+        console.log(`[Cleaner] Tentando fundir ${otherChatIds.length} duplicados...`);
+        
+        // Move mensagens
+        await supabase.from('whatsapp_messages').update({ chat_id: chat.id }).in('chat_id', otherChatIds);
+        
+        // Apaga chats antigos
+        await supabase.from('whatsapp_chats').delete().in('id', otherChatIds);
+        
+        console.log(`[Cleaner] Fusão concluída.`);
+      }
+
+      // Atualiza o resumo do chat oficial
+      await supabase.from('whatsapp_chats').update({ 
+        telefone: phoneNormalized,
+        last_message: text, 
+        last_message_at: new Date().toISOString()
+      }).eq('id', chat.id);
+
+    } catch (cleanErr) {
+      console.warn(`[Cleaner] Falha na faxina (não crítico):`, cleanErr.message);
+    }
   }
 }
