@@ -164,18 +164,18 @@ serve(async (req) => {
     }
     
     // C. PROCESSAMENTO EXTERNO (GPTMaker / Irrah / Bot)
-    else if (isGPTMaker) {
+    else if (isExternal || !!body.assistantId) {
       console.log('[Webhook] Recebido aviso externo (Theo)');
-      const msgId = body.id || body.message_id || body.data?.message_id || `ext_${Date.now()}`;
+      const msgId = body.id || body.message_id || body.messageId || body.data?.message_id || `ext_${Date.now()}`;
       
-      // Mapeamento agressivo de telefone
-      const rawPhone = body.phone || body.from || body.sender?.phone || body.contact?.phone || body.data?.phone || body.data?.contact?.phone;
+      // Mapeamento agressivo e específico (visto nos logs)
+      const rawPhone = body.contactPhone || body.phone || body.from || body.sender?.phone || body.contact?.phone || body.data?.phone;
       
-      // Mapeamento agressivo de texto
-      const text = body.content || body.text || body.message?.text || body.data?.content || body.data?.text || '';
+      // Mapeamento de texto (visto nos logs)
+      const text = body.message || body.content || body.text || body.message?.text || body.data?.content || '';
       
       // Detecta se é echo (Bot enviando)
-      const isEcho = body.is_reply || body.direction === 'outbound' || body.event?.includes('sent') || !!body.user_id || true;
+      const isEcho = body.role === 'assistant' || body.is_reply || body.direction === 'outbound' || body.event?.includes('sent') || !!body.user_id || true;
 
       if (rawPhone && text) {
         const phone = normalizePhone(rawPhone);
