@@ -1,5 +1,6 @@
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
@@ -22,9 +23,6 @@ async function checkMessages() {
 
   if (error) {
     console.error("❌ Erro ao ler mensagens:", error.message);
-    if (error.message.includes("policy")) {
-      console.log("💡 Nota: RLS está ativado. O script não tem permissão para ler sem login.");
-    }
   } else if (data && data.length > 0) {
     console.log(`✅ Sucesso! Encontrei ${data.length} mensagens.`);
     console.table(data.map(m => ({
@@ -33,14 +31,8 @@ async function checkMessages() {
       Telefone: m.telefone,
       Mensagem: m.text_body.substring(0, 50) + (m.text_body.length > 50 ? '...' : '')
     })));
-    
-    if (data.some(m => m.is_from_me)) {
-      console.log("\n🚀 O THEO ESTÁ NO BANCO! O problema é puramente visual no seu painel.");
-    } else {
-      console.log("\n⚠️ Nenhuma mensagem do Theo encontrada. O problema é na ingestão.");
-    }
   } else {
-    console.log("⚠️ Nenhuma mensagem encontrada na tabela whatsapp_messages.");
+    console.log("⚠️ Nenhuma mensagem encontrada.");
   }
 }
 
