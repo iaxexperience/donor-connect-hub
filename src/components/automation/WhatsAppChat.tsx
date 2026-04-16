@@ -11,7 +11,10 @@ import {
   Phone,
   Video,
   Info,
-  MessageSquare
+  MessageSquare,
+  Printer,
+  XCircle,
+  Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -531,24 +534,42 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
               <div className="flex items-center gap-1">
                 <Button variant="ghost" size="icon" onClick={() => handleCallAction('video')}><Video className="w-4 h-4" /></Button>
                 <Button variant="ghost" size="icon" onClick={() => handleCallAction('audio')}><Phone className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={handleSearchFocus}><Search className="w-4 h-4" /></Button>
+                
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon"><MoreVertical className="w-4 h-4" /></Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuItem onClick={() => toast({ title: "Dados do Contato", description: "Esta funcionalidade será integrada ao CRM em breve." })}>
-                      Dados do contato
+                      <User className="w-4 h-4 mr-2" /> Dados do contato
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={clearChat}>Limpar conversa</DropdownMenuItem>
+                    
+                    <DropdownMenuItem onClick={() => window.print()}>
+                      <Printer className="w-4 h-4 mr-2" /> Exportar / Print
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem onClick={handleSearchFocus}>
+                      <Search className="w-4 h-4 mr-2" /> Pesquisar
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem onClick={() => toast({ title: "Selecionar", description: "Modo de seleção de mensagens ativado." })}>
+                      <Check className="w-4 h-4 mr-2" /> Selecionar mensagens
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem onClick={clearChat}>
+                      <Trash2 className="w-4 h-4 mr-2" /> Limpar conversa
+                    </DropdownMenuItem>
+                    
                     <DropdownMenuItem 
                       className="text-destructive" 
                       onClick={() => toast({ title: "Bloquear Contato", description: "O bloqueio deve ser feito diretamente pelo celular vinculado." })}
                     >
-                      Bloquear
+                      <XCircle className="w-4 h-4 mr-2" /> Bloquear
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                <Button variant="ghost" size="icon" onClick={handleSearchFocus}><Search className="w-4 h-4" /></Button>
               </div>
             </div>
 
