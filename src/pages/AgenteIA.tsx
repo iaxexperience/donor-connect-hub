@@ -5,7 +5,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Bot, User, Send, Loader2, Sparkles, Trash2, MessageSquare } from "lucide-react";
-import ReactMarkdown from "react-markdown";
 
 type Message = {
   role: "user" | "assistant";
@@ -151,9 +150,7 @@ export default function AgenteIA() {
                   }`}
               >
                 {msg.role === "assistant" ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                  </div>
+                  <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                 ) : (
                   <p className="whitespace-pre-wrap">{msg.content}</p>
                 )}

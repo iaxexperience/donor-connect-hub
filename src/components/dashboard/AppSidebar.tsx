@@ -40,6 +40,7 @@ const mainItems = [
   { title: "Follow-ups", url: "/dashboard/followups", icon: CalendarClock },
   { title: "Usuários", url: "/dashboard/usuarios", icon: Users },
   { title: "Relatórios", url: "/dashboard/relatorios", icon: BarChart3 },
+  { title: "Agente IA", url: "/dashboard/agente-ia", icon: Sparkles },
 ];
 
 const configItems = [
