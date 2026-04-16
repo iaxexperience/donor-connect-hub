@@ -23,7 +23,7 @@ async function checkMessages() {
       Data: new Date(m.created_at).toLocaleString('pt-BR'),
       Quem: m.is_from_me ? 'Theo (Robô)' : 'Cliente',
       Telefone: m.telefone,
-      Conteudo: m.text_body.substring(0, 40) + "..."
+      Conteudo: (m.text_body || "[Sem Texto]").substring(0, 40) + "..."
     })));
 
     const botMsg = data.find(m => m.is_from_me === true);
