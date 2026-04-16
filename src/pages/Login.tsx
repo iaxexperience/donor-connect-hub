@@ -44,6 +44,35 @@ const Login = () => {
       }
 
       if (data.session) {
+        // Check profile status before navigating
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('status')
+          .eq('id', data.session.user.id)
+          .maybeSingle();
+
+        if (profile?.status === 'Pendente') {
+          await supabase.auth.signOut();
+          toast({
+            title: "Acesso pendente",
+            description: "Sua conta ainda aguarda aprovação de um administrador.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
+        if (profile?.status === 'Inativo') {
+          await supabase.auth.signOut();
+          toast({
+            title: "Conta inativa",
+            description: "Sua conta está inativa. Entre em contato com o administrador.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
         toast({
           title: "Bem-vindo!",
           description: "Acesso autorizado com sucesso.",
