@@ -48,6 +48,7 @@ const Configuracoes = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   const passwordRules = {
     length: newPassword.length >= 8,
@@ -260,7 +261,7 @@ const Configuracoes = () => {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Nome da Organização</Label>
-                  <Input defaultValue="Pulse Doações" />
+                  <Input value={systemName} onChange={(e) => setSystemName(e.target.value)} placeholder="Nome da organização" />
                 </div>
                 <div className="space-y-2">
                   <Label>CNPJ</Label>
