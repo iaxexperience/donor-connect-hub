@@ -1,5 +1,4 @@
-import fetch from 'node-fetch';
-
+// Usando fetch nativo do Node 22
 const WEBHOOK_URL = "https://zljlhlfbtnzbmeaglkll.supabase.co/functions/v1/meta-whatsapp-proxy";
 
 const fakePayload = {
