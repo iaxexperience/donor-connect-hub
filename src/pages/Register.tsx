@@ -5,6 +5,8 @@ import { Heart, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import {
   Select,
   SelectContent,
@@ -61,6 +63,7 @@ const Register = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,14 +84,55 @@ const Register = () => {
     }
 
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    
+    try {
+      // 1. Sign up user in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+          }
+        }
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // 2. Create the associated profile with 'Pendente' status
+        const { error: profileError } = await supabase.from('profiles').insert([
+          {
+            id: authData.user.id,
+            name,
+            email,
+            cpf,
+            phone,
+            role,
+            status: 'Pendente',
+            must_change_password: false, // For self-registration we assume they set their password
+          }
+        ]);
+
+        if (profileError) throw profileError;
+
+        toast({
+          title: "Cadastro solicitado!",
+          description: "Sua conta foi criada, mas aguarda a ativação por um administrador.",
+        });
+        
+        // Clear form or redirect
+        setTimeout(() => navigate("/login"), 3000);
+      }
+    } catch (error: any) {
       toast({
-        title: "Backend não configurado",
-        description: "Habilite o Lovable Cloud para ativar o cadastro.",
+        title: "Erro ao cadastrar",
+        description: error.message || "Ocorreu um erro inesperado.",
         variant: "destructive",
       });
-    }, 800);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

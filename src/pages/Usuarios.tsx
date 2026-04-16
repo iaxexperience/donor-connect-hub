@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Shield, User, Mail, UserPlus, Loader2, Key, Smartphone, FileText, Eye, EyeOff, Check, X, Edit2, RotateCcw } from "lucide-react";
+import { Plus, Search, Shield, User, Mail, UserPlus, Loader2, Key, Smartphone, FileText, Eye, EyeOff, Check, X, Edit2, RotateCcw, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -181,6 +181,25 @@ const Usuarios = () => {
     } catch (error: any) {
       toast({
         title: "Erro ao redefinir",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleActivateUser = async (user: any) => {
+    try {
+      await updateProfile({
+        id: user.id,
+        status: 'Ativo'
+      });
+      toast({
+        title: "Usuário Ativado!",
+        description: `O perfil de ${user.name} agora está ativo e pronto para uso.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao ativar",
         description: error.message,
         variant: "destructive",
       });
@@ -402,7 +421,10 @@ const Usuarios = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={user.status === "Ativo" ? "default" : "outline"} className="px-2 py-0 h-5">
+                      <Badge 
+                        variant={user.status === "Ativo" ? "default" : user.status === "Pendente" ? "secondary" : "outline"} 
+                        className={`px-2 py-0 h-5 ${user.status === "Pendente" ? "bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200" : ""}`}
+                      >
                         {user.status}
                       </Badge>
                     </TableCell>
@@ -420,6 +442,19 @@ const Usuarios = () => {
                         >
                           <Edit2 className="h-4 w-4" />
                         </Button>
+                        
+                        {user.status === 'Pendente' && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 shadow-sm border border-emerald-100 animate-pulse"
+                            onClick={() => handleActivateUser(user)}
+                            title="Ativar Usuário"
+                          >
+                            <UserCheck className="h-4 w-4" />
+                          </Button>
+                        )}
+
                         <Button 
                           variant="ghost" 
                           size="icon" 

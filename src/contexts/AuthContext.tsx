@@ -9,6 +9,7 @@ interface AuthContextType {
   user: User | null;
   profileName: string | null;
   role: UserRole | null;
+  status: string | null;
   mustChangePassword: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
@@ -22,6 +23,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
@@ -46,6 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setRole(null);
         setProfileName(null);
+        setStatus(null);
         setMustChangePassword(false);
         setLoading(false);
       }
@@ -61,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Primeiro tentamos pelo ID (forma oficial)
       let { data, error } = await supabase
         .from('profiles')
-        .select('role, name, must_change_password')
+        .select('role, name, status, must_change_password')
         .eq('id', userId)
         .maybeSingle();
       
@@ -85,8 +88,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setRole('visualizador');
         setProfileName(userEmail.split('@')[0]);
       } else if (data) {
+        if (data.status === 'Pendente' || data.status === 'Inativo') {
+          await supabase.auth.signOut();
+          setRole(null);
+          setProfileName(null);
+          setStatus(data.status);
+          setMustChangePassword(false);
+          setLoading(false);
+          return;
+        }
+
         setRole(data.role as UserRole);
         setProfileName(data.name || userEmail.split('@')[0]);
+        setStatus(data.status);
         setMustChangePassword(!!data.must_change_password);
       } else {
         setRole('visualizador');
@@ -110,6 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user, 
       profileName, 
       role, 
+      status,
       mustChangePassword, 
       loading, 
       signOut,
