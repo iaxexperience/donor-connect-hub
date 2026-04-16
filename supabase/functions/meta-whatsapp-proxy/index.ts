@@ -19,18 +19,23 @@ function normalizePhone(phone: string): string {
   // Limpa prefixos 5555...
   while (cleaned.length > 11 && cleaned.startsWith("5555")) cleaned = cleaned.substring(2);
   
-  // Se começar com 55 e tiver 12 ou 13 dígitos
+  // Se começar com 55 e tiver 12 ou 13 dígitos (Normal do Brasil na Meta API)
   if (cleaned.startsWith("55") && cleaned.length >= 12) {
     const ddd = cleaned.substring(2, 4);
     const last8 = cleaned.substring(cleaned.length - 8);
     return `55${ddd}${last8}`;
   }
   
-  // Se tiver 10 ou 11 dígitos (DDD + Numero)
+  // Se tiver 10 ou 11 dígitos (DDD + Numero sem 55)
   if (cleaned.length === 10 || cleaned.length === 11) {
     const ddd = cleaned.substring(0, 2);
     const last8 = cleaned.substring(cleaned.length - 8);
     return `55${ddd}${last8}`;
+  }
+
+  // Fallback para o caso de o número já ser apenas o DDD + 8 dígitos
+  if (cleaned.length === 8) {
+    return cleaned; // Provavelmente incompleto mas mantemos
   }
   
   return cleaned;
