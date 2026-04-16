@@ -14,7 +14,9 @@ import {
   Wallet,
   Landmark,
   Sparkles,
+  Heart,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -58,6 +60,47 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { role, signOut } = useAuth();
   const currentPath = location.pathname;
+  
+  const [systemName, setSystemName] = useState("Pulse Doações");
+  const [logoUrl, setLogoUrl] = useState("");
+
+  useEffect(() => {
+    const loadBranding = async () => {
+      // 1. Tentar carregar do localStorage (mais rápido)
+      const localData = localStorage.getItem('white_label_settings');
+      if (localData) {
+        const parsed = JSON.parse(localData);
+        if (parsed.system_name) setSystemName(parsed.system_name);
+        if (parsed.logo_url) setLogoUrl(parsed.logo_url);
+      }
+
+      // 2. Tentar carregar do banco de dados (mais confiável)
+      const { data } = await supabase
+        .from('white_label_settings')
+        .select('system_name, logo_url')
+        .eq('id', 1)
+        .maybeSingle();
+
+      if (data) {
+        if (data.system_name) setSystemName(data.system_name);
+        if (data.logo_url) setLogoUrl(data.logo_url);
+      }
+    };
+
+    loadBranding();
+
+    // 3. Listener para atualizar quando as configurações mudarem
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'white_label_settings' && e.newValue) {
+        const parsed = JSON.parse(e.newValue);
+        if (parsed.system_name) setSystemName(parsed.system_name);
+        if (parsed.logo_url) setLogoUrl(parsed.logo_url);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -84,17 +127,22 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarContent>
         {/* Logo Branding - Concept 3 */}
-        <div className="flex items-center gap-2 px-6 py-8 border-b border-sidebar-border bg-sidebar-background/50 backdrop-blur-sm">
-          <div className="w-10 h-10 rounded-2xl bg-orange-500 shadow-lg shadow-orange-500/30 flex items-center justify-center shrink-0 animate-pulse-glow">
-            <Heart className="w-6 h-6 text-white" fill="currentColor" />
+        <div className="flex items-center gap-3 px-6 py-8 border-b border-sidebar-border bg-sidebar-background/50 backdrop-blur-sm">
+          <div className="w-10 h-10 rounded-2xl bg-white shadow-lg shadow-black/5 flex items-center justify-center shrink-0 overflow-hidden">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1.5" />
+            ) : (
+              <div className="w-full h-full bg-orange-500 flex items-center justify-center">
+                <Heart className="w-6 h-6 text-white" fill="currentColor" />
+              </div>
+            )}
           </div>
           {!collapsed && (
-            <div className="flex flex-col leading-none">
-              <span className="font-heading font-black text-2xl tracking-tighter text-white">
-                Pulse
-                <span className="font-light text-blue-200 ml-1">Doações</span>
+            <div className="flex flex-col leading-none overflow-hidden">
+              <span className="font-heading font-black text-xl tracking-tighter text-white truncate max-w-[150px]">
+                {systemName}
               </span>
-              <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-blue-100/60 mt-1">
+              <span className="text-[7px] font-bold uppercase tracking-[0.2em] text-blue-100/60 mt-1">
                 Fundação Assistencial
               </span>
             </div>
