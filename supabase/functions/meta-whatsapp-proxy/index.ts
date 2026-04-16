@@ -210,29 +210,60 @@ serve(async (req) => {
 async function handleMessageSync(supabase: any, data: any) {
   const { messageId, phoneNormalized, text, isEcho, profileName, status } = data;
 
+  console.log(`[Sync] Processando mensagem ${messageId} para ${phoneNormalized}. isEcho: ${isEcho}`);
+
   // 1. Doador
   let matchedDonorId = null;
-  const { data: donors } = await supabase.from('donors').select('id, name').or(`phone.like.%${phoneNormalized.slice(-8)},phone.eq.${phoneNormalized}`).limit(1);
+  const { data: donors } = await supabase.from('donors')
+    .select('id, name')
+    .or(`phone.like.%${phoneNormalized.slice(-8)},phone.eq.${phoneNormalized}`)
+    .limit(1);
   if (donors && donors.length > 0) matchedDonorId = donors[0].id;
 
-  // 2. Chat
-  let { data: chat } = await supabase.from('whatsapp_chats').select('id, unread_count').eq('telefone', phoneNormalized).maybeSingle();
+  // 2. Chat - Busca agressiva para evitar duplicados
+  let chat = null;
+  const { data: existingChats } = await supabase.from('whatsapp_chats')
+    .select('id, telefone, unread_count')
+    .or(`telefone.eq.${phoneNormalized},telefone.like.%${phoneNormalized.slice(-8)}`)
+    .order('last_message_at', { ascending: false });
 
-  if (!chat) {
-    const { data: newChat } = await supabase.from('whatsapp_chats').upsert([{ 
-      telefone: phoneNormalized, nome: profileName, last_message: text, unread_count: isEcho ? 0 : 1, donor_id: matchedDonorId
-    }], { onConflict: 'telefone' }).select().single();
-    chat = newChat;
-  } else {
+  if (existingChats && existingChats.length > 0) {
+    chat = existingChats[0];
+    console.log(`[Sync] Chat existente encontrado: ${chat.id}`);
+    
+    // Atualiza chat existente
     await supabase.from('whatsapp_chats').update({ 
-      last_message: text, last_message_at: new Date().toISOString(), unread_count: isEcho ? chat.unread_count : (chat.unread_count || 0) + 1, donor_id: matchedDonorId
+      telefone: phoneNormalized, // Normaliza o telefone do chat antigo se necessário
+      last_message: text, 
+      last_message_at: new Date().toISOString(), 
+      unread_count: isEcho ? chat.unread_count : (chat.unread_count || 0) + 1, 
+      donor_id: matchedDonorId
     }).eq('id', chat.id);
+  } else {
+    console.log(`[Sync] Criando novo chat para ${phoneNormalized}`);
+    const { data: newChat } = await supabase.from('whatsapp_chats').insert([{ 
+      telefone: phoneNormalized, 
+      nome: profileName, 
+      last_message: text, 
+      unread_count: isEcho ? 0 : 1, 
+      donor_id: matchedDonorId
+    }]).select().single();
+    chat = newChat;
   }
 
-  // 3. Mensagem (Deduplicada)
+  // 3. Mensagem (Deduplicada por message_id)
   if (chat) {
-    await supabase.from('whatsapp_messages').upsert([{
-      chat_id: chat.id, telefone: phoneNormalized, text_body: text, is_from_me: isEcho, message_id: messageId, status, donor_id: matchedDonorId
+    const { error: msgErr } = await supabase.from('whatsapp_messages').upsert([{
+      chat_id: chat.id, 
+      telefone: phoneNormalized, 
+      text_body: text, 
+      is_from_me: isEcho, 
+      message_id: messageId, 
+      status, 
+      donor_id: matchedDonorId
     }], { onConflict: 'message_id' });
+    
+    if (msgErr) console.error('[Sync] Erro ao salvar mensagem:', msgErr);
+    else console.log(`[Sync] Sucesso: Mensagem salva no chat ${chat.id}`);
   }
 }
