@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plus, Search, Shield, User, Mail, UserPlus, Loader2, Key, Smartphone, FileText, Eye, EyeOff, Check, X, Edit2, RotateCcw, UserCheck } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -140,15 +141,31 @@ const Usuarios = () => {
         });
         toast({ title: "Usuário Atualizado!", description: `${newName} foi atualizado com sucesso.` });
       } else {
-        await createProfile({
-          name: newName,
+        // 1. Create user in Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signUp({
           email: newEmail,
-          cpf: newCPF,
-          phone: newPhone,
-          role: newRole,
-          must_change_password: true,
+          password: newPassword,
         });
-        toast({ title: "Usuário Cadastrado!", description: `O perfil de ${newName} foi criado com sucesso.` });
+
+        if (authError) throw authError;
+
+        if (authData.user) {
+          // 2. Create profile with the new Auth ID
+          await createProfile({
+            id: authData.user.id,
+            name: newName,
+            email: newEmail,
+            cpf: newCPF,
+            phone: newPhone,
+            role: newRole,
+            must_change_password: true,
+            status: 'Pendente' // All new self-registers or admin-created users start as Pending
+          });
+          toast({ 
+            title: "Usuário Cadastrado!", 
+            description: `O perfil de ${newName} foi criado. Verifique se o e-mail de confirmação foi enviado.`,
+          });
+        }
       }
 
       setIsDialogOpen(false);
