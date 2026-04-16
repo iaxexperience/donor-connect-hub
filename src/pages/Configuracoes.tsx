@@ -165,43 +165,7 @@ const Configuracoes = () => {
   };
 
   const triggerLogoUpload = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/png,image/jpeg,image/svg+xml';
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) processLogoFile(file);
-    };
-    input.click();
-  };
-
-  const processLogoFile = async (file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "Arquivo muito grande", description: "Máximo 5MB.", variant: "destructive" });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      if (ev.target?.result) setLogoUrl(ev.target.result as string);
-    };
-    reader.readAsDataURL(file);
-
-    setIsUploadingLogo(true);
-    try {
-      const ext = file.name.split('.').pop();
-      const fileName = `logo_${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from('logos').upload(fileName, file, { upsert: true });
-      if (!error) {
-        const { data: urlData } = supabase.storage.from('logos').getPublicUrl(fileName);
-        setLogoUrl(urlData.publicUrl);
-      }
-      toast({ title: "Logo carregado!", description: "Clique em Salvar para aplicar." });
-    } catch {
-      toast({ title: "Logo carregado localmente", description: "Clique em Salvar para aplicar." });
-    } finally {
-      setIsUploadingLogo(false);
-    }
+    logoInputRef.current?.click();
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -213,26 +177,36 @@ const Configuracoes = () => {
       return;
     }
 
-    // Mostra prévia local imediatamente
+    setIsUploadingLogo(true);
+    
+    // 1. Mostrar prévia localBase64 (feedback imediato)
     const reader = new FileReader();
     reader.onload = (ev) => {
       if (ev.target?.result) setLogoUrl(ev.target.result as string);
     };
     reader.readAsDataURL(file);
 
-    // Tenta enviar para o Storage em segundo plano
-    setIsUploadingLogo(true);
     try {
-      const ext = file.name.split('.').pop();
-      const fileName = `logo_${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from('logos').upload(fileName, file, { upsert: true });
-      if (!error) {
-        const { data: urlData } = supabase.storage.from('logos').getPublicUrl(fileName);
-        setLogoUrl(urlData.publicUrl);
+      // 2. Tentar subir para o Supabase Storage se possível
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `logos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('logos')
+        .upload(filePath, file);
+
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage
+          .from('logos')
+          .getPublicUrl(filePath);
+        
+        setLogoUrl(publicUrl);
+        toast({ title: "Logo enviado!", description: "Imagem salva com sucesso." });
       }
-      toast({ title: "Logo carregado!", description: "Clique em Salvar para aplicar." });
-    } catch {
-      toast({ title: "Logo carregado localmente", description: "Clique em Salvar para aplicar." });
+    } catch (err) {
+      console.error("Storage upload failed, staying with Base64:", err);
+      toast({ title: "Prévia carregada", description: "Clique em salvar para aplicar no navegador." });
     } finally {
       setIsUploadingLogo(false);
     }
@@ -430,6 +404,13 @@ const Configuracoes = () => {
                   {logoUrl ? <img src={logoUrl} alt="Logo" className="max-h-20 object-contain" /> : <div className="text-center"><Palette className="w-8 h-8 text-slate-300 mx-auto" /><span className="text-[10px] text-slate-400 font-bold uppercase mt-1 block">Logo</span></div>}
                 </div>
                 <div className="space-y-4 flex-1">
+                  <input 
+                    type="file" 
+                    ref={logoInputRef} 
+                    className="hidden" 
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                  />
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" className="rounded-xl border-slate-200 font-bold h-10" disabled={isUploadingLogo} onClick={triggerLogoUpload}>
                       <Upload className="w-4 h-4 mr-2" /> {isUploadingLogo ? "Enviando..." : "Upload Logo"}
@@ -437,10 +418,6 @@ const Configuracoes = () => {
                     <Button variant="ghost" size="sm" className="rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 font-bold h-10" onClick={handleRemoveLogo}>Remover</Button>
                   </div>
                   <p className="text-[11px] text-slate-400 font-medium leading-tight">PNG, JPG ou SVG. Máx. 5MB.</p>
-                </div>
-                <div className="w-full md:w-64 p-6 bg-emerald-50/50 border border-emerald-100 rounded-3xl space-y-4">
-                  <div className="flex items-center gap-2 text-emerald-700"><Sparkles className="w-4 h-4" /><span className="text-[11px] font-black uppercase tracking-widest">IA Premium</span></div>
-                  <Button className="w-full bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm rounded-2xl text-xs font-bold gap-2">Gerar com IA</Button>
                 </div>
               </div>
             </CardContent>
