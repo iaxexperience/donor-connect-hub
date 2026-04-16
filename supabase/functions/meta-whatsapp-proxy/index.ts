@@ -113,7 +113,7 @@ serve(async (req) => {
 
     // A. IDENTIFICAÇÃO DO PROVEDOR E REPASSE
     const isMeta = !!body.entry?.[0]?.changes?.[0]?.value;
-    const isGPTMaker = !!body.event || !!body.message_id || (!!body.contact && !!body.message);
+    const isGPTMaker = !!body.assistantId || !!body.role || !!body.event || !!body.messageId || !!body.message;
 
     // Ponte para GPTMaker (Apenas se vier da Meta, para evitar loop infinito)
     const forwardUrl = Deno.env.get('FORWARD_WEBHOOK_URL');
@@ -164,7 +164,7 @@ serve(async (req) => {
     }
     
     // C. PROCESSAMENTO EXTERNO (GPTMaker / Irrah / Bot)
-    else if (isExternal || !!body.assistantId) {
+    else if (isGPTMaker) {
       console.log('[Webhook] Recebido aviso externo (Theo)');
       const msgId = body.id || body.message_id || body.messageId || body.data?.message_id || `ext_${Date.now()}`;
       
