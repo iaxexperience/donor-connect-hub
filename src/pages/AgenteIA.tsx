@@ -89,7 +89,7 @@ export default function AgenteIA() {
           </div>
           <div>
             <h1 className="text-xl font-bold">Agente IA</h1>
-            <p className="text-xs text-muted-foreground">Powered by Claude Opus 4.6</p>
+            <p className="text-xs text-muted-foreground">Powered by Claude 3.5 Sonnet</p>
           </div>
         </div>
         {messages.length > 0 && (

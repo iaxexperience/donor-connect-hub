@@ -392,7 +392,7 @@ Hoje é ${new Date().toLocaleDateString("pt-BR", { weekday: "long", year: "numer
       iterations++;
 
       const response = await anthropic.messages.create({
-        model: "claude-opus-4-6",
+        model: "claude-3-5-sonnet-20240620",
         max_tokens: 4096,
         system: systemPrompt,
         tools,
