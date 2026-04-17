@@ -5,34 +5,42 @@ import { Textarea } from "@/components/ui/textarea";
 import { Mail, Phone, MapPin, Send } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const ContactSection = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const name = formData.get('name');
-    const email = formData.get('email');
-    const org = formData.get('org');
-    const message = formData.get('message');
+    const name = formData.get('name') as string;
+    const email = formData.get('email') as string;
+    const org = formData.get('org') as string;
+    const message = formData.get('message') as string;
 
     setLoading(true);
-    
-    // Construct mailto link
-    const subject = encodeURIComponent(`Contato de ${name} - ${org}`);
-    const body = encodeURIComponent(`Nome: ${name}\nE-mail: ${email}\nOrganização: ${org}\n\nMensagem:\n${message}`);
-    
-    setTimeout(() => {
-      setLoading(false);
-      window.location.href = `mailto:comercial@iax.info?subject=${subject}&body=${body}`;
-      toast({ 
-        title: "Abrindo seu e-mail...", 
-        description: "Enviando mensagem para comercial@iax.info" 
+    try {
+      const { error } = await supabase.functions.invoke('send-contact-email', {
+        body: { name, email, org, message },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Mensagem enviada!",
+        description: "Entraremos em contato em breve.",
       });
       (e.target as HTMLFormElement).reset();
-    }, 500);
+    } catch (err: any) {
+      toast({
+        title: "Erro ao enviar",
+        description: err?.message || "Tente novamente ou envie para comercial@iax.info",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
