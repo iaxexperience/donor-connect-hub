@@ -299,6 +299,7 @@ const FollowUps = () => {
 
   const filtered = followUpList.filter((f) => {
     const s = f.status?.toLowerCase();
+    if (s === 'enviado') return false; // enviados só aparecem no histórico
     if (filterType !== "all" && f.donorType !== filterType) return false;
     if (filterStatus !== "all" && s !== filterStatus) return false;
     return true;
@@ -477,7 +478,6 @@ const FollowUps = () => {
                       <SelectItem value="pendente">Pendente</SelectItem>
                       <SelectItem value="agendado">Agendado</SelectItem>
                       <SelectItem value="atrasado">Atrasado</SelectItem>
-                      <SelectItem value="enviado">Concluído</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
