@@ -200,7 +200,14 @@ const FollowUps = () => {
       const { data } = await supabase.from('follow_up_settings').select('*').eq('id', 1).maybeSingle();
       if (data) {
         setAutomationGlobal(data.enabled);
-        if (data.rules) setAutomationRules(data.rules as any);
+        if (data.rules) {
+          // Merge database data with initial rules to restore icons and colors
+          const mergedRules = initialAutomationRules.map(initial => {
+            const dbRule = (data.rules as any[]).find(r => r.type === initial.type);
+            return dbRule ? { ...initial, ...dbRule } : initial;
+          });
+          setAutomationRules(mergedRules);
+        }
       }
     };
 
