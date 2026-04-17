@@ -194,6 +194,7 @@ const FollowUps = () => {
     }
   };
 
+  useEffect(() => {
     const loadAutomationSettings = async () => {
       const { data } = await supabase.from('follow_up_settings').select('*').eq('id', 1).maybeSingle();
       if (data) {
