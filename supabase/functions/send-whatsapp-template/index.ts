@@ -6,6 +6,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const TEMPLATE_BY_TYPE: Record<string, string> = {
+  unico: 'follow_up_primeiro_doador',
+  esporadico: 'follow_up_engajamento',
+  recorrente: 'follow_up_fidelizacao',
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -17,21 +23,24 @@ serve(async (req) => {
   );
 
   try {
-    const { donor_name, template_name = 'fapagra' } = await req.json();
+    const { donor_name, template_name, follow_up_id } = await req.json();
 
     if (!donor_name) throw new Error('donor_name is required');
 
-    // 1. Find the donor
+    // 1. Find the donor (including type for template selection)
     const { data: donor, error: donorErr } = await supabase
       .from('donors')
-      .select('id, name, phone')
+      .select('id, name, phone, type')
       .ilike('name', `%${donor_name}%`)
       .maybeSingle();
 
     if (donorErr || !donor) throw new Error(`Donor "${donor_name}" not found.`);
     if (!donor.phone) throw new Error(`Donor "${donor.name}" has no phone number.`);
 
-    // 2. Get their latest donation amount
+    // 2. Determine correct template based on donor type
+    const resolvedTemplate = template_name || TEMPLATE_BY_TYPE[donor.type] || 'follow_up_primeiro_doador';
+
+    // 3. Get their latest donation amount
     const { data: latestDonation } = await supabase
       .from('donations')
       .select('amount')
@@ -44,7 +53,7 @@ serve(async (req) => {
     const amount = latestDonation?.amount || 0;
     const formattedAmount = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount);
 
-    // 3. Get WhatsApp credentials
+    // 4. Get WhatsApp credentials
     const { data: waConfig } = await supabase
       .from('whatsapp_settings')
       .select('phone_number_id, access_token')
@@ -55,18 +64,20 @@ serve(async (req) => {
       throw new Error('WhatsApp not configured in whatsapp_settings.');
     }
 
-    // 4. Send the template
-    const cleanPhone = donor.phone.replace(/\D/g, '');
+    // 5. Send the template
+    let cleanPhone = donor.phone.replace(/\D/g, '');
+    if (!cleanPhone.startsWith('55')) cleanPhone = '55' + cleanPhone;
+
     const waPayload = {
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
       to: cleanPhone,
       type: 'template',
       template: {
-        name: template_name,
+        name: resolvedTemplate,
         language: { code: 'pt_BR' },
         components: [{
-          type: 'body',
+          type: 'BODY',
           parameters: [
             { type: 'text', text: donor.name },
             { type: 'text', text: formattedAmount }
@@ -75,7 +86,7 @@ serve(async (req) => {
       }
     };
 
-    console.log(`[Send Template] Sending '${template_name}' to ${donor.name} (${cleanPhone})...`);
+    console.log(`[Send Template] Sending '${resolvedTemplate}' to ${donor.name} (${cleanPhone})...`);
     const waResponse = await fetch(`https://graph.facebook.com/v20.0/${waConfig.phone_number_id}/messages`, {
       method: 'POST',
       headers: {
@@ -91,31 +102,49 @@ serve(async (req) => {
       throw new Error(`Meta API Error: ${waResult.error.message}`);
     }
 
-    // 5. Log the message
+    // 6. Update follow_up status to 'concluido' (service role bypasses RLS)
+    if (follow_up_id) {
+      await supabase
+        .from('follow_ups')
+        .update({ status: 'concluido' })
+        .eq('id', follow_up_id);
+    }
+
+    // 7. Log to follow_up_logs
+    await supabase.from('follow_up_logs').insert([{
+      donor_id: donor.id,
+      donor_name: donor.name,
+      donor_type: donor.type || 'unico',
+      status: 'enviado',
+      channel: 'whatsapp',
+      template: resolvedTemplate,
+      sent_at: new Date().toISOString()
+    }]);
+
+    // 8. Log to whatsapp_messages and whatsapp_historicos
     await supabase.from('whatsapp_messages').insert([{
       donor_id: donor.id,
       sender_id: 'me',
-      text: `Template: ${template_name} - Agradecimento por doação de ${formattedAmount}`,
+      text: `Template: ${resolvedTemplate}`,
       status: 'sent',
       metadata: {
         waba_message_id: waResult.messages?.[0]?.id,
-        template_name: template_name,
-        trigger: 'manual_send'
+        template_name: resolvedTemplate,
+        trigger: 'followup_manual'
       }
     }]);
-    
-    // Also log to whatsapp_historicos (for audit tab)
+
     await supabase.from('whatsapp_historicos').insert([{
       donor_id: donor.id,
       destinatario: cleanPhone,
-      template: template_name,
+      template: resolvedTemplate,
       status: 'sent',
       meta_msg_id: waResult.messages?.[0]?.id,
     }]);
 
-    return new Response(JSON.stringify({ 
-      success: true, 
-      message: `Template '${template_name}' sent to ${donor.name} (${cleanPhone})`,
+    return new Response(JSON.stringify({
+      success: true,
+      message: `Template '${resolvedTemplate}' sent to ${donor.name} (${cleanPhone})`,
       amount: formattedAmount
     }), {
       status: 200,

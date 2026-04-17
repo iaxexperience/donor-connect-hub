@@ -252,99 +252,25 @@ const FollowUps = () => {
 
   const handleProcessNow = async () => {
     setIsProcessingNow(true);
-    console.log("[TESTE] Iniciando Envio via Frontend...");
-    
     try {
-      // 1. Buscar credenciais do WhatsApp
-      const { data: waConfig } = await supabase.from('whatsapp_settings').select('*').eq('id', 1).maybeSingle();
-      
-      if (!waConfig?.access_token || !waConfig?.phone_number_id) {
-        throw new Error("WhatsApp não configurado. Vá em Integrações > WhatsApp e salve as chaves.");
-      }
+      const { data: res, error: callError } = await supabase.functions.invoke('process-followups', {
+        body: { manual: true, force: true }
+      });
 
-      // 2. Buscar TODOS os follow-ups e filtrar no JavaScript (garante que pega independente de letras maiúsculas)
-      const { data: allFollowUps } = await supabase
-        .from('follow_ups')
-        .select('*, donors(id, name, phone)');
+      if (callError) throw new Error(callError.message);
 
-      const pending = (allFollowUps || []).filter(f => 
-        f.status?.toLowerCase() === 'agendado' || 
-        f.status?.toLowerCase() === 'pendente'
-      );
-
-      if (!pending || pending.length === 0) {
-        toast({ title: "Fila Vazia", description: "Não há mensagens agendadas para hoje ou datas passadas na lista." });
-        setIsProcessingNow(false);
-        return;
-      }
-
-      let count = 0;
-      for (const fu of pending) {
-        if (!fu.donors?.name) continue;
-        
-        console.log(`[TESTE] Enviando via Portal Seguro para: ${fu.donors.name}`);
-        
-        const { data: res, error: callError } = await supabase.functions.invoke('send-whatsapp-template', {
-          body: { 
-            donor_name: fu.donors.name,
-            template_name: "fapagra" 
-          }
-        });
-
-        if (!callError && res?.success) {
-          count++;
-          // 1. Atualiza status no banco de dados
-          const { error: upError } = await supabase.from('follow_ups').update({ status: 'concluido' }).eq('id', fu.id);
-          
-          if (upError) {
-            console.error(`[DB Error] Falha ao atualizar status de ${fu.id}:`, upError);
-            toast({ 
-              title: "ERRO DE PERSISTÊNCIA", 
-              description: `Mensagem enviada para ${fu.donors?.name}, mas o banco recusou a atualização (RLS). Verifique as permissões.`,
-              variant: "destructive" 
-            });
-            continue;
-          }
-          
-          // 2. Registra no histórico de automação (Sucesso)
-          await supabase.from('follow_up_logs').insert([{
-            donor_id: fu.donors?.id,
-            donor_name: fu.donors?.name,
-            donor_type: (fu as any).donorType || 'unico',
-            status: 'enviado',
-            channel: 'whatsapp',
-            template: 'fapagra',
-            sent_at: new Date().toISOString()
-          }]);
-        } else {
-          const errorMsg = callError?.message || res?.error || "Erro desconhecido na Meta API";
-          console.error(`[TESTE] Falha para ${fu.donors?.name}:`, errorMsg);
-          
-          // Registra falha no histórico para transparência
-          await supabase.from('follow_up_logs').insert([{
-            donor_id: fu.donors?.id,
-            donor_name: fu.donors?.name,
-            donor_type: (fu as any).donorType || 'unico',
-            status: 'falha',
-            error_message: errorMsg,
-            channel: 'whatsapp',
-            template: 'fapagra',
-            sent_at: new Date().toISOString()
-          }]);
-        }
-      }
-
-      // 3. Força atualização total
       await queryClient.refetchQueries({ queryKey: ['followups'] });
       await queryClient.refetchQueries({ queryKey: ['followup-logs'] });
 
-      if (count > 0) {
-        toast({ title: "SUCESSO NO TESTE", description: `${count} mensagens enviadas e registradas!` });
+      if (res?.sent > 0) {
+        toast({ title: "Sucesso!", description: `${res.sent} mensagens enviadas e fila atualizada!` });
+      } else if (res?.failed > 0) {
+        toast({ title: "Aviso", description: `0 enviadas, ${res.failed} falhas. Verifique o Histórico.`, variant: "destructive" });
       } else {
-        toast({ title: "AVISO", description: "O processamento terminou, mas 0 mensagens foram enviadas com sucesso. Verifique o Histórico para ver os detalhes dos erros.", variant: "destructive" });
+        toast({ title: "Fila Vazia", description: "Não há follow-ups pendentes para hoje." });
       }
     } catch (err: any) {
-      toast({ title: "ERRO DE CONEXÃO", description: err.message, variant: "destructive" });
+      toast({ title: "Erro de Conexão", description: err.message, variant: "destructive" });
     } finally {
       setIsProcessingNow(false);
     }
