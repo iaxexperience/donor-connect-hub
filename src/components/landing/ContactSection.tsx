@@ -12,12 +12,27 @@ const ContactSection = () => {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get('name');
+    const email = formData.get('email');
+    const org = formData.get('org');
+    const message = formData.get('message');
+
     setLoading(true);
+    
+    // Construct mailto link
+    const subject = encodeURIComponent(`Contato de ${name} - ${org}`);
+    const body = encodeURIComponent(`Nome: ${name}\nE-mail: ${email}\nOrganização: ${org}\n\nMensagem:\n${message}`);
+    
     setTimeout(() => {
       setLoading(false);
-      toast({ title: "Mensagem enviada!", description: "Retornaremos em breve." });
+      window.location.href = `mailto:comercial@iax.info?subject=${subject}&body=${body}`;
+      toast({ 
+        title: "Abrindo seu e-mail...", 
+        description: "Enviando mensagem para comercial@iax.info" 
+      });
       (e.target as HTMLFormElement).reset();
-    }, 1000);
+    }, 500);
   };
 
   return (
@@ -39,16 +54,34 @@ const ContactSection = () => {
 
             <div className="space-y-4">
               {[
-                { icon: Mail, label: "comercial@iax.info" },
-                { icon: Phone, label: "83 996583281" },
-                { icon: MapPin, label: "Campina Grande - PB" },
+                { 
+                  icon: Mail, 
+                  label: "comercial@iax.info",
+                  href: "mailto:comercial@iax.info"
+                },
+                { 
+                  icon: Phone, 
+                  label: "83 996583281",
+                  href: "https://wa.me/5583996583281"
+                },
+                { 
+                  icon: MapPin, 
+                  label: "Campina Grande - PB",
+                  href: "https://maps.google.com/?q=Campina+Grande+-+PB"
+                },
               ].map((item) => (
-                <div key={item.label} className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <item.icon className="w-5 h-5 text-primary" />
+                <a 
+                  key={item.label} 
+                  href={item.href}
+                  target={item.href.startsWith('http') ? "_blank" : undefined}
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 hover:text-primary transition-colors group"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+                    <item.icon className="w-5 h-5 text-primary group-hover:text-white" />
                   </div>
-                  <span className="text-foreground text-sm">{item.label}</span>
-                </div>
+                  <span className="text-foreground text-sm font-medium">{item.label}</span>
+                </a>
               ))}
             </div>
           </motion.div>
@@ -62,20 +95,20 @@ const ContactSection = () => {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-foreground mb-1.5 block">Nome</label>
-                  <Input placeholder="Seu nome" required maxLength={100} />
+                  <Input name="name" placeholder="Seu nome" required maxLength={100} />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-foreground mb-1.5 block">E-mail</label>
-                  <Input type="email" placeholder="seu@email.com" required maxLength={255} />
+                  <Input name="email" type="email" placeholder="seu@email.com" required maxLength={255} />
                 </div>
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground mb-1.5 block">Organização</label>
-                <Input placeholder="Nome da sua organização" maxLength={200} />
+                <Input name="org" placeholder="Nome da sua organização" maxLength={200} />
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground mb-1.5 block">Mensagem</label>
-                <Textarea placeholder="Como podemos ajudar?" rows={4} required maxLength={1000} />
+                <Textarea name="message" placeholder="Como podemos ajudar?" rows={4} required maxLength={1000} />
               </div>
               <Button type="submit" className="w-full" size="lg" disabled={loading}>
                 {loading ? "Enviando..." : "Enviar Mensagem"}
