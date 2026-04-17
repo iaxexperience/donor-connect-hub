@@ -108,6 +108,26 @@ const Doadores = () => {
       .trim();
   };
 
+  const formatDateToISO = (dateStr: string) => {
+    if (!dateStr || typeof dateStr !== "string") return null;
+    
+    // Tenta formato DD/MM/YYYY para YYYY-MM-DD
+    const parts = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (parts) {
+      const day = parts[1].padStart(2, "0");
+      const month = parts[2].padStart(2, "0");
+      const year = parts[3];
+      return `${year}-${month}-${day}`;
+    }
+    
+    // Se já for YYYY-MM-DD (ISO)
+    if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+      return dateStr.substring(0, 10);
+    }
+
+    return null;
+  };
+
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -128,33 +148,35 @@ const Doadores = () => {
             phone: 2,
             document_id: 3,
             type: 4,
-            birth_date: 5,
-            zip_code: 6,
-            address: 7,
-            address_number: 8,
-            complement: 9,
-            neighborhood: 10,
-            city: 11,
-            state: 12
+            last_donation_date: 5,
+            birth_date: 6,
+            zip_code: 7,
+            address: 8,
+            address_number: 9,
+            complement: 10,
+            neighborhood: 11,
+            city: 12,
+            state: 13
           };
 
           // Detectar se a primeira linha é cabeçalho
           const firstRow = data[0] as string[];
           const isHeader = firstRow.some(cell => 
-            /nome|name|email|telefone|phone|cpf|cnpj|tipo|type/i.test(String(cell))
+            /nome|name|email|telefone|phone|cpf|cnpj|tipo|type|data/i.test(String(cell))
           );
 
           if (isHeader) {
             startIndex = 1;
             // Mapear índices baseado nos nomes encontrados
             firstRow.forEach((cell, idx) => {
-              const c = String(cell).toLowerCase();
+              const c = normalizeString(String(cell));
               if (c.includes("nome") || c.includes("name")) columns.name = idx;
               else if (c.includes("email")) columns.email = idx;
               else if (c.includes("telefone") || c.includes("phone") || c.includes("celular")) columns.phone = idx;
               else if (c.includes("cpf") || c.includes("cnpj") || c.includes("documento")) columns.document_id = idx;
-              else if (c.includes("tipo") || c.includes("classificação") || c.includes("type")) columns.type = idx;
-              else if (c.includes("nascimento") || c.includes("data")) columns.birth_date = idx;
+              else if (c.includes("tipo") || c.includes("classificacao") || c.includes("type")) columns.type = idx;
+              else if (c.includes("nascimento")) columns.birth_date = idx;
+              else if (c.includes("doacao") || c.includes("data")) columns.last_donation_date = idx;
               else if (c.includes("cep") || c.includes("zip")) columns.zip_code = idx;
             });
           }
@@ -173,7 +195,8 @@ const Doadores = () => {
               phone: (row[columns.phone] || "").toString().replace(/\D/g, ""),
               document_id: row[columns.document_id] || null,
               type: finalType,
-              birth_date: row[columns.birth_date] || null,
+              last_donation_date: formatDateToISO(row[columns.last_donation_date]),
+              birth_date: formatDateToISO(row[columns.birth_date]),
               zip_code: row[columns.zip_code] || null,
               address: row[columns.address] || null,
               address_number: row[columns.address_number] || null,
