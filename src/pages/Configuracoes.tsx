@@ -677,6 +677,8 @@ const Configuracoes = () => {
               <p className="text-xs text-amber-700 leading-relaxed">Você mudou sua senha pela última vez há 45 dias. É recomendável trocar sua senha a cada 90 dias para manter sua conta segura.</p>
             </div>
           </div>
+        </TabsContent>
+
         <TabsContent value="auditoria" className="space-y-6 animate-in fade-in-50 duration-500">
           <Card className="border-slate-100 shadow-sm rounded-2xl bg-white overflow-hidden">
             <CardHeader className="bg-slate-50/50 border-b border-slate-100">
