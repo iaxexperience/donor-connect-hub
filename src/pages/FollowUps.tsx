@@ -40,6 +40,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 type DonorType = "unico" | "esporadico" | "recorrente";
 type FollowUpStatus = "pendente" | "agendado" | "concluido" | "atrasado";
