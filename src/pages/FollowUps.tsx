@@ -278,37 +278,27 @@ const FollowUps = () => {
 
       let count = 0;
       for (const fu of pending) {
-        if (!fu.donors?.phone) continue;
-        const phone = fu.donors.phone.replace(/\D/g, '');
+        if (!fu.donors?.name) continue;
         
-        const res = await fetch(`https://graph.facebook.com/v20.0/${waConfig.phone_number_id}/messages`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${waConfig.access_token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messaging_product: 'whatsapp',
-            to: phone,
-            type: 'template',
-            template: {
-              name: "fapagra", 
-              language: { code: 'pt_BR' },
-              components: [{ type: 'body', parameters: [{ type: 'text', text: fu.donors.name }] }]
-            }
-          })
+        console.log(`[TESTE] Enviando via Portal Seguro para: ${fu.donors.name}`);
+        
+        const { data: res, error: callError } = await supabase.functions.invoke('send-whatsapp-template', {
+          body: { 
+            donor_name: fu.donors.name,
+            template_name: "fapagra" 
+          }
         });
 
-        if (res.ok) {
+        if (!callError && res?.success) {
           count++;
+          // Atualiza status localmente
           await supabase.from('follow_ups').update({ status: 'concluido' }).eq('id', fu.id);
-          await supabase.from('follow_up_logs').insert([{
-            donor_id: fu.donors.id,
-            donor_name: fu.donors.name,
-            status: 'enviado',
-            channel: 'whatsapp'
-          }]);
+        } else {
+          console.error(`[TESTE] Erro ao enviar para ${fu.donors.name}:`, callError || res?.error);
         }
       }
 
-      toast({ title: "SUCESSO NO TESTE", description: `${count} mensagens enviadas diretamente pelo navegador!` });
+      toast({ title: "SUCESSO NO TESTE", description: `${count} mensagens enviadas via Portal Seguro!` });
     } catch (err: any) {
       toast({ title: "ERRO DE CONEXÃO", description: err.message, variant: "destructive" });
     } finally {
