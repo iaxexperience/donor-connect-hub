@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
-import { 
+import { useNavigate } from "react-router-dom";
+import {
   Users, MessageSquare, BarChart3, Kanban as KanbanIcon,
-  Megaphone, Phone, Bell, Banknote, Gift, 
+  Megaphone, Phone, Bell, Banknote, Gift,
   Link as LinkIcon, UserCog, Globe, Settings, LayoutDashboard,
   ShieldCheck, ArrowRight
 } from "lucide-react";
@@ -90,6 +91,7 @@ const featureCategories = [
 ];
 
 const FeaturesSection = () => {
+  const navigate = useNavigate();
   return (
     <section id="features" className="py-24 bg-white relative overflow-hidden">
       {/* Background Decor */}
@@ -166,7 +168,10 @@ const FeaturesSection = () => {
               <p className="text-white/60 text-sm max-w-md">Controle de acessos, White Label completo e gerenciamento de chaves de API em um painel seguro.</p>
             </div>
           </div>
-          <button className="px-8 h-12 bg-[#00C38B] text-[#001A3D] font-bold rounded-xl hover:scale-105 transition-transform active:scale-95">
+          <button
+            onClick={() => navigate("/documentacao")}
+            className="px-8 h-12 bg-[#00C38B] text-[#001A3D] font-bold rounded-xl hover:scale-105 transition-transform active:scale-95"
+          >
             Ver Documentação API
           </button>
         </motion.div>

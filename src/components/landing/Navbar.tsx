@@ -63,11 +63,11 @@ const Navbar = () => {
             <Link to="/login">Entrar</Link>
           </Button>
           <Button className={`font-bold shadow-lg rounded-xl px-6 ${
-            scrolled 
-              ? "bg-[#001A3D] text-white hover:bg-[#002D62]" 
+            scrolled
+              ? "bg-[#001A3D] text-white hover:bg-[#002D62]"
               : "bg-[#00C38B] text-[#001A3D] hover:bg-[#00E0A1]"
-          }`}>
-            Cadastre-se
+          }`} asChild>
+            <Link to="/cadastro">Cadastre-se</Link>
           </Button>
         </div>
 
@@ -102,7 +102,9 @@ const Navbar = () => {
                 <Button variant="ghost" size="sm" className="flex-1" asChild>
                   <Link to="/login">Entrar</Link>
                 </Button>
-                <Button size="sm" className="flex-1">Cadastre-se</Button>
+                <Button size="sm" className="flex-1" asChild>
+                  <Link to="/cadastro">Cadastre-se</Link>
+                </Button>
               </div>
             </div>
           </motion.div>

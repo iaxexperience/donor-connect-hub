@@ -26,6 +26,7 @@ import WhatsApp from "./pages/WhatsApp";
 import Caixa from "./pages/Caixa";
 import DoacoesFisicas from "./pages/DoacoesFisicas";
 import ValidateReceipt from "./pages/ValidateReceipt";
+import Documentacao from "./pages/Documentacao";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
@@ -77,6 +78,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/documentacao" element={<Documentacao />} />
                 <Route path="/cadastro" element={<Register />} />
                 
                 {/* Rota Protegida do Dashboard */}
