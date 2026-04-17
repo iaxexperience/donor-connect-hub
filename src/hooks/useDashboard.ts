@@ -245,6 +245,29 @@ export const useDashboard = () => {
     refetchInterval: 30000 
   });
 
+  const { data: bbStats = { totalToday: 0, totalAll: 0, matched: 0, unmatched: 0, total: 0 } } = useQuery({
+    queryKey: ['bb-dashboard-stats'],
+    queryFn: async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const { data: todayTx } = await supabase
+        .from('bank_transactions')
+        .select('amount')
+        .eq('source', 'banco_brasil')
+        .eq('type', 'credit')
+        .gte('date', `${today}T00:00:00`);
+      const { data: allTx } = await supabase
+        .from('bank_transactions')
+        .select('amount, matched')
+        .eq('source', 'banco_brasil')
+        .eq('type', 'credit');
+      const totalToday = todayTx?.reduce((s, t) => s + parseFloat(t.amount), 0) ?? 0;
+      const totalAll = allTx?.reduce((s, t) => s + parseFloat(t.amount), 0) ?? 0;
+      const matched = allTx?.filter(t => t.matched).length ?? 0;
+      return { totalToday, totalAll, matched, unmatched: (allTx?.length ?? 0) - matched, total: allTx?.length ?? 0 };
+    },
+    refetchInterval: 30000
+  });
+
   // Soma histórica total de doações confirmadas no banco
   const confirmedDonationsTotal = donations
     .filter(d => isConfirmedStatus(d.status))
@@ -262,6 +285,7 @@ export const useDashboard = () => {
     recentDonations: getRecentDonations(),
     todayTotal,
     totalDonations,
+    bbStats,
     avgTicket: donations.length > 0 ? donations.reduce((acc, d) => acc + Number(d.amount || 0), 0) / Math.max(donations.filter(d => isConfirmedStatus(d.status)).length, 1) : 0,
     donationsCount: donations.length
   };

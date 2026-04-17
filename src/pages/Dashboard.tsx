@@ -9,6 +9,7 @@ import {
   Users,
   DollarSign,
   Wallet,
+  Landmark,
   Activity,
   Calendar,
   AlertCircle,
@@ -67,10 +68,11 @@ export default function Dashboard() {
     evolutionData, 
     topDonors, 
     recentDonations, 
-    totalDonations, 
+    totalDonations,
+    bbStats,
     avgTicket,
     todayTotal,
-    isLoading: dashboardLoading 
+    isLoading: dashboardLoading
   } = useDashboard();
 
   const stats = {
@@ -162,6 +164,37 @@ export default function Dashboard() {
                     <span>R$ 22.400,00</span>
                   </div>
                   <Progress value={65} className="h-1 bg-white/20" />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* BANCO DO BRASIL CARD */}
+          <motion.div variants={item}>
+            <Card className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white border-none overflow-hidden relative">
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <Landmark className="h-24 w-24" />
+              </div>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium opacity-80">Banco do Brasil (Hoje)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(bbStats.totalToday)}
+                </div>
+                <div className="flex items-center gap-2 mt-2 text-xs opacity-90">
+                  <span className="w-2 h-2 rounded-full bg-green-300 animate-pulse" />
+                  Total acumulado: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(bbStats.totalAll)}
+                </div>
+                <div className="mt-4 space-y-2">
+                  <div className="flex justify-between text-xs opacity-70">
+                    <span>Conciliadas</span>
+                    <span>{bbStats.matched} de {bbStats.total}</span>
+                  </div>
+                  <Progress
+                    value={bbStats.total > 0 ? (bbStats.matched / bbStats.total) * 100 : 0}
+                    className="h-1 bg-white/20"
+                  />
                 </div>
               </CardContent>
             </Card>
