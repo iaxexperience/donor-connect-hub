@@ -61,9 +61,6 @@ const PulseLogo: React.FC<PulseLogoProps> = ({
             Pulse
             <span className="text-[#00C38B] ml-1">Doações</span>
           </span>
-          <span className={`text-[8px] font-bold uppercase tracking-[0.3em] ${variant === 'dark' ? 'text-slate-400' : 'text-white/60'}`}>
-            Fundação Assistencial
-          </span>
         </div>
       )}
     </div>

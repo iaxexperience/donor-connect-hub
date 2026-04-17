@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { 
   Users, MessageSquare, BarChart3, Kanban as KanbanIcon,
   Megaphone, Phone, Bell, Banknote, Gift, 
