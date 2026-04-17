@@ -1,19 +1,22 @@
-import { Heart } from "lucide-react";
+import PulseLogo from "@/components/common/PulseLogo";
 
 const FooterSection = () => {
   return (
-    <footer className="bg-foreground py-12">
+    <footer className="bg-[#001A3D] py-16">
       <div className="container mx-auto px-4">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-accent flex items-center justify-center">
-              <Heart className="w-4 h-4 text-accent-foreground" />
-            </div>
-            <span className="font-heading font-bold text-lg text-background">FAP Pulse</span>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-10">
+          <div className="hover:scale-105 transition-transform duration-300 cursor-pointer">
+            <PulseLogo showText size={40} variant="light" />
           </div>
-          <p className="text-sm text-background/50">
-            © {new Date().getFullYear()} FAP Pulse. Todos os direitos reservados.
-          </p>
+          
+          <div className="flex flex-col items-center md:items-end gap-2">
+            <p className="text-sm text-white/40 font-medium">
+              © {new Date().getFullYear()} Pulse Doações. Todos os direitos reservados.
+            </p>
+            <p className="text-[10px] text-white/20 uppercase tracking-widest font-bold">
+              Solução completa para gestão do Terceiro Setor
+            </p>
+          </div>
         </div>
       </div>
     </footer>

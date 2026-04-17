@@ -1,59 +1,100 @@
-import { motion } from "framer-motion";
-import {
-  Users, MessageCircle, BarChart3, Kanban,
-  Brain, Webhook, Shield, Zap, ArrowRight,
+import { 
+  Users, MessageSquare, BarChart3, Kanban as KanbanIcon,
+  Megaphone, Phone, Bell, Banknote, Gift, 
+  Link as LinkIcon, UserCog, Globe, Settings, LayoutDashboard,
+  ShieldCheck, ArrowRight
 } from "lucide-react";
 
-const features = [
+const featureCategories = [
   {
-    icon: Users,
-    title: "CRM de Doadores",
-    description: "Cadastro completo, histórico de doações, score de lealdade e visão 360° de cada doador.",
+    category: "Gestão Central",
+    features: [
+      {
+        icon: LayoutDashboard,
+        title: "🏠 Dashboard",
+        description: "Visão geral em tempo real: recebimentos, saldo ASAAS/BB, Pulso da Arrecadação (Health Score) e mix por campanha."
+      },
+      {
+        icon: Users,
+        title: "👥 Doadores",
+        description: "Cadastro completo, classificação (Lead a Recorrente), importação CSV automática e histórico 360°."
+      },
+      {
+        icon: KanbanIcon,
+        title: "📋 Kanban",
+        description: "Pipeline visual de conversão de leads em doadores ativos com gestão simplificada do funil."
+      }
+    ]
   },
   {
-    icon: MessageCircle,
-    title: "Automação WhatsApp",
-    description: "Follow-up automático com templates personalizados e retry exponencial para máxima entrega.",
+    category: "Operacional & Captação",
+    features: [
+      {
+        icon: Megaphone,
+        title: "📣 Campanhas",
+        description: "Criação de metas, acompanhamento em tempo real e vinculação direta de doações."
+      },
+      {
+        icon: Phone,
+        title: "📞 Telemarketing",
+        description: "Fila de contatos inteligente e registro de resultados para captação ativa."
+      },
+      {
+        icon: Bell,
+        title: "🔔 Follow-ups",
+        description: "Agendamento automático via cron job com status e notas personalizadas por doador."
+      }
+    ]
   },
   {
-    icon: Kanban,
-    title: "Kanban Inteligente",
-    description: "Classifique doadores automaticamente: Único, Esporádico, Recorrente. Arrastar e soltar.",
+    category: "Comunicação & Financeiro",
+    features: [
+      {
+        icon: MessageSquare,
+        title: "💬 WhatsApp",
+        description: "Integração Meta API, envio de templates, chat em tempo real e proxy Meta Business."
+      },
+      {
+        icon: Banknote,
+        title: "💰 Caixa",
+        description: "Controle físico diário, emissão de recibos sequenciais (DOA-YYYY-N) e validação pública."
+      },
+      {
+        icon: Gift,
+        title: "🎁 Doações Físicas",
+        description: "Registro de itens não-financeiros (alimentos, veículos, etc.) com controle de status e destino."
+      }
+    ]
   },
   {
-    icon: Brain,
-    title: "IA Personalizada",
-    description: "Configure LLMs para gerar roteiros de telemarketing e personalizar mensagens.",
-  },
-  {
-    icon: BarChart3,
-    title: "Dashboard Executivo",
-    description: "KPIs em tempo real, gráficos interativos e drill-down para decisões estratégicas.",
-  },
-  {
-    icon: Webhook,
-    title: "Integrações Flexíveis",
-    description: "Conecte com N8N, GPT Maker, APIs bancárias, gateways de pagamento e mais.",
-  },
-  {
-    icon: Shield,
-    title: "Segurança & LGPD",
-    description: "Criptografia, RBAC, RLS, auditoria completa e conformidade com a LGPD.",
-  },
-  {
-    icon: Zap,
-    title: "Relatórios Avançados",
-    description: "Relatórios com filtros configuráveis, exportação CSV/PDF e agendamento automático.",
-  },
+    category: "Inteligência & Tecnologia",
+    features: [
+      {
+        icon: BarChart3,
+        title: "📊 Relatórios",
+        description: "Análise profunda por campanha, método de pagamento e evolução de arrecadação."
+      },
+      {
+        icon: LinkIcon,
+        title: "🔗 Integrações",
+        description: "Conexão nativa com ASAAS (Webhooks), Banco do Brasil (mTLS) e Meta WhatsApp."
+      },
+      {
+        icon: Globe,
+        title: "🌐 API Aberta",
+        description: "API RESTful documentada com Webhooks em tempo real e limite de 10.000 req/hora."
+      }
+    ]
+  }
 ];
 
 const FeaturesSection = () => {
   return (
-    <section id="features" className="py-24 bg-slate-50 relative overflow-hidden">
+    <section id="features" className="py-24 bg-white relative overflow-hidden">
       {/* Background Decor */}
-      <div className="absolute top-0 left-0 w-full h-full opacity-30 pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-200/40 rounded-full blur-[100px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-200/40 rounded-full blur-[100px]" />
+      <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#00C38B] rounded-full blur-[120px]" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#001A3D] rounded-full blur-[120px]" />
       </div>
 
       <div className="container mx-auto px-4 relative z-10">
@@ -63,43 +104,71 @@ const FeaturesSection = () => {
           viewport={{ once: true }}
           className="text-center mb-20"
         >
-          <div className="inline-block px-3 py-1 rounded-full bg-blue-100/50 border border-blue-200 mb-4">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">Alta Performance</span>
+          <div className="inline-block px-4 py-1.5 rounded-full bg-[#00C38B]/10 border border-[#00C38B]/20 mb-4">
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#001A3D]">Ecossistema Completo</span>
           </div>
-          <h2 className="font-heading font-extrabold text-4xl md:text-5xl text-slate-900 mt-3 mb-6 tracking-tight">
-            Ferramentas que <br />
-            <span className="text-blue-600">impulsionam resultados</span>
+          <h2 className="font-heading font-extrabold text-4xl md:text-5xl text-[#001A3D] mt-3 mb-6 tracking-tight">
+            Tudo o que você precisa <br />
+            <span className="text-[#00C38B]">em um só lugar</span>
           </h2>
           <p className="text-slate-500 max-w-2xl mx-auto text-lg leading-relaxed">
-            Uma suíte completa de gestão e automação desenhada especificamente para escalas doações e otimizar o relacionamento com sua base.
+            Combinamos captação, relacionamento, controle financeiro e automações para transformar sua gestão do terceiro setor.
           </p>
         </motion.div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {features.map((feature, i) => (
-            <motion.div
-              key={feature.title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-              className="group relative"
-            >
-              <div className="h-full bg-white/70 backdrop-blur-sm rounded-[2rem] border border-slate-200 p-8 hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 hover:-translate-y-2 group-hover:bg-white">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mb-6 shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform duration-500">
-                  <feature.icon className="w-7 h-7 text-white" />
-                </div>
-                <h3 className="font-heading font-bold text-slate-900 text-xl mb-3">{feature.title}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed mb-6">{feature.description}</p>
-                
-                <div className="flex items-center gap-2 text-blue-600 font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                  Saber mais
-                  <ArrowRight className="w-3 h-3" />
-                </div>
+        <div className="space-y-20">
+          {featureCategories.map((cat, catIdx) => (
+            <div key={cat.category} className="space-y-10">
+              <div className="flex items-center gap-4">
+                <h3 className="font-heading font-black text-xs uppercase tracking-[0.4em] text-slate-400 shrink-0">
+                  {cat.category}
+                </h3>
+                <div className="h-[1px] w-full bg-slate-100" />
               </div>
-            </motion.div>
+              
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {cat.features.map((feature, i) => (
+                  <motion.div
+                    key={feature.title}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1 }}
+                    className="group"
+                  >
+                    <div className="h-full bg-slate-50/50 hover:bg-white rounded-[2rem] border border-slate-100 p-8 hover:shadow-2xl hover:shadow-[#00C38B]/10 transition-all duration-500 hover:-translate-y-2">
+                      <div className="w-14 h-14 rounded-2xl bg-[#001A3D] flex items-center justify-center mb-6 shadow-lg shadow-[#001A3D]/10 group-hover:bg-[#00C38B] transition-colors duration-500">
+                        <feature.icon className="w-6 h-6 text-white" />
+                      </div>
+                      <h3 className="font-heading font-bold text-[#001A3D] text-lg mb-3 tracking-tight">{feature.title}</h3>
+                      <p className="text-slate-500 text-sm leading-relaxed">{feature.description}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
+
+        {/* Global Settings / Users summary footer */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          className="mt-20 p-8 rounded-[2.5rem] bg-[#001A3D] text-white flex flex-col md:flex-row items-center justify-between gap-8"
+        >
+          <div className="flex items-center gap-6">
+            <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center">
+              <ShieldCheck className="w-8 h-8 text-[#00C38B]" />
+            </div>
+            <div>
+              <h4 className="font-bold text-xl mb-1">Gestão de Usuários e Configurações</h4>
+              <p className="text-white/60 text-sm max-w-md">Controle de acessos, White Label completo e gerenciamento de chaves de API em um painel seguro.</p>
+            </div>
+          </div>
+          <button className="px-8 h-12 bg-[#00C38B] text-[#001A3D] font-bold rounded-xl hover:scale-105 transition-transform active:scale-95">
+            Ver Documentação API
+          </button>
+        </motion.div>
       </div>
     </section>
   );
