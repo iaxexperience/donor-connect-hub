@@ -295,7 +295,16 @@ const FollowUps = () => {
           count++;
           // 1. Atualiza status no banco de dados
           const { error: upError } = await supabase.from('follow_ups').update({ status: 'concluido' }).eq('id', fu.id);
-          if (upError) console.error(`[DB Error] Falha ao atualizar status de ${fu.id}:`, upError);
+          
+          if (upError) {
+            console.error(`[DB Error] Falha ao atualizar status de ${fu.id}:`, upError);
+            toast({ 
+              title: "ERRO DE PERSISTÊNCIA", 
+              description: `Mensagem enviada para ${fu.donors?.name}, mas o banco recusou a atualização (RLS). Verifique as permissões.`,
+              variant: "destructive" 
+            });
+            continue;
+          }
           
           // 2. Registra no histórico de automação (Sucesso)
           await supabase.from('follow_up_logs').insert([{
