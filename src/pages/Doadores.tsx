@@ -134,8 +134,9 @@ const Doadores = () => {
 
     setIsImporting(true);
     Papa.parse(file, {
-      header: false, // Leer como arrays para decidir se a primeira linha é cabeçalho
+      header: false,
       skipEmptyLines: true,
+      encoding: "UTF-8",
       complete: async (results) => {
         try {
           const { data } = results;
