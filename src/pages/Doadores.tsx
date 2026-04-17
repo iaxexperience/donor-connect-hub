@@ -106,28 +106,76 @@ const Doadores = () => {
 
     setIsImporting(true);
     Papa.parse(file, {
-      header: true,
+      header: false, // Leer como arrays para decidir se a primeira linha é cabeçalho
       skipEmptyLines: true,
       complete: async (results) => {
         try {
           const { data } = results;
-          const formattedDonors = data.map((row: any) => ({
-            name: row.name || row.Nome || row.nome || "",
-            email: row.email || row.Email || row.email || "",
-            phone: (row.phone || row.Telefone || row.telefone || "").replace(/\D/g, ""),
-            document_id: row.document_id || row.CPF || row.CNPJ || row.documento || null,
-            type: (row.type || row.Tipo || row.tipo || "lead").toLowerCase(),
-            birth_date: row.birth_date || row["Data de Nascimento"] || row.nascimento || null,
-            zip_code: row.zip_code || row.CEP || row.cep || null,
-            address: row.address || row.Logradouro || row.rua || null,
-            address_number: row.address_number || row.Número || row.numero || null,
-            complement: row.complement || row.Complemento || row.complemento || null,
-            neighborhood: row.neighborhood || row.Bairro || row.bairro || null,
-            city: row.city || row.Cidade || row.cidade || null,
-            state: (row.state || row.Estado || row.UF || row.uf || null)?.toUpperCase(),
-            total_donated: 0,
-            donation_count: 0
-          })).filter((d: any) => d.name && d.email); // Basic validation
+          if (!data || data.length === 0) throw new Error("Arquivo vazio.");
+
+          let startIndex = 0;
+          let columns = {
+            name: 0,
+            email: 1,
+            phone: 2,
+            document_id: 3,
+            type: 4,
+            birth_date: 5,
+            zip_code: 6,
+            address: 7,
+            address_number: 8,
+            complement: 9,
+            neighborhood: 10,
+            city: 11,
+            state: 12
+          };
+
+          // Detectar se a primeira linha é cabeçalho
+          const firstRow = data[0] as string[];
+          const isHeader = firstRow.some(cell => 
+            /nome|name|email|telefone|phone|cpf|cnpj|tipo|type/i.test(String(cell))
+          );
+
+          if (isHeader) {
+            startIndex = 1;
+            // Mapear índices baseado nos nomes encontrados
+            firstRow.forEach((cell, idx) => {
+              const c = String(cell).toLowerCase();
+              if (c.includes("nome") || c.includes("name")) columns.name = idx;
+              else if (c.includes("email")) columns.email = idx;
+              else if (c.includes("telefone") || c.includes("phone") || c.includes("celular")) columns.phone = idx;
+              else if (c.includes("cpf") || c.includes("cnpj") || c.includes("documento")) columns.document_id = idx;
+              else if (c.includes("tipo") || c.includes("classificação") || c.includes("type")) columns.type = idx;
+              else if (c.includes("nascimento") || c.includes("data")) columns.birth_date = idx;
+              else if (c.includes("cep") || c.includes("zip")) columns.zip_code = idx;
+            });
+          }
+
+          const formattedDonors = data.slice(startIndex).map((row: any) => {
+            const rawType = (row[columns.type] || "lead").toString().toLowerCase();
+            let finalType = "lead";
+            if (rawType.includes("recorrente")) finalType = "recorrente";
+            else if (rawType.includes("esporadico") || rawType.includes("esporádica")) finalType = "esporadico";
+            else if (rawType.includes("unico") || rawType.includes("única")) finalType = "unico";
+
+            return {
+              name: row[columns.name] || "Doador sem Nome",
+              email: row[columns.email] || "sem@email.com",
+              phone: (row[columns.phone] || "").toString().replace(/\D/g, ""),
+              document_id: row[columns.document_id] || null,
+              type: finalType,
+              birth_date: row[columns.birth_date] || null,
+              zip_code: row[columns.zip_code] || null,
+              address: row[columns.address] || null,
+              address_number: row[columns.address_number] || null,
+              complement: row[columns.complement] || null,
+              neighborhood: row[columns.neighborhood] || null,
+              city: row[columns.city] || null,
+              state: (row[columns.state] || null)?.toString().toUpperCase().slice(0, 2),
+              total_donated: 0,
+              donation_count: 0
+            };
+          }).filter((d: any) => d.name && d.name !== "Doador sem Nome"); // Pelo menos o nome precisa existir
 
           if (formattedDonors.length === 0) {
             throw new Error("Nenhum doador válido encontrado no arquivo.");
