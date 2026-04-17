@@ -250,76 +250,65 @@ const FollowUps = () => {
 
   const handleProcessNow = async () => {
     setIsProcessingNow(true);
+    console.log("[TESTE] Iniciando Envio via Frontend...");
+    
     try {
-      console.log("[Process] Tentando invocar Edge Function...");
-      const { data, error } = await supabase.functions.invoke('process-followups', {
-        body: { force: true }
-      });
+      // 1. Buscar credenciais do WhatsApp
+      const { data: waConfig } = await supabase.from('whatsapp_settings').select('*').eq('id', 1).maybeSingle();
       
-      if (error) throw error;
-      
-      const count = data.results?.length || 0;
-      toast({ title: "Processamento Concluído", description: `${count} mensagens foram verificadas para envio.` });
-    } catch (err: any) {
-      console.warn("[Process] Edge Function indisponível. Iniciando contingência via Frontend...", err.message);
-      
-      // Contingência: Envio Direto via Frontend (para quando a Function não está em deploy)
-      try {
-        // 1. Buscar credenciais
-        const { data: waConfig } = await supabase.from('whatsapp_settings').select('*').eq('id', 1).maybeSingle();
-        if (!waConfig?.access_token || !waConfig?.phone_number_id) {
-          throw new Error("WhatsApp não configurado nas Integrações.");
-        }
-
-        // 2. Buscar agendados
-        const todayStr = new Date().toISOString().split('T')[0];
-        const { data: pending } = await supabase
-          .from('follow_ups')
-          .select('*, donors(id, name, phone)')
-          .eq('status', 'agendado')
-          .lte('due_date', todayStr);
-
-        if (!pending || pending.length === 0) {
-          toast({ title: "Nada para enviar", description: "Não há follow-ups agendados para hoje ou datas passadas." });
-          return;
-        }
-
-        let successCount = 0;
-        for (const fu of pending) {
-          if (!fu.donors?.phone) continue;
-          
-          const cleanPhone = fu.donors.phone.replace(/\D/g, '');
-          const res = await fetch(`https://graph.facebook.com/v20.0/${waConfig.phone_number_id}/messages`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${waConfig.access_token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              messaging_product: 'whatsapp',
-              to: cleanPhone,
-              type: 'template',
-              template: {
-                name: "fapagra", // Fallback template ou carregar das regras
-                language: { code: 'pt_BR' },
-                components: [{ type: 'body', parameters: [{ type: 'text', text: fu.donors.name }] }]
-              }
-            })
-          });
-
-          if (res.ok) {
-            successCount++;
-            await supabase.from('follow_ups').update({ status: 'concluido' }).eq('id', fu.id);
-            await supabase.from('follow_up_logs').insert([{
-              donor_id: fu.donors.id,
-              donor_name: fu.donors.name,
-              status: 'enviado',
-              channel: 'whatsapp'
-            }]);
-          }
-        }
-
-        toast({ title: "Contingência Concluída", description: `${successCount} mensagens enviadas via envio direto.` });
-      } catch (subErr: any) {
-        toast({ title: "Falha Crítica", description: subErr.message, variant: "destructive" });
+      if (!waConfig?.access_token || !waConfig?.phone_number_id) {
+        throw new Error("WhatsApp não configurado. Vá em Integrações > WhatsApp e salve as chaves.");
       }
+
+      // 2. Buscar agendados para hoje ou atrasados
+      const todayStr = new Date().toISOString().split('T')[0];
+      const { data: pending } = await supabase
+        .from('follow_ups')
+        .select('*, donors(id, name, phone)')
+        .eq('status', 'agendado')
+        .lte('due_date', todayStr);
+
+      if (!pending || pending.length === 0) {
+        toast({ title: "Fila Vazia", description: "Não há mensagens agendadas para hoje ou datas passadas na lista." });
+        setIsProcessingNow(false);
+        return;
+      }
+
+      let count = 0;
+      for (const fu of pending) {
+        if (!fu.donors?.phone) continue;
+        const phone = fu.donors.phone.replace(/\D/g, '');
+        
+        const res = await fetch(`https://graph.facebook.com/v20.0/${waConfig.phone_number_id}/messages`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${waConfig.access_token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            to: phone,
+            type: 'template',
+            template: {
+              name: "fapagra", 
+              language: { code: 'pt_BR' },
+              components: [{ type: 'body', parameters: [{ type: 'text', text: fu.donors.name }] }]
+            }
+          })
+        });
+
+        if (res.ok) {
+          count++;
+          await supabase.from('follow_ups').update({ status: 'concluido' }).eq('id', fu.id);
+          await supabase.from('follow_up_logs').insert([{
+            donor_id: fu.donors.id,
+            donor_name: fu.donors.name,
+            status: 'enviado',
+            channel: 'whatsapp'
+          }]);
+        }
+      }
+
+      toast({ title: "SUCESSO NO TESTE", description: `${count} mensagens enviadas diretamente pelo navegador!` });
+    } catch (err: any) {
+      toast({ title: "ERRO DE CONEXÃO", description: err.message, variant: "destructive" });
     } finally {
       setIsProcessingNow(false);
     }
@@ -607,9 +596,14 @@ const FollowUps = () => {
                     {automationGlobal ? <Play className="w-5 h-5 text-green-600" /> : <Pause className="w-5 h-5 text-muted-foreground" />}
                   </div>
                   <div>
-                    <p className="font-medium text-foreground">
-                      Automação {automationGlobal ? "Ativa" : "Pausada"}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-foreground">
+                        Automação {automationGlobal ? "Ativa" : "Pausada"}
+                      </p>
+                      <Badge variant="secondary" className="bg-amber-100 text-amber-700 animate-pulse">
+                        MODO TESTE: ENVIO DIRETO
+                      </Badge>
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       {automationGlobal
                         ? `${activeRulesCount} regra(s) ativa(s) · Mensagens enviadas automaticamente ao atingir o prazo`
