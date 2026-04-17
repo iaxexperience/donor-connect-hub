@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Heart } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
+import PulseLogo from "@/components/common/PulseLogo";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -27,27 +28,16 @@ const Navbar = () => {
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
       scrolled 
-        ? "bg-white/70 backdrop-blur-xl border-b border-slate-200 py-3 shadow-sm" 
+        ? "bg-white/80 backdrop-blur-xl border-b border-slate-200 py-3 shadow-sm" 
         : "bg-transparent py-5"
     }`}>
       <div className="container mx-auto flex items-center justify-between px-4">
-        <a href="#" className="flex items-center gap-2 group">
-          <div className="w-12 h-12 rounded-2xl bg-orange-500 shadow-xl shadow-orange-500/30 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
-            <Heart className="w-7 h-7 text-white" fill="currentColor" />
-          </div>
-          <div className="flex flex-col leading-none">
-            <span className={`font-heading font-black text-3xl tracking-tighter transition-colors ${
-              scrolled ? "text-slate-900" : "text-white"
-            }`}>
-              Pulse
-              <span className={`font-light ml-1 ${scrolled ? "text-blue-600" : "text-blue-200"}`}>Doações</span>
-            </span>
-            <span className={`text-[9px] font-bold uppercase tracking-[0.2em] transition-colors ${
-              scrolled ? "text-slate-400" : "text-white/60"
-            }`}>
-              Fundação Assistencial
-            </span>
-          </div>
+        <a href="#" className="hover:scale-105 transition-transform duration-300">
+          <PulseLogo 
+            showText 
+            size={45} 
+            variant={scrolled ? 'dark' : 'light'} 
+          />
         </a>
 
         <div className="hidden md:flex items-center gap-10">
@@ -57,7 +47,7 @@ const Navbar = () => {
               href={link.href}
               className={`text-sm font-bold transition-all hover:translate-y-[-2px] ${
                 scrolled 
-                  ? "text-slate-600 hover:text-blue-600" 
+                  ? "text-slate-600 hover:text-[#00C38B]" 
                   : "text-white/80 hover:text-white"
               }`}
             >
@@ -73,7 +63,9 @@ const Navbar = () => {
             <Link to="/login">Entrar</Link>
           </Button>
           <Button className={`font-bold shadow-lg rounded-xl px-6 ${
-            scrolled ? "bg-blue-600 text-white" : "bg-white text-blue-600 hover:bg-blue-50"
+            scrolled 
+              ? "bg-[#001A3D] text-white hover:bg-[#002D62]" 
+              : "bg-[#00C38B] text-[#001A3D] hover:bg-[#00E0A1]"
           }`}>
             Cadastre-se
           </Button>
