@@ -277,12 +277,14 @@ const Doadores = () => {
       error: (error) => {
         toast({
           title: "Erro ao ler arquivo",
-          description: error.message,
+          description: (error as any).message,
           variant: "destructive"
         });
         setIsImporting(false);
       }
     });
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   const filteredDonors = donors.filter(d => {
