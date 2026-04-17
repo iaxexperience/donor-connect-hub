@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import {
   Wallet, Plus, FileText, TrendingUp, Banknote, CreditCard,
-  QrCode, FileBarChart, Clock, CheckCircle2, XCircle, Printer,
+  QrCode, FileBarChart, Clock, CheckCircle2, XCircle, Printer, Search, User,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -29,6 +29,7 @@ type Status = "confirmado" | "pendente" | "cancelado";
 
 interface Transacao {
   id: string;
+  donor_id?: number;
   donor_name: string;
   amount: number;
   payment_method: PaymentMethod;
@@ -36,6 +37,12 @@ interface Transacao {
   notes?: string;
   created_at: string;
   compensated_at?: string;
+}
+
+interface DonorSuggestion {
+  id: number;
+  name: string;
+  email: string;
 }
 
 const methodLabel: Record<PaymentMethod, string> = {
