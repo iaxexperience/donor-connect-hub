@@ -7,6 +7,7 @@ ALTER TABLE caixa_transacoes ADD COLUMN IF NOT EXISTS cartao_tipo text;
 CREATE INDEX IF NOT EXISTS idx_caixa_validation_hash ON caixa_transacoes(validation_hash);
 
 -- 3. Função para gerar hash aleatório (nanoid simplificado)
+DROP FUNCTION IF EXISTS generate_validation_hash();
 CREATE OR REPLACE FUNCTION generate_validation_hash() RETURNS text AS $$
 DECLARE
   chars text := 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -21,6 +22,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 4. Função para gerar número do recibo (DOA-YYYY-NNNNNN)
+DROP FUNCTION IF EXISTS generate_receipt_number() CASCADE;
 CREATE OR REPLACE FUNCTION generate_receipt_number() RETURNS trigger AS $$
 DECLARE
   year_prefix text;

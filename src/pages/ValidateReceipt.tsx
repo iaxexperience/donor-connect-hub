@@ -45,6 +45,8 @@ export default function ValidateReceipt() {
     if (hash) fetch();
   }, [hash]);
 
+  const isValid = (status: string) => status === "confirmado" || status === "pago";
+
   const formatCurrency = (v: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
@@ -77,7 +79,7 @@ export default function ValidateReceipt() {
 
         {/* Status */}
         <div className="p-8">
-          {receipt && receipt.status === "confirmado" ? (
+          {receipt && isValid(receipt.status) ? (
             <>
               <div className="flex items-center gap-3 mb-6">
                 <CheckCircle2 className="w-8 h-8 text-green-500 shrink-0" />

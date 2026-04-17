@@ -12,11 +12,11 @@ type Message = {
 };
 
 const SUGGESTED_PROMPTS = [
-  "Quantos doadores recorrentes temos e quanto arrecadamos este mês?",
-  "Quais doadores não doam há mais de 60 dias?",
-  "Gere um PIX de R$ 100 para o doador João Silva",
-  "Agende um follow-up para amanhã para todos os doadores únicos",
   "Mostre as estatísticas gerais dos últimos 30 dias",
+  "Quanto arrecadamos no caixa esta semana e por qual modalidade?",
+  "Quais doações físicas estão pendentes de recebimento?",
+  "Quais doadores não doam há mais de 60 dias?",
+  "Agende um follow-up para amanhã para todos os doadores únicos",
   "Envie uma mensagem de agradecimento no WhatsApp para o doador mais recente",
 ];
 
@@ -44,8 +44,15 @@ export default function AgenteIA() {
     setLoading(true);
 
     try {
+      // Passa a config do WhatsApp (localStorage) para a Edge Function usar no envio
+      let metaConfig: any = null;
+      try {
+        const saved = localStorage.getItem("meta_config");
+        if (saved) metaConfig = JSON.parse(saved);
+      } catch { /* ignora */ }
+
       const { data, error: fnError } = await supabase.functions.invoke("ai-agent", {
-        body: { messages: newMessages },
+        body: { messages: newMessages, meta_config: metaConfig },
       });
 
       if (fnError) throw new Error(fnError.message);

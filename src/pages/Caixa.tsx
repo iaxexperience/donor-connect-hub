@@ -27,6 +27,11 @@ import { ptBR } from "date-fns/locale";
 import { gerarReciboPDF } from "@/lib/reciboService";
 import { metaService, MetaConfig } from "@/services/metaService";
 
+// URL pública da Edge Function — acessível sem login, independente do ambiente
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
+const receiptUrl = (hash: string) =>
+  `${SUPABASE_URL}/functions/v1/receipt-view?hash=${hash}`;
+
 type PaymentMethod = "dinheiro" | "pix" | "cartao" | "boleto";
 type CartaoTipo = "debito" | "credito";
 type Status = "confirmado" | "pendente" | "cancelado";
@@ -260,15 +265,14 @@ export default function Caixa() {
       let end = "";
       if (t.donors) {
         const d = t.donors;
-        if (d.logradouro) {
-          end = `${d.logradouro}${d.address_number ? `, ${d.address_number}` : ""}${d.neighborhood ? ` - ${d.neighborhood}` : ""}${d.city ? ` - ${d.city}/${d.state}` : ""}`;
-        } else if (d.address && typeof d.address === 'object' && d.address.logradouro) {
-          const a = d.address;
-          end = `${a.logradouro}${a.numero ? `, ${a.numero}` : ""}${a.bairro ? ` - ${a.bairro}` : ""}${a.cidade ? ` - ${a.cidade}/${a.uf}` : ""}`;
+        // Tenta usar o campo 'address' que agora mapeamos (que pode ser string ou objeto)
+        const street = typeof d.address === 'string' ? d.address : d.address?.logradouro;
+        if (street) {
+          end = `${street}${d.address_number ? `, ${d.address_number}` : ""}${d.neighborhood ? ` - ${d.neighborhood}` : ""}${d.city ? ` - ${d.city}/${d.state}` : ""}`;
         }
       }
 
-      await gerarReciboPDF({
+      return await gerarReciboPDF({
         receipt_number: t.receipt_number || t.id.slice(0, 8).toUpperCase(),
         validation_hash: t.validation_hash || t.id,
         donor_name: t.donor_name,
@@ -287,6 +291,7 @@ export default function Caixa() {
           phone: orgSettings?.phone,
           email: orgSettings?.email,
         },
+        returnBlob: (t as any).returnBlob,
       });
     } catch (e) {
       console.error("Erro recibo:", e);
@@ -297,7 +302,7 @@ export default function Caixa() {
 
   const copiarLink = (t: Transacao) => {
     if (!t.validation_hash) { toast({ title: "Recibo não gerado ainda", variant: "destructive" }); return; }
-    const url = `${window.location.origin}/validate-receipt/${t.validation_hash}`;
+    const url = receiptUrl(t.validation_hash);
     navigator.clipboard.writeText(url);
     toast({ title: "Link copiado!", description: url });
   };
@@ -305,15 +310,14 @@ export default function Caixa() {
   const compartilharWhatsApp = async (t: Transacao) => {
     if (!t.validation_hash) { toast({ title: "Recibo não gerado ainda", variant: "destructive" }); return; }
 
-    const url = `${window.location.origin}/validate-receipt/${t.validation_hash}`;
+    const url = receiptUrl(t.validation_hash);
     const mensagem =
-      `Olá ${t.donor_name}! 🙏\n\nRecebemos sua doação de *${formatCurrency(t.amount)}* via ${methodLabel(t.payment_method, t.cartao_tipo)}.\n\n✅ Recibo: *${t.receipt_number}*\n🔗 Validar: ${url}\n\nObrigado pela sua generosidade!`;
+      `Olá ${t.donor_name}! 🙏\n\nRecebemos sua doação de *${formatCurrency(t.amount)}* via ${methodLabel(t.payment_method, t.cartao_tipo)}.\n\n✅ Recibo: *${t.receipt_number}*\n🔗 Ver recibo: ${url}\n\nObrigado pela sua generosidade!`;
 
     const donorPhone = t.donors?.phone?.replace(/\D/g, "");
     const metaOk = metaConfig?.phone_number_id && metaConfig?.access_token;
 
     if (metaOk && donorPhone) {
-      // Envia via Meta API (integração do menu WhatsApp)
       try {
         await metaService.sendTextMessage(donorPhone, mensagem, metaConfig!, t.donor_id ?? undefined);
         toast({ title: "Recibo enviado via WhatsApp!", description: `Para ${t.donor_name} (${donorPhone})` });
@@ -321,7 +325,6 @@ export default function Caixa() {
         toast({ title: "Erro ao enviar via Meta API", description: e.message, variant: "destructive" });
       }
     } else {
-      // Fallback: abre wa.me se Meta não configurado ou doador sem telefone
       if (metaOk && !donorPhone) {
         toast({ title: "Doador sem telefone cadastrado", description: "Abrindo WhatsApp Web como alternativa." });
       }
