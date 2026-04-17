@@ -260,11 +260,15 @@ const FollowUps = () => {
         throw new Error("WhatsApp não configurado. Vá em Integrações > WhatsApp e salve as chaves.");
       }
 
-      // 2. Buscar TUDO o que não foi concluído (Agendados e Pendentes de qualquer data)
-      const { data: pending } = await supabase
+      // 2. Buscar TODOS os follow-ups e filtrar no JavaScript (garante que pega independente de letras maiúsculas)
+      const { data: allFollowUps } = await supabase
         .from('follow_ups')
-        .select('*, donors(id, name, phone)')
-        .or('status.eq.agendado,status.eq.pendente');
+        .select('*, donors(id, name, phone)');
+
+      const pending = (allFollowUps || []).filter(f => 
+        f.status?.toLowerCase() === 'agendado' || 
+        f.status?.toLowerCase() === 'pendente'
+      );
 
       if (!pending || pending.length === 0) {
         toast({ title: "Fila Vazia", description: "Não há mensagens agendadas para hoje ou datas passadas na lista." });
