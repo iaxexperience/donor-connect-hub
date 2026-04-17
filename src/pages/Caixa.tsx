@@ -20,7 +20,7 @@ import {
 import {
   Wallet, Plus, FileText, TrendingUp, Banknote, CreditCard,
   QrCode, FileBarChart, Clock, CheckCircle2, XCircle, Printer,
-  Search, User, Receipt, Link2, MessageCircle, AlertCircle,
+  Search, User, Receipt, Link2, MessageCircle, AlertCircle, RotateCcw,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -230,6 +230,20 @@ export default function Caixa() {
   const handleCancelar = async (id: string) => {
     const { error } = await supabase.from("caixa_transacoes").update({ status: "cancelado" }).eq("id", id);
     if (!error) { toast({ title: "Transação cancelada" }); fetchTransacoes(); }
+  };
+
+  const handleDesfazerCancelamento = async (t: Transacao) => {
+    // Boleto sem compensação volta para pendente; qualquer outro volta para confirmado
+    const statusAnterior: Status =
+      t.payment_method === "boleto" && !t.compensated_at ? "pendente" : "confirmado";
+    const { error } = await supabase
+      .from("caixa_transacoes")
+      .update({ status: statusAnterior })
+      .eq("id", t.id);
+    if (!error) {
+      toast({ title: "Cancelamento desfeito", description: `Status restaurado para "${statusAnterior}"` });
+      fetchTransacoes();
+    }
   };
 
   const emitirRecibo = async (t: Transacao) => {
