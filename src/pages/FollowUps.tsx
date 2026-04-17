@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useFollowUpLogs } from "@/hooks/useFollowUpLogs";
 import {
   CalendarClock,
@@ -138,6 +139,7 @@ const FollowUps = () => {
   const [automationRules, setAutomationRules] = useState<AutomationRule[]>(initialAutomationRules);
   const [automationGlobal, setAutomationGlobal] = useState(false);
   const [isProcessingNow, setIsProcessingNow] = useState(false);
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const [isScheduling, setIsScheduling] = useState(false);
@@ -291,14 +293,29 @@ const FollowUps = () => {
 
         if (!callError && res?.success) {
           count++;
-          // Atualiza status localmente
+          // 1. Atualiza status no banco de dados
           await supabase.from('follow_ups').update({ status: 'concluido' }).eq('id', fu.id);
+          
+          // 2. Registra no histórico de automação
+          await supabase.from('follow_up_logs').insert([{
+            donor_id: fu.donors?.id,
+            donor_name: fu.donors?.name,
+            donor_type: (fu as any).donorType || 'unico',
+            status: 'enviado',
+            channel: 'whatsapp',
+            template: 'fapagra',
+            sent_at: new Date().toISOString()
+          }]);
         } else {
-          console.error(`[TESTE] Erro ao enviar para ${fu.donors.name}:`, callError || res?.error);
+          console.error(`[TESTE] Erro ao enviar para ${fu.donors?.name}:`, callError || res?.error);
         }
       }
 
-      toast({ title: "SUCESSO NO TESTE", description: `${count} mensagens enviadas via Portal Seguro!` });
+      // 3. Força a atualização de todas as abas e contadores
+      queryClient.invalidateQueries({ queryKey: ['followups'] });
+      queryClient.invalidateQueries({ queryKey: ['followup-logs'] });
+
+      toast({ title: "SUCESSO NO TESTE", description: `${count} mensagens enviadas e registradas com sucesso!` });
     } catch (err: any) {
       toast({ title: "ERRO DE CONEXÃO", description: err.message, variant: "destructive" });
     } finally {
