@@ -43,6 +43,16 @@ interface Transacao {
   validation_hash?: string;
   created_at: string;
   compensated_at?: string;
+  profiles?: { name: string };
+  donors?: {
+    logradouro?: string;
+    address_number?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
+    zip_code?: string;
+    address?: any;
+  };
 }
 
 interface DonorSuggestion {
@@ -143,14 +153,33 @@ export default function Caixa() {
 
   const fetchTransacoes = async () => {
     setLoading(true);
+
+    // Converte a data selecionada para UTC respeitando o fuso horário local
+    const start = new Date(`${filterDate}T00:00:00`).toISOString();
+    const end   = new Date(`${filterDate}T23:59:59`).toISOString();
+
     let query = supabase
-      .from("caixa_transacoes").select("*")
-      .gte("created_at", `${filterDate}T00:00:00`)
-      .lte("created_at", `${filterDate}T23:59:59`)
+      .from("caixa_transacoes").select(`
+        *,
+        profiles ( name ),
+        donors ( 
+          logradouro, address_number, neighborhood, city, state, zip_code, address
+        )
+      `)
+      .gte("created_at", start)
+      .lte("created_at", end)
       .order("created_at", { ascending: false });
+
     if (filterMethod !== "todos") query = query.eq("payment_method", filterMethod);
+
     const { data, error } = await query;
-    if (!error && data) setTransacoes(data as Transacao[]);
+
+    if (error) {
+      console.error("Erro ao buscar transações:", error.message);
+      toast({ title: "Erro ao carregar transações", description: error.message, variant: "destructive" });
+    } else {
+      setTransacoes((data || []) as Transacao[]);
+    }
     setLoading(false);
   };
 
@@ -207,10 +236,24 @@ export default function Caixa() {
   const emitirRecibo = async (t: Transacao) => {
     setEmittingId(t.id);
     try {
+      // Formatar endereço do doador
+      let end = "";
+      if (t.donors) {
+        const d = t.donors;
+        if (d.logradouro) {
+          end = `${d.logradouro}${d.address_number ? `, ${d.address_number}` : ""}${d.neighborhood ? ` - ${d.neighborhood}` : ""}${d.city ? ` - ${d.city}/${d.state}` : ""}`;
+        } else if (d.address && typeof d.address === 'object' && d.address.logradouro) {
+          const a = d.address;
+          end = `${a.logradouro}${a.numero ? `, ${a.numero}` : ""}${a.bairro ? ` - ${a.bairro}` : ""}${a.cidade ? ` - ${a.cidade}/${a.uf}` : ""}`;
+        }
+      }
+
       await gerarReciboPDF({
         receipt_number: t.receipt_number || t.id.slice(0, 8).toUpperCase(),
         validation_hash: t.validation_hash || t.id,
         donor_name: t.donor_name,
+        donor_address: end || undefined,
+        received_by: t.profiles?.name,
         amount: t.amount,
         payment_method: t.payment_method,
         cartao_tipo: t.cartao_tipo,
@@ -226,6 +269,7 @@ export default function Caixa() {
         },
       });
     } catch (e) {
+      console.error("Erro recibo:", e);
       toast({ title: "Erro ao gerar recibo", variant: "destructive" });
     }
     setEmittingId(null);
@@ -276,6 +320,10 @@ export default function Caixa() {
           <p className="text-slate-500 text-sm mt-1">Controle de recebimentos e movimentação diária.</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="ghost" className="gap-2 rounded-xl" onClick={fetchTransacoes} disabled={loading}>
+            <svg className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            Atualizar
+          </Button>
           <Button variant="outline" className="gap-2 rounded-xl" onClick={handleImprimir}>
             <Printer className="w-4 h-4" /> Relatório
           </Button>
