@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const CTASection = () => {
   return (
@@ -27,12 +28,16 @@ const CTASection = () => {
             Junte-se a centenas de organizações que já aceleraram seu impacto social com a inteligência do FAP Pulse.
           </p>
           <div className="flex flex-col sm:flex-row gap-5 justify-center">
-            <Button size="xl" className="bg-white text-blue-600 hover:bg-blue-50 shadow-2xl rounded-2xl font-bold px-10">
-              Criar Conta Grátis
-              <ArrowRight className="w-5 h-5 ml-2" />
+            <Button size="xl" className="bg-white text-blue-600 hover:bg-blue-50 shadow-2xl rounded-2xl font-bold px-10" asChild>
+              <Link to="/cadastro">
+                Criar Conta Grátis
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Link>
             </Button>
-            <Button size="xl" variant="outline" className="border-white/30 bg-white/5 text-white hover:bg-white/10 rounded-2xl font-bold px-10 backdrop-blur-sm">
-              Falar com Consultor
+            <Button size="xl" variant="outline" className="border-white/30 bg-white/5 text-white hover:bg-white/10 rounded-2xl font-bold px-10 backdrop-blur-sm" asChild>
+              <a href="https://wa.me/5583996583281" target="_blank" rel="noopener noreferrer">
+                Falar com Consultor
+              </a>
             </Button>
           </div>
         </motion.div>

@@ -4,6 +4,7 @@ import {
   Users, MessageCircle, BarChart3, Kanban,
   Brain, Webhook, Shield, Zap, ArrowRight, TrendingUp,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const HeroSection = () => {
   return (
@@ -43,13 +44,20 @@ const HeroSection = () => {
             </p>
     
             <div className="flex flex-col sm:flex-row gap-5 justify-center lg:justify-start">
-              <button className="h-14 px-10 bg-[#00C38B] text-[#001A3D] hover:bg-[#00E0A1] shadow-xl shadow-[#00C38B]/20 rounded-2xl font-black text-lg flex items-center justify-center transition-all duration-300 active:scale-95 group">
-                Comece Agora
-                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-              </button>
-              <button className="h-14 px-10 border-2 border-white/20 bg-white/5 backdrop-blur-sm text-white hover:bg-white/10 rounded-2xl font-bold text-lg flex items-center justify-center transition-all duration-300 active:scale-95">
+              <Link to="/cadastro">
+                <button className="h-14 px-10 w-full sm:w-auto bg-[#00C38B] text-[#001A3D] hover:bg-[#00E0A1] shadow-xl shadow-[#00C38B]/20 rounded-2xl font-black text-lg flex items-center justify-center transition-all duration-300 active:scale-95 group">
+                  Comece Agora
+                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </Link>
+              <a 
+                href="https://wa.me/5583996583281" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="h-14 px-10 border-2 border-white/20 bg-white/5 backdrop-blur-sm text-white hover:bg-white/10 rounded-2xl font-bold text-lg flex items-center justify-center transition-all duration-300 active:scale-95"
+              >
                 Agendar Demonstração
-              </button>
+              </a>
             </div>
     
             {/* Trust Badges */}
