@@ -524,7 +524,7 @@ export default function Caixa() {
                     <TableCell>
                       {t.status === "confirmado" && <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100"><CheckCircle2 className="w-3 h-3 mr-1" />Confirmado</Badge>}
                       {t.status === "pendente" && <Badge className="bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-100"><Clock className="w-3 h-3 mr-1" />Pendente</Badge>}
-                      {t.status === "cancelado" && <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100"><XCircle className="w-3 h-3 mr-1" />Cancelado</Badge>}
+                      {t.status === "cancelado" && <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100 gap-1"><XCircle className="w-3 h-3" />Cancelado</Badge>}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
@@ -548,6 +548,13 @@ export default function Caixa() {
                               <XCircle className="w-3 h-3" />
                             </Button>
                           </>
+                        )}
+                        {t.status === "cancelado" && (
+                          <Button size="sm" variant="outline" className="text-xs rounded-lg h-7 gap-1 text-orange-600 border-orange-200 hover:bg-orange-50"
+                            onClick={() => handleDesfazerCancelamento(t)}
+                            title="Desfazer cancelamento">
+                            <RotateCcw className="w-3 h-3" /> Desfazer
+                          </Button>
                         )}
                       </div>
                     </TableCell>
