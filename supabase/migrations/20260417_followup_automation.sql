@@ -31,11 +31,28 @@ CREATE TABLE IF NOT EXISTS follow_up_logs (
     error_message text
 );
 
--- Habilitar pg_cron (Requer permissões de superusuário ou estar em ambiente Supabase Cloud)
--- CREATE EXTENSION IF NOT EXISTS pg_cron;
+-- Políticas de Segurança (RLS)
+ALTER TABLE follow_up_settings ENABLE ROW LEVEL SECURITY;
 
--- Agendar execução a cada 5 minutos (Ajuste o servidor para o seu fuso horário se necessário)
--- SELECT cron.schedule('*/5 * * * *', 'SELECT net.http_post(
---     url:=''https://[PROJ_ID].supabase.co/functions/v1/process-followups'',
---     headers:=''{"Content-Type": "application/json", "Authorization": "Bearer [SERVICE_ROLE_KEY]"}''::jsonb
--- )');
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'follow_up_settings' AND policyname = 'Acesso follow-up settings') THEN
+    CREATE POLICY "Acesso follow-up settings" ON follow_up_settings
+      FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+ALTER TABLE follow_up_logs ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'follow_up_logs' AND policyname = 'Leitura logs follow-up') THEN
+    CREATE POLICY "Leitura logs follow-up" ON follow_up_logs
+      FOR SELECT TO authenticated USING (true);
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'follow_up_logs' AND policyname = 'Inserção logs follow-up') THEN
+    CREATE POLICY "Inserção logs follow-up" ON follow_up_logs
+      FOR INSERT TO authenticated WITH CHECK (true);
+  END IF;
+END $$;
