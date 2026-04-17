@@ -191,7 +191,9 @@ const Doadores = () => {
 
             return {
               name: (row[columns.name] || "Doador sem Nome").toString().trim(),
-              email: (row[columns.email] || "sem@email.com").toString().trim(),
+              email: (row[columns.email] && row[columns.email].toString().includes("@"))
+                ? row[columns.email].toString().trim()
+                : null,
               phone: (row[columns.phone] || "").toString().replace(/\D/g, ""),
               document_id: row[columns.document_id] || null,
               type: finalType,
@@ -207,17 +209,32 @@ const Doadores = () => {
               total_donated: 0,
               donation_count: 0
             };
-          }).filter((d: any) => d.name && d.name !== "Doador sem Nome"); // Pelo menos o nome precisa existir
+          }).filter((d: any) => d.name && d.name !== "Doador sem Nome"); 
 
-          if (formattedDonors.length === 0) {
+          // Remover duplicatas de e-mail dentro do próprio arquivo CSV antes de enviar
+          const uniqueDonorsMap = new Map();
+          formattedDonors.forEach(donor => {
+            if (donor.email) {
+              if (!uniqueDonorsMap.has(donor.email)) {
+                uniqueDonorsMap.set(donor.email, donor);
+              }
+            } else {
+              // Para doadores sem e-mail, geramos uma chave única para não filtrá-los
+              uniqueDonorsMap.set(`no-email-${Math.random()}`, donor);
+            }
+          });
+          
+          const finalDonorsList = Array.from(uniqueDonorsMap.values());
+
+          if (finalDonorsList.length === 0) {
             throw new Error("Nenhum doador válido encontrado no arquivo.");
           }
 
-          await importDonors(formattedDonors);
+          await importDonors(finalDonorsList);
           
           toast({
             title: "Importação Concluída!",
-            description: `${formattedDonors.length} doadores foram importados com sucesso.`,
+            description: `${finalDonorsList.length} doadores foram processados.`,
           });
           
           if (fileInputRef.current) fileInputRef.current.value = "";
