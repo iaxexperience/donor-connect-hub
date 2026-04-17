@@ -14,7 +14,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 214 100% 50%;
+    --primary: 222 47% 11%; /* Navy */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 210 20% 96%;
@@ -23,41 +23,41 @@
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 214 100% 50%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 160 100% 38%; /* Mint Green #00C38B equivalent */
+    --accent-foreground: 222 47% 11%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 214 100% 50%;
+    --ring: 160 100% 38%;
 
-    --radius: 0.75rem;
+    --radius: 1.25rem;
 
     --font-heading: 'Plus Jakarta Sans', sans-serif;
     --font-body: 'Inter', sans-serif;
 
-    --gradient-hero: linear-gradient(135deg, hsl(214, 100%, 50%) 0%, hsl(214, 100% , 40%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(214, 100%, 50%) 0%, hsl(214, 100%, 45%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(222, 47%, 11%) 0%, hsl(222, 47%, 18%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(160, 100%, 38%) 0%, hsl(160, 80%, 45%) 100%);
     --gradient-warm: linear-gradient(135deg, hsl(0, 0%, 100%) 0%, hsl(210, 20%, 96%) 100%);
 
     --shadow-soft: 0 4px 24px -4px hsl(222 47% 11% / 0.08);
     --shadow-elevated: 0 12px 40px -8px hsl(222 47% 11% / 0.12);
-    --shadow-glow: 0 0 40px -10px hsl(214 100% 50% / 0.25);
+    --shadow-glow: 0 0 40px -10px hsl(160 100% 38% / 0.3);
 
     --glass-bg: rgba(255, 255, 255, 0.03);
     --glass-border: rgba(255, 255, 255, 0.1);
-    --glass-blur: 12px;
+    --glass-blur: 16px;
 
-    --sidebar-background: 214 100% 50%;
+    --sidebar-background: 222 47% 11%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 214 100% 50%;
-    --sidebar-accent: 214 100% 40%;
+    --sidebar-primary: 160 100% 38%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 222 47% 18%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 214 100% 45%;
-    --sidebar-ring: 0 0% 100%;
+    --sidebar-border: 222 47% 15%;
+    --sidebar-ring: 160 100% 38%;
   }
 
   .dark {
@@ -67,27 +67,19 @@
     --card-foreground: 210 40% 98%;
     --popover: 222 47% 12%;
     --popover-foreground: 210 40% 98%;
-    --primary: 214 100% 60%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 160 100% 45%;
+    --primary-foreground: 222 47% 11%;
     --secondary: 222 47% 16%;
     --secondary-foreground: 210 40% 98%;
     --muted: 222 47% 16%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 214 100% 60%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 160 100% 45%;
+    --accent-foreground: 222 47% 11%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
     --border: 222 47% 18%;
     --input: 222 47% 18%;
-    --ring: 214 100% 60%;
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 214 100% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 214 100% 15%;
-    --sidebar-accent-foreground: 214 100% 90%;
-    --sidebar-border: 222 47% 18%;
-    --sidebar-ring: 214 100% 60%;
+    --ring: 160 100% 45%;
   }
 }
 
@@ -100,6 +92,7 @@
     font-family: var(--font-body);
   }
   h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tight;
     font-family: var(--font-heading);
   }
 }
@@ -143,11 +136,12 @@
   }
 
   .mesh-gradient {
-    background-color: hsla(214, 100%, 50%, 1);
+    background-color: #001A3D;
     background-image: 
-      radial-gradient(at 0% 0%, hsla(214, 100%, 50%, 1) 0%, transparent 50%),
-      radial-gradient(at 50% 0%, hsla(220, 100%, 40%, 1) 0%, transparent 50%),
-      radial-gradient(at 100% 0%, hsla(214, 100%, 60%, 1) 0%, transparent 50%);
+      radial-gradient(at 0% 0%, #001A3D 0%, transparent 50%),
+      radial-gradient(at 50% 0%, #002D62 0%, transparent 50%),
+      radial-gradient(at 100% 0%, #001A3D 0%, transparent 50%),
+      radial-gradient(at 100% 100%, #00C38B22 0%, transparent 50%);
   }
 
   @keyframes float {
