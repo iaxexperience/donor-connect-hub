@@ -24,6 +24,7 @@ import Pipeline from "./pages/Pipeline";
 import DonorForm from "./pages/DonorForm";
 import WhatsApp from "./pages/WhatsApp";
 import AgenteIA from "./pages/AgenteIA";
+import Caixa from "./pages/Caixa";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
@@ -98,6 +99,7 @@ const App = () => (
                     <Route path="api-aberta" element={<ApiAberta />} />
                     <Route path="api-documentacao" element={<ApiDocumentation />} />
                     <Route path="agente-ia" element={<AgenteIA />} />
+                    <Route path="caixa" element={<Caixa />} />
                   </Route>
                 </Route>
 
