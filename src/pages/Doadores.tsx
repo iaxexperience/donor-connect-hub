@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Heart, Search, Plus, Filter, MessageSquare, Upload, FileDown, CheckCircle2, GitMerge, Edit, Trash2 } from "lucide-react";
+import { Heart, Search, Plus, Filter, MessageSquare, Upload, FileDown, CheckCircle2, GitMerge, Edit, Trash2, Loader2 } from "lucide-react";
+import Papa from "papaparse";
+import { useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,8 +46,10 @@ import { typeLabel, typeBadgeStyle } from "@/lib/donationService";
 const Doadores = () => {
   const navigate = useNavigate();
   const { role } = useAuth();
-  const { donors, addDonation, deleteDonor, isDonationPending, isLoading: donorsLoading } = useDonors();
+  const { donors, addDonation, deleteDonor, isDonationPending, isLoading: donorsLoading, importDonors } = useDonors();
   const { campaigns, isLoading: campaignsLoading } = useCampaigns();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isImporting, setIsImporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -87,6 +91,75 @@ const Doadores = () => {
         variant: "destructive"
       });
     }
+  };
+  
+  const handleDownloadTemplate = () => {
+    const link = document.createElement("a");
+    link.href = "/modelo_importacao_doadores.csv";
+    link.download = "modelo_importacao_doadores.csv";
+    link.click();
+  };
+
+  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        try {
+          const { data } = results;
+          const formattedDonors = data.map((row: any) => ({
+            name: row.name || row.Nome || row.nome || "",
+            email: row.email || row.Email || row.email || "",
+            phone: (row.phone || row.Telefone || row.telefone || "").replace(/\D/g, ""),
+            document_id: row.document_id || row.CPF || row.CNPJ || row.documento || null,
+            type: (row.type || row.Tipo || row.tipo || "lead").toLowerCase(),
+            birth_date: row.birth_date || row["Data de Nascimento"] || row.nascimento || null,
+            zip_code: row.zip_code || row.CEP || row.cep || null,
+            address: row.address || row.Logradouro || row.rua || null,
+            address_number: row.address_number || row.Número || row.numero || null,
+            complement: row.complement || row.Complemento || row.complemento || null,
+            neighborhood: row.neighborhood || row.Bairro || row.bairro || null,
+            city: row.city || row.Cidade || row.cidade || null,
+            state: (row.state || row.Estado || row.UF || row.uf || null)?.toUpperCase(),
+            total_donated: 0,
+            donation_count: 0
+          })).filter((d: any) => d.name && d.email); // Basic validation
+
+          if (formattedDonors.length === 0) {
+            throw new Error("Nenhum doador válido encontrado no arquivo.");
+          }
+
+          await importDonors(formattedDonors);
+          
+          toast({
+            title: "Importação Concluída!",
+            description: `${formattedDonors.length} doadores foram importados com sucesso.`,
+          });
+          
+          if (fileInputRef.current) fileInputRef.current.value = "";
+        } catch (error: any) {
+          toast({
+            title: "Erro na Importação",
+            description: error.message,
+            variant: "destructive"
+          });
+        } finally {
+          setIsImporting(false);
+        }
+      },
+      error: (error) => {
+        toast({
+          title: "Erro ao ler arquivo",
+          description: error.message,
+          variant: "destructive"
+        });
+        setIsImporting(false);
+      }
+    });
   };
 
   const filteredDonors = donors.filter(d => {
@@ -205,17 +278,33 @@ const Doadores = () => {
               <DialogHeader>
                 <DialogTitle>Importar Doadores</DialogTitle>
                 <DialogDescription>
-                  Selecione um arquivo CSV ou Excel para importar sua base de doadores.
+                  Selecione um arquivo CSV com o cabeçalho correto para importar sua base.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-6 py-6">
-                <div className="border-2 border-dashed border-muted rounded-2xl p-10 flex flex-col items-center justify-center gap-3 bg-muted/20 hover:bg-muted/30 transition-colors cursor-pointer group">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  accept=".csv" 
+                  onChange={handleFileImport}
+                />
+                <div 
+                  className="border-2 border-dashed border-muted rounded-2xl p-10 flex flex-col items-center justify-center gap-3 bg-muted/20 hover:bg-muted/30 transition-colors cursor-pointer group"
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   <div className="p-4 rounded-full bg-primary/10 group-hover:scale-110 transition-transform">
-                    <Upload className="w-8 h-8 text-primary" />
+                    {isImporting ? (
+                      <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                    ) : (
+                      <Upload className="w-8 h-8 text-primary" />
+                    )}
                   </div>
                   <div className="text-center">
-                    <p className="font-bold text-sm">Arraste seu arquivo aqui</p>
-                    <p className="text-xs text-muted-foreground mt-1">Formatos suportados: .csv, .xlsx</p>
+                    <p className="font-bold text-sm">
+                      {isImporting ? "Processando arquivo..." : "Clique para selecionar o CSV"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">Formato suportado: .csv (separado por ';' ou ',')</p>
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -223,20 +312,20 @@ const Doadores = () => {
                     <FileDown className="w-3 h-3" />
                     Exemplo de Modelo
                   </p>
-                  <Button variant="ghost" className="w-full h-10 border border-muted text-xs justify-between">
+                  <Button 
+                    variant="ghost" 
+                    className="w-full h-10 border border-muted text-xs justify-between group"
+                    onClick={handleDownloadTemplate}
+                  >
                     <span>modelo_importacao_doadores.csv</span>
-                    <Badge variant="secondary">Baixar</Badge>
+                    <Badge variant="secondary" className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                      Baixar
+                    </Badge>
                   </Button>
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-                <Button onClick={() => {
-                  toast({
-                    title: "Importação Iniciada",
-                    description: "Seus doadores estão sendo processados em segundo plano.",
-                  });
-                }}>Iniciar Importação</Button>
+                <Button variant="outline" onClick={() => setIsImporting(false)}>Fechar</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

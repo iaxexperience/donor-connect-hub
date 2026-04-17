@@ -164,7 +164,17 @@ export const useDonors = () => {
     updateType,
     findDonorByEmailOrPhone,
     isRegistering: donationMutation.isPending || addDonorMutation.isPending || updateTypeMutation.isPending || updateDonorMutation.isPending || deleteDonorMutation.isPending,
-    isDonationPending: donationMutation.isPending
+    isDonationPending: donationMutation.isPending,
+    importDonors: async (donorsList: Partial<Donor>[]) => {
+      const { data, error } = await supabase
+        .from('donors')
+        .insert(donorsList)
+        .select();
+        
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['donors'] });
+      return data;
+    }
   };
 };
 
