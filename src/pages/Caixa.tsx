@@ -27,12 +27,9 @@ import { ptBR } from "date-fns/locale";
 import { gerarReciboPDF } from "@/lib/reciboService";
 import { metaService, MetaConfig } from "@/services/metaService";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
-const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-
-// Link de validação pública — aponta para a Edge Function com apikey para acesso anônimo
+// Link de validação pública — aponta para a rota do frontend
 const receiptUrl = (hash: string) =>
-  `${SUPABASE_URL}/functions/v1/receipt-view?hash=${hash}&apikey=${ANON_KEY}`;
+  `${window.location.origin}/validate-receipt/${hash}`;
 
 type PaymentMethod = "dinheiro" | "pix" | "cartao" | "boleto";
 type CartaoTipo = "debito" | "credito";
