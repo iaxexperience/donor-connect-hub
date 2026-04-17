@@ -231,11 +231,15 @@ const Doadores = () => {
             throw new Error("Nenhum doador válido encontrado no arquivo.");
           }
 
-          await importDonors(finalDonorsList);
-          
+          const result = await importDonors(finalDonorsList);
+          const inserted = (result as any)?.inserted ?? finalDonorsList.length;
+          const skipped = (result as any)?.skipped ?? 0;
+
           toast({
             title: "Importação Concluída!",
-            description: `${finalDonorsList.length} doadores foram processados.`,
+            description: skipped > 0
+              ? `${inserted} doadores importados. ${skipped} ignorados (já existiam).`
+              : `${inserted} doadores importados com sucesso.`,
           });
           
           if (fileInputRef.current) fileInputRef.current.value = "";
