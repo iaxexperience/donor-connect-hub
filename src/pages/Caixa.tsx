@@ -25,6 +25,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { gerarReciboPDF } from "@/lib/reciboService";
+import { metaService, MetaConfig } from "@/services/metaService";
 
 type PaymentMethod = "dinheiro" | "pix" | "cartao" | "boleto";
 type CartaoTipo = "debito" | "credito";
@@ -51,6 +52,7 @@ interface Transacao {
     state?: string;
     zip_code?: string;
     address?: any;
+    phone?: string;
   };
 }
 
@@ -104,6 +106,7 @@ export default function Caixa() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [emittingId, setEmittingId] = useState<string | null>(null);
+  const [metaConfig, setMetaConfig] = useState<MetaConfig | null>(null);
 
   // Donor search
   const [suggestions, setSuggestions] = useState<DonorSuggestion[]>([]);
@@ -123,6 +126,10 @@ export default function Caixa() {
   useEffect(() => {
     supabase.from("white_label_settings").select("*").eq("id", 1).maybeSingle()
       .then(({ data }) => { if (data) setOrgSettings(data); });
+    const saved = localStorage.getItem("meta_config");
+    if (saved) {
+      try { setMetaConfig(JSON.parse(saved)); } catch { /* config inválida */ }
+    }
   }, []);
 
   const searchDonors = async (term: string) => {
@@ -161,8 +168,8 @@ export default function Caixa() {
       .from("caixa_transacoes").select(`
         *,
         profiles ( name ),
-        donors ( 
-          address, zip_code, address_number, neighborhood, city, state
+        donors (
+          address, zip_code, address_number, neighborhood, city, state, phone
         )
       `)
       .gte("created_at", start)
@@ -295,13 +302,31 @@ export default function Caixa() {
     toast({ title: "Link copiado!", description: url });
   };
 
-  const compartilharWhatsApp = (t: Transacao) => {
+  const compartilharWhatsApp = async (t: Transacao) => {
     if (!t.validation_hash) { toast({ title: "Recibo não gerado ainda", variant: "destructive" }); return; }
+
     const url = `${window.location.origin}/validate-receipt/${t.validation_hash}`;
-    const msg = encodeURIComponent(
-      `Olá ${t.donor_name}! Segue o recibo da sua doação de ${formatCurrency(t.amount)}.\n✅ Recibo: ${t.receipt_number}\n🔗 Validar: ${url}`
-    );
-    window.open(`https://wa.me/?text=${msg}`, "_blank");
+    const mensagem =
+      `Olá ${t.donor_name}! 🙏\n\nRecebemos sua doação de *${formatCurrency(t.amount)}* via ${methodLabel(t.payment_method, t.cartao_tipo)}.\n\n✅ Recibo: *${t.receipt_number}*\n🔗 Validar: ${url}\n\nObrigado pela sua generosidade!`;
+
+    const donorPhone = t.donors?.phone?.replace(/\D/g, "");
+    const metaOk = metaConfig?.phone_number_id && metaConfig?.access_token;
+
+    if (metaOk && donorPhone) {
+      // Envia via Meta API (integração do menu WhatsApp)
+      try {
+        await metaService.sendTextMessage(donorPhone, mensagem, metaConfig!, t.donor_id ?? undefined);
+        toast({ title: "Recibo enviado via WhatsApp!", description: `Para ${t.donor_name} (${donorPhone})` });
+      } catch (e: any) {
+        toast({ title: "Erro ao enviar via Meta API", description: e.message, variant: "destructive" });
+      }
+    } else {
+      // Fallback: abre wa.me se Meta não configurado ou doador sem telefone
+      if (metaOk && !donorPhone) {
+        toast({ title: "Doador sem telefone cadastrado", description: "Abrindo WhatsApp Web como alternativa." });
+      }
+      window.open(`https://wa.me/?text=${encodeURIComponent(mensagem)}`, "_blank");
+    }
   };
 
   // Resumo
