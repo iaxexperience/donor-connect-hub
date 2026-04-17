@@ -460,7 +460,7 @@ const Doadores = () => {
             onClick={() => navigate("/dashboard/kanbam")}
           >
             <GitMerge className="w-4 h-4 mr-2" />
-            Ver no Kanbam
+            Ver no Kanban
           </Button>
           <Button className="bg-primary shadow-glow" onClick={() => navigate("/dashboard/doadores/novo")}>
             <Plus className="w-4 h-4 mr-2" />

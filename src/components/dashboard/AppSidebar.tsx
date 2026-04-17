@@ -37,7 +37,7 @@ import {
 const mainItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Doadores", url: "/dashboard/doadores", icon: Heart },
-  { title: "Kanbam", url: "/dashboard/kanbam", icon: GitMerge },
+  { title: "Kanban", url: "/dashboard/kanbam", icon: GitMerge },
   { title: "Campanhas", url: "/dashboard/campanhas", icon: Megaphone },
   { title: "Telemarketing", url: "/dashboard/telemarketing", icon: Phone },
   { title: "Follow-ups", url: "/dashboard/followups", icon: CalendarClock },
