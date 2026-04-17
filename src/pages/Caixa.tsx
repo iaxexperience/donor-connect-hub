@@ -162,7 +162,7 @@ export default function Caixa() {
         *,
         profiles ( name ),
         donors ( 
-          logradouro, address_number, neighborhood, city, state, zip_code, address
+          address, zip_code, address_number, neighborhood, city, state
         )
       `)
       .gte("created_at", start)
