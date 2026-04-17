@@ -174,10 +174,16 @@ export const useDonors = () => {
       const existingEmails = new Set((existing || []).map(d => d.email).filter(Boolean));
       const existingDocs = new Set((existing || []).map(d => d.document_id).filter(Boolean));
 
-      const newDonors = donorsList.filter(d =>
-        (!d.email || !existingEmails.has(d.email)) &&
-        (!d.document_id || !existingDocs.has(d.document_id))
-      );
+      const seenEmails = new Set<string>();
+      const seenDocs = new Set<string>();
+
+      const newDonors = donorsList.filter(d => {
+        if (d.email && (existingEmails.has(d.email) || seenEmails.has(d.email))) return false;
+        if (d.document_id && (existingDocs.has(d.document_id) || seenDocs.has(d.document_id))) return false;
+        if (d.email) seenEmails.add(d.email);
+        if (d.document_id) seenDocs.add(d.document_id);
+        return true;
+      });
 
       if (newDonors.length === 0) return [];
 
