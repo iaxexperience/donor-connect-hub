@@ -422,12 +422,23 @@ export default function Caixa() {
 
   // Resumo
   const confirmadas = transacoes.filter(t => t.status === "confirmado");
-  const totalGeral = confirmadas.reduce((s, t) => s + t.amount, 0);
-  const totalPorMetodo = (["dinheiro", "pix", "cartao", "boleto"] as PaymentMethod[]).map(m => ({
-    method: m,
-    total: confirmadas.filter(t => t.payment_method === m).reduce((s, t) => s + t.amount, 0),
-    count: confirmadas.filter(t => t.payment_method === m).length,
-  }));
+  const totalRecebido = confirmadas.reduce((s, t) => s + t.amount, 0);
+  const saldoInicialNum = cashierData?.saldo_inicial ? parseFloat(cashierData.saldo_inicial) : 0;
+  
+  // O total geral no caixa físico deve considerar o saldo inicial (troco)
+  const totalGeral = totalRecebido + saldoInicialNum;
+
+  const totalPorMetodo = (["dinheiro", "pix", "cartao", "boleto"] as PaymentMethod[]).map(m => {
+    let total = confirmadas.filter(t => t.payment_method === m).reduce((s, t) => s + t.amount, 0);
+    // Adiciona o saldo inicial apenas no card de dinheiro
+    if (m === "dinheiro") total += saldoInicialNum;
+    
+    return {
+      method: m,
+      total: total,
+      count: confirmadas.filter(t => t.payment_method === m).length,
+    };
+  });
 
   const handleImprimir = () => {
     const linhas = transacoes.map(t =>
@@ -692,25 +703,62 @@ export default function Caixa() {
 
       {/* Cards resumo */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="md:col-span-4 rounded-2xl border-primary/20 bg-primary/5">
-          <CardContent className="flex items-center justify-between p-6">
-            <div>
-              <p className="text-sm text-slate-500 font-medium">Total do Dia</p>
-              <p className="text-3xl font-black text-primary">{formatCurrency(totalGeral)}</p>
-              <p className="text-xs text-slate-400 mt-1">{confirmadas.length} doações confirmadas</p>
+        <Card className={`md:col-span-4 rounded-2xl transition-all duration-300 ${
+          cashierData?.status === "fechado" 
+            ? "border-slate-200 bg-slate-50 opacity-90 shadow-none" 
+            : "border-primary/20 bg-primary/5 shadow-md shadow-primary/5"
+        }`}>
+          <CardContent className="flex flex-col md:flex-row items-start md:items-center justify-between p-6 gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-slate-500 font-medium">Saldo em Caixa (Físico + Digital)</p>
+                {cashierData?.status === "fechado" && <Badge variant="secondary" className="bg-slate-200 text-slate-600 border-none">Encerrado</Badge>}
+              </div>
+              <p className={`text-4xl font-black ${cashierData?.status === "fechado" ? "text-slate-600" : "text-primary"}`}>
+                {formatCurrency(totalGeral)}
+              </p>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 font-medium">
+                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-500" /> {confirmadas.length} doações confirmadas</span>
+                {saldoInicialNum > 0 && (
+                  <span className="flex items-center gap-1"><Coins className="w-3 h-3 text-orange-400" /> Saldo Inicial: {formatCurrency(saldoInicialNum)}</span>
+                )}
+                {cashierData?.status === "fechado" && cashierData.fechado_em && (
+                  <span className="flex items-center gap-1"><History className="w-3 h-3" /> Fechado em: {format(new Date(cashierData.fechado_em), "HH:mm")}</span>
+                )}
+              </div>
             </div>
-            <TrendingUp className="w-12 h-12 text-primary/30" />
+            {cashierData?.status === "fechado" ? (
+              <div className="flex flex-col items-end text-right">
+                <Lock className="w-10 h-10 text-slate-300 mb-1" />
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Caixa Auditado</p>
+              </div>
+            ) : (
+              <TrendingUp className="w-12 h-12 text-primary/30" />
+            )}
           </CardContent>
         </Card>
+        
         {totalPorMetodo.map(m => (
-          <Card key={m.method} className="rounded-2xl border-slate-100">
+          <Card key={m.method} className={`rounded-2xl transition-all ${
+            cashierData?.status === "fechado" 
+              ? "border-slate-100 bg-slate-50/50 shadow-none" 
+              : "border-slate-100 hover:shadow-md hover:border-slate-200"
+          }`}>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
-                <span className={`p-1.5 rounded-lg border ${methodColor[m.method]}`}>{methodIcon[m.method]}</span>
-                <span className="text-sm font-bold text-slate-600">{methodLabel(m.method)}</span>
+                <span className={`p-1.5 rounded-lg border ${
+                  cashierData?.status === "fechado" ? "bg-slate-100 text-slate-400 border-slate-200" : methodColor[m.method]
+                }`}>
+                  {methodIcon[m.method]}
+                </span>
+                <span className={`text-sm font-bold ${cashierData?.status === "fechado" ? "text-slate-400" : "text-slate-600"}`}>
+                  {methodLabel(m.method)}
+                </span>
               </div>
-              <p className="text-xl font-black text-slate-800">{formatCurrency(m.total)}</p>
-              <p className="text-xs text-slate-400">{m.count} transações</p>
+              <p className={`text-xl font-black ${cashierData?.status === "fechado" ? "text-slate-500" : "text-slate-800"}`}>
+                {formatCurrency(m.total)}
+              </p>
+              <p className="text-[10px] font-medium text-slate-400">{m.count} transações no período</p>
             </CardContent>
           </Card>
         ))}
