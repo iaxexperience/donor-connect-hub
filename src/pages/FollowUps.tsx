@@ -132,8 +132,9 @@ const FollowUps = () => {
   const [newFollowUpNote, setNewFollowUpNote] = useState("");
   const [newFollowUpClassification, setNewFollowUpClassification] = useState("all");
 
-  const [automationRules, setAutomationRules] = useState(initialAutomationRules);
-  const [automationGlobal, setAutomationGlobal] = useState(() => localStorage.getItem("automation_global") === "true");
+  const [automationRules, setAutomationRules] = useState<AutomationRule[]>(initialAutomationRules);
+  const [automationGlobal, setAutomationGlobal] = useState(false);
+  const [isProcessingNow, setIsProcessingNow] = useState(false);
   const { toast } = useToast();
 
   const [isScheduling, setIsScheduling] = useState(false);
@@ -191,9 +192,49 @@ const FollowUps = () => {
     }
   };
 
-  useEffect(() => {
-    localStorage.setItem("automation_global", automationGlobal.toString());
-  }, [automationGlobal]);
+    const loadAutomationSettings = async () => {
+      const { data } = await supabase.from('follow_up_settings').select('*').eq('id', 1).maybeSingle();
+      if (data) {
+        setAutomationGlobal(data.enabled);
+        if (data.rules) setAutomationRules(data.rules as any);
+      }
+    };
+
+    loadAutomationSettings();
+  }, []);
+
+  const handleSaveAutomation = async () => {
+    const { error } = await supabase
+      .from('follow_up_settings')
+      .update({ 
+        enabled: automationGlobal,
+        rules: automationRules as any,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', 1);
+
+    if (error) {
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Configurações salvas", description: "As regras de automação foram atualizadas no servidor." });
+    }
+  };
+
+  const handleProcessNow = async () => {
+    setIsProcessingNow(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('process-followups');
+      if (error) throw error;
+      
+      const count = data.results?.length || 0;
+      toast({ title: "Processamento Concluído", description: `${count} mensagens foram verificadas para envio.` });
+      // Invalidate queries to refresh history
+    } catch (err: any) {
+      toast({ title: "Erro no processamento", description: err.message, variant: "destructive" });
+    } finally {
+      setIsProcessingNow(false);
+    }
+  };
 
   const realStats = [
     { label: "Pendentes", value: dbFollowUps.filter(f => f.status === "pendente").length, icon: Clock, color: "text-amber-600" },
@@ -487,10 +528,18 @@ const FollowUps = () => {
                     </p>
                   </div>
                 </div>
-                <Switch checked={automationGlobal} onCheckedChange={setAutomationGlobal} />
-              </div>
             </CardContent>
           </Card>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={handleProcessNow} disabled={isProcessingNow} className="gap-2">
+              <Zap className={`w-4 h-4 ${isProcessingNow ? "animate-spin" : ""}`} /> 
+              {isProcessingNow ? "Processando..." : "Processar Agora (Manual)"}
+            </Button>
+            <Button onClick={handleSaveAutomation}>
+              <Save className="w-4 h-4 mr-2" /> Salvar Configurações
+            </Button>
+          </div>
 
           {/* KPIs de automação */}
           <div className="grid gap-4 sm:grid-cols-3">
@@ -607,11 +656,6 @@ const FollowUps = () => {
             </CardContent>
           </Card>
 
-          <div className="flex justify-end">
-            <Button onClick={() => toast({ title: "Configurações salvas", description: "As regras de automação foram atualizadas com sucesso." })}>
-              Salvar Configurações
-            </Button>
-          </div>
         </TabsContent>
 
         {/* Tab Histórico */}
