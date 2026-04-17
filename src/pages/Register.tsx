@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import PulseLogo from "@/components/common/PulseLogo";
 import {
   Select,
   SelectContent,
@@ -146,15 +147,12 @@ const Register = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="relative z-10 text-center max-w-md"
+          className="relative z-10 text-center max-w-md flex flex-col items-center"
         >
-          <div className="w-16 h-16 rounded-2xl bg-primary-foreground/10 backdrop-blur-sm flex items-center justify-center mx-auto mb-6">
-            <Heart className="w-8 h-8 text-accent" />
+          <div className="mb-8">
+            <PulseLogo variant="light" size={80} showText className="scale-125" />
           </div>
-          <h2 className="font-heading font-bold text-3xl text-primary-foreground mb-4">
-            FAP Pulse
-          </h2>
-          <p className="text-primary-foreground/70 leading-relaxed">
+          <p className="text-primary-foreground/70 leading-relaxed text-lg">
             Crie sua conta e comece a transformar a gestão de doadores da sua organização.
           </p>
         </motion.div>
@@ -176,11 +174,8 @@ const Register = () => {
             Voltar ao site
           </Link>
 
-          <div className="lg:hidden flex items-center gap-2 mb-6">
-            <div className="w-9 h-9 rounded-lg bg-gradient-hero flex items-center justify-center">
-              <Heart className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-heading font-bold text-xl text-foreground">FAP Pulse</span>
+          <div className="lg:hidden mb-6">
+            <PulseLogo variant="dark" size={40} showText />
           </div>
 
           <h1 className="font-heading font-bold text-2xl text-foreground mb-1">
@@ -326,6 +321,15 @@ const Register = () => {
               Entrar
             </Link>
           </p>
+
+          <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col items-center gap-2">
+            <p className="text-[10px] text-slate-400 font-medium tracking-tight">
+              © 2026 FAP — Todos os direitos reservados
+            </p>
+            <p className="text-[9px] text-slate-300 uppercase tracking-[0.2em] font-bold text-center">
+              Desenvolvido por IAX — Inteligência Artificial Experience
+            </p>
+          </div>
         </motion.div>
       </div>
     </div>
