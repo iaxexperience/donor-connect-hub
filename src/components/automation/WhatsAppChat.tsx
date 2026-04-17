@@ -426,6 +426,7 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
       }
     }
   };
+  const handleCallAction = (type: 'video' | 'audio') => {
     toast({
       title: type === 'video' ? "Chamada de Vídeo" : "Chamada de Áudio",
       description: "A API do WhatsApp Business não suporta chamadas VoIP diretamente via navegador. Use o seu celular físico para realizar chamadas.",
