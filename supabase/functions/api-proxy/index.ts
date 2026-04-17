@@ -138,6 +138,8 @@ serve(async (req) => {
               textBody = `📷 Imagem`;
             } else if (payload?.type === 'video') {
               textBody = `🎬 Vídeo`;
+            } else if (payload?.type === 'document') {
+              textBody = `📄 Documento (Recibo)`;
             }
 
             // 1. Find or create whatsapp_chats entry

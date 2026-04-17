@@ -115,6 +115,35 @@ export const metaService = {
     return resp;
   },
 
+  /** Envia documento (PDF) via api-proxy */
+  async sendDocumentMessage(to: string, docUrl: string, fileName: string, config: MetaConfig, donorId?: number) {
+    if (!config.phone_number_id || !config.access_token) {
+      throw new Error("Configurações da Meta API incompletas.");
+    }
+    const cleanPhone = to.replace(/\D/g, "");
+    const resp = await callProxy({
+      service: 'meta',
+      action: 'send_message',
+      donor_id: donorId,
+      config: {
+        phone_number_id: config.phone_number_id,
+        access_token: config.access_token,
+      },
+      payload: {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: cleanPhone,
+        type: "document",
+        document: { 
+          link: docUrl,
+          filename: fileName
+        },
+      },
+    });
+
+    return resp;
+  },
+
   /** Envia template via api-proxy */
   async sendTemplateMessage(to: string, templateName: string, languageCode: string, components: any[], config: MetaConfig, donorId?: number, batchId?: string) {
     if (!config.phone_number_id || !config.access_token) {
