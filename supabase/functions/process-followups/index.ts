@@ -17,7 +17,8 @@ serve(async (req) => {
   );
 
   try {
-    console.log("[Worker] Iniciando processamento de follow-ups agendados...");
+    const { force = false } = await req.json().catch(() => ({}));
+    console.log(`[Worker] Iniciando processamento (Force: ${force})...`);
 
     // 1. Carregar configurações de automação
     const { data: settings } = await supabase
@@ -63,8 +64,8 @@ serve(async (req) => {
           continue;
         }
 
-        // Verifica o horário (Se o horário agendado já passou)
-        if (rule.sendHour > currentHourMin && fu.due_date === todayStr) {
+        // Verifica o horário (Pula se 'force' for true)
+        if (!force && rule.sendHour > currentHourMin && fu.due_date === todayStr) {
           console.log(`[Worker] Aguardando horário de envio (${rule.sendHour}) para ${donor?.name}`);
           continue;
         }
