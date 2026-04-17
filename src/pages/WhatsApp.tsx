@@ -100,6 +100,8 @@ const WhatsApp = () => {
   // 5. Histórico States
   const [history, setHistory] = useState<any[]>([]);
   const [historyFilter, setHistoryFilter] = useState("all");
+  const [autoEnabled, setAutoEnabled] = useState(false);
+  const [autoLoading, setAutoLoading] = useState(false);
 
   // Initial load
   useEffect(() => {
@@ -112,7 +114,31 @@ const WhatsApp = () => {
     loadHistory();
     loadStoredTemplates();
     checkConnection();
+    loadAutoSettings();
   }, []);
+
+  const loadAutoSettings = async () => {
+    const { data } = await supabase.from('follow_up_settings').select('enabled').eq('id', 1).maybeSingle();
+    if (data) setAutoEnabled(data.enabled ?? false);
+  };
+
+  const handleToggleAuto = async (key: string) => {
+    if (key === 'agradecimento') return; // sempre ativo, disparado pelo Asaas
+    setAutoLoading(true);
+    try {
+      const newVal = !autoEnabled;
+      const { error } = await supabase
+        .from('follow_up_settings')
+        .upsert({ id: 1, enabled: newVal, updated_at: new Date().toISOString() });
+      if (error) throw error;
+      setAutoEnabled(newVal);
+      toast({ title: newVal ? "Automação ativada" : "Automação pausada", description: newVal ? "Follow-ups serão disparados automaticamente." : "Nenhuma mensagem automática será enviada." });
+    } catch (e: any) {
+      toast({ title: "Erro", description: e.message, variant: "destructive" });
+    } finally {
+      setAutoLoading(false);
+    }
+  };
 
   const checkConnection = async () => {
     try {
@@ -814,21 +840,31 @@ const WhatsApp = () => {
         <TabsContent value="automation" className="space-y-6">
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[
-                { title: "Agradecimento de Doação", desc: "Envia automaticamente após confirmação do Asaas", icon: Zap, status: "active" },
-                { title: "Agenda Diária", desc: "Dispara follow-ups agendados todas as manhãs", icon: History, status: "idle" },
-                { title: "Aviso de Vencimento", desc: "Lembrete 2 dias antes para recorrentes", icon: AlertCircle, status: "idle" }
-              ].map((auto, i) => (
-                <Card key={i} className={`relative overflow-hidden group hover:shadow-lg transition-all ${auto.status === 'active' ? 'border-primary/50 bg-primary/5' : ''}`}>
+                { key: "agradecimento", title: "Agradecimento de Doação", desc: "Envia automaticamente após confirmação de doação via Asaas", icon: Zap, active: true, locked: true },
+                { key: "agenda", title: "Follow-ups Automáticos", desc: "Dispara follow-ups por data da última doação (30/60/90 dias)", icon: History, active: autoEnabled, locked: false },
+                { key: "vencimento", title: "Aviso de Vencimento", desc: "Faz parte dos follow-ups automáticos para doadores recorrentes", icon: AlertCircle, active: autoEnabled, locked: true },
+              ].map((auto) => (
+                <Card key={auto.key} className={`relative overflow-hidden group hover:shadow-lg transition-all ${auto.active ? 'border-primary/50 bg-primary/5' : ''}`}>
                    <CardHeader>
                       <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                          <auto.icon className="h-5 w-5 text-primary" />
                       </div>
-                      <CardTitle className="text-base">{auto.title}</CardTitle>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        {auto.title}
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-normal ${auto.active ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
+                          {auto.active ? "Ativo" : "Pausado"}
+                        </span>
+                      </CardTitle>
                       <CardDescription className="text-xs">{auto.desc}</CardDescription>
                    </CardHeader>
                    <CardFooter>
-                      <Button variant={auto.status === 'active' ? 'default' : 'outline'} className="w-full">
-                         {auto.status === 'active' ? "Desativar" : "Ativar Automação"}
+                      <Button
+                        variant={auto.active ? 'default' : 'outline'}
+                        className="w-full"
+                        disabled={auto.locked || autoLoading}
+                        onClick={() => handleToggleAuto(auto.key)}
+                      >
+                        {auto.locked ? (auto.active ? "Sempre Ativo" : "Controlado pela Agenda") : auto.active ? "Pausar Automação" : "Ativar Automação"}
                       </Button>
                    </CardFooter>
                 </Card>
