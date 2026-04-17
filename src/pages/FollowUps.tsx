@@ -350,8 +350,10 @@ const FollowUps = () => {
 
   const followUpList = dbFollowUps.map(f => ({
     ...f,
-    status: f.status?.toLowerCase(),
+    status: f.status?.toLowerCase() || 'pendente',
     dueDate: f.due_date,
+    donorName: f.donors?.name || 'Doador Desconhecido',
+    phone: f.donors?.phone || '',
     donorType: (f as any).donorType || "unico",
     lastDonation: (f as any).lastDonation || "Nunca",
     lastContact: (f as any).last_date || "Sem contato",
@@ -360,18 +362,12 @@ const FollowUps = () => {
     campaign: (f as any).campaign || "Geral"
   }));
 
-  const automationLogs = dbLogs.map(log => ({
-    ...log,
-    retryCount: (log as any).retry_count, // map field name if different
-    sentAt: new Date(log.sentAt).toLocaleString("pt-BR")
-  }));
-
   const filtered = followUpList.filter((f) => {
+    const s = f.status?.toLowerCase();
     if (filterType !== "all" && f.donorType !== filterType) return false;
-    if (filterStatus !== "all" && f.status !== filterStatus) return false;
+    if (filterStatus !== "all" && s !== filterStatus) return false;
     return true;
   });
-
 
   const completionRate = followUpList.length > 0 ? Math.round(
     (followUpList.filter(f => f.status === "concluido").length / followUpList.length) * 100
