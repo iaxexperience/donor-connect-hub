@@ -15,6 +15,7 @@ import {
   Landmark,
   Sparkles,
   PiggyBank,
+  Gift,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink } from "@/components/NavLink";
@@ -44,6 +45,7 @@ const mainItems = [
   { title: "Relatórios", url: "/dashboard/relatorios", icon: BarChart3 },
   { title: "Agente IA", url: "/dashboard/agente-ia", icon: Sparkles },
   { title: "Caixa", url: "/dashboard/caixa", icon: PiggyBank },
+  { title: "Doações Físicas", url: "/dashboard/doacoes-fisicas", icon: Gift },
 ];
 
 const configItems = [
