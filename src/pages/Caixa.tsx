@@ -207,7 +207,7 @@ export default function Caixa() {
     const { data, error } = await supabase
       .from("caixas_dia")
       .select("*")
-      .eq("data", filterDate)
+      .eq("data_movimento", filterDate)
       .maybeSingle();
 
     if (error) {
@@ -268,7 +268,7 @@ export default function Caixa() {
   const handleAbrirCaixa = async () => {
     setSaving(true);
     const { error } = await supabase.from("caixas_dia").insert({
-      data: filterDate,
+      data_movimento: filterDate,
       saldo_inicial: parseFloat(saldoInicial.replace(",", ".")) || 0,
       status: "aberto",
     });
@@ -303,7 +303,7 @@ export default function Caixa() {
       fechado_por: user?.id,
       fechado_em: new Date().toISOString(),
       observacoes: closingNotes.trim() || null,
-    }).eq("data", filterDate);
+    }).eq("data_movimento", filterDate);
 
     if (error) {
       toast({ title: "Erro ao fechar caixa", description: error.message, variant: "destructive" });
