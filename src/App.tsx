@@ -104,6 +104,7 @@ const App = () => (
                   </Route>
                 </Route>
 
+                <Route path="/validate-receipt/:hash" element={<ValidateReceipt />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
