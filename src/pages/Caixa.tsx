@@ -334,6 +334,24 @@ export default function Caixa() {
     setSaving(false);
   };
 
+  const handleReabrirCaixa = async () => {
+    setSaving(true);
+    const { error } = await supabase.from("caixas_dia").update({
+      status: "aberto",
+      fechado_por: null,
+      fechado_em: null,
+    }).eq("data_movimento", filterDate);
+
+    if (error) {
+      toast({ title: "Erro ao reabrir", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Caixa Reaberto!", description: "Você já pode registrar novas doações." });
+      saveLog('REOPEN_CASHIER', 'caixa', { data_movimento: filterDate });
+      fetchCashierStatus();
+    }
+    setSaving(false);
+  };
+
   const handleConfirmarBoleto = async (id: string) => {
     const { data, error } = await supabase
       .from("caixa_transacoes")
@@ -631,9 +649,24 @@ export default function Caixa() {
               </Button>
             </div>
           ) : (
-            <Badge className="bg-red-50 text-red-600 border-red-100 py-1.5 px-3 rounded-lg hover:bg-red-50">
-              <Lock className="w-3.5 h-3.5 mr-1.5" /> Caixa Fechado
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-red-50 text-red-600 border-red-100 py-1.5 px-3 rounded-lg hover:bg-red-50">
+                <Lock className="w-3.5 h-3.5 mr-1.5" /> Caixa Fechado
+              </Badge>
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={() => {
+                  if(confirm("Deseja realmente REABRIR este caixa? Esta ação será registrada na auditoria.")) {
+                    handleReabrirCaixa();
+                  }
+                }} 
+                className="rounded-xl gap-2 text-slate-400 hover:text-primary transition-colors"
+                title="Reabrir Caixa"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </Button>
+            </div>
           )}
         </div>
       </div>
