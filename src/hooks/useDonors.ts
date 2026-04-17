@@ -166,27 +166,12 @@ export const useDonors = () => {
     isRegistering: donationMutation.isPending || addDonorMutation.isPending || updateTypeMutation.isPending || updateDonorMutation.isPending || deleteDonorMutation.isPending,
     isDonationPending: donationMutation.isPending,
     importDonors: async (donorsList: Partial<Donor>[]) => {
-      const withEmail = donorsList.filter(d => d.email);
-      const withDocOnly = donorsList.filter(d => !d.email && d.document_id);
-      const noKey = donorsList.filter(d => !d.email && !d.document_id);
-
-      if (withEmail.length > 0) {
-        const { error } = await supabase.from('donors').upsert(withEmail, { onConflict: 'email' });
-        if (error) throw error;
-      }
-
-      if (withDocOnly.length > 0) {
-        const { error } = await supabase.from('donors').upsert(withDocOnly, { onConflict: 'document_id' });
-        if (error) throw error;
-      }
-
-      if (noKey.length > 0) {
-        const { error } = await supabase.from('donors').insert(noKey);
-        if (error) throw error;
-      }
-
+      const { data, error } = await supabase.rpc('import_donors_safe', {
+        donors: donorsList,
+      });
+      if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['donors'] });
-      return { data: null, inserted: donorsList.length, skipped: 0 };
+      return { data, inserted: (data as any)?.inserted ?? donorsList.length, skipped: 0 };
     }
   };
 };
