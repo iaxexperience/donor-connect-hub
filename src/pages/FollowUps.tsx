@@ -209,12 +209,12 @@ const FollowUps = () => {
   const handleSaveAutomation = async () => {
     const { error } = await supabase
       .from('follow_up_settings')
-      .update({ 
+      .upsert({ 
+        id: 1,
         enabled: automationGlobal,
         rules: automationRules as any,
         updated_at: new Date().toISOString()
-      })
-      .eq('id', 1);
+      });
 
     if (error) {
       toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
