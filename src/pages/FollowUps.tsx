@@ -251,16 +251,75 @@ const FollowUps = () => {
   const handleProcessNow = async () => {
     setIsProcessingNow(true);
     try {
+      console.log("[Process] Tentando invocar Edge Function...");
       const { data, error } = await supabase.functions.invoke('process-followups', {
         body: { force: true }
       });
+      
       if (error) throw error;
       
       const count = data.results?.length || 0;
       toast({ title: "Processamento Concluído", description: `${count} mensagens foram verificadas para envio.` });
-      // Invalidate queries to refresh history
     } catch (err: any) {
-      toast({ title: "Erro no processamento", description: err.message, variant: "destructive" });
+      console.warn("[Process] Edge Function indisponível. Iniciando contingência via Frontend...", err.message);
+      
+      // Contingência: Envio Direto via Frontend (para quando a Function não está em deploy)
+      try {
+        // 1. Buscar credenciais
+        const { data: waConfig } = await supabase.from('whatsapp_settings').select('*').eq('id', 1).maybeSingle();
+        if (!waConfig?.access_token || !waConfig?.phone_number_id) {
+          throw new Error("WhatsApp não configurado nas Integrações.");
+        }
+
+        // 2. Buscar agendados
+        const todayStr = new Date().toISOString().split('T')[0];
+        const { data: pending } = await supabase
+          .from('follow_ups')
+          .select('*, donors(id, name, phone)')
+          .eq('status', 'agendado')
+          .lte('due_date', todayStr);
+
+        if (!pending || pending.length === 0) {
+          toast({ title: "Nada para enviar", description: "Não há follow-ups agendados para hoje ou datas passadas." });
+          return;
+        }
+
+        let successCount = 0;
+        for (const fu of pending) {
+          if (!fu.donors?.phone) continue;
+          
+          const cleanPhone = fu.donors.phone.replace(/\D/g, '');
+          const res = await fetch(`https://graph.facebook.com/v20.0/${waConfig.phone_number_id}/messages`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${waConfig.access_token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              messaging_product: 'whatsapp',
+              to: cleanPhone,
+              type: 'template',
+              template: {
+                name: "fapagra", // Fallback template ou carregar das regras
+                language: { code: 'pt_BR' },
+                components: [{ type: 'body', parameters: [{ type: 'text', text: fu.donors.name }] }]
+              }
+            })
+          });
+
+          if (res.ok) {
+            successCount++;
+            await supabase.from('follow_ups').update({ status: 'concluido' }).eq('id', fu.id);
+            await supabase.from('follow_up_logs').insert([{
+              donor_id: fu.donors.id,
+              donor_name: fu.donors.name,
+              status: 'enviado',
+              channel: 'whatsapp'
+            }]);
+          }
+        }
+
+        toast({ title: "Contingência Concluída", description: `${successCount} mensagens enviadas via envio direto.` });
+      } catch (subErr: any) {
+        toast({ title: "Falha Crítica", description: subErr.message, variant: "destructive" });
+      }
     } finally {
       setIsProcessingNow(false);
     }
