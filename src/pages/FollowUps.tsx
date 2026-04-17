@@ -226,7 +226,9 @@ const FollowUps = () => {
   const handleProcessNow = async () => {
     setIsProcessingNow(true);
     try {
-      const { data, error } = await supabase.functions.invoke('process-followups');
+      const { data, error } = await supabase.functions.invoke('process-followups', {
+        body: { force: true }
+      });
       if (error) throw error;
       
       const count = data.results?.length || 0;
