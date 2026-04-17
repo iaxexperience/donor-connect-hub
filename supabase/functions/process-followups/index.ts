@@ -49,11 +49,15 @@ serve(async (req) => {
 
     console.log(`[Worker] Data: ${todayStr}, Hora: ${currentHourMin}`);
 
-    const { data: followUps, error: fuError } = await supabase
+    const query = supabase
       .from('follow_ups')
       .select('*, donors(id, name, phone, type)')
-      .in('status', ['agendado', 'pendente'])
-      .lte('due_date', todayStr);
+      .in('status', ['agendado', 'pendente']);
+
+    // Modo manual processa todos os pendentes; automático só processa os vencidos
+    if (!manual) query.lte('due_date', todayStr);
+
+    const { data: followUps, error: fuError } = await query;
 
     if (fuError) throw fuError;
 
