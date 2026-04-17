@@ -25,6 +25,7 @@ import DonorForm from "./pages/DonorForm";
 import WhatsApp from "./pages/WhatsApp";
 import AgenteIA from "./pages/AgenteIA";
 import Caixa from "./pages/Caixa";
+import ValidateReceipt from "./pages/ValidateReceipt";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
