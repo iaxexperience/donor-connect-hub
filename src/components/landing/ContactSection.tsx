@@ -70,7 +70,7 @@ const ContactSection = () => {
                 { 
                   icon: Phone, 
                   label: "83 996583281",
-                  href: "https://wa.me/5583996583281?text=Olá!%20Gostaria%20de%20falar%20com%20a%20equipe%20do%20Pulse%20Doações."
+                  href: "https://api.whatsapp.com/send?phone=5583996583281&text=Olá!%20Gostaria%20de%20falar%20com%20a%20equipe%20do%20Pulse%20Doações."
                 },
                 { 
                   icon: MapPin, 

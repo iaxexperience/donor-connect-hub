@@ -35,7 +35,7 @@ const CTASection = () => {
               </Link>
             </Button>
             <Button size="xl" variant="outline" className="border-white/30 bg-white/5 text-white hover:bg-white/10 rounded-2xl font-bold px-10 backdrop-blur-sm" asChild>
-              <a href="https://wa.me/5583996583281?text=Olá!%20Gostaria%20de%20falar%20com%20um%20consultor%20do%20Pulse%20Doações." target="_blank" rel="noopener noreferrer">
+              <a href="https://api.whatsapp.com/send?phone=5583996583281&text=Olá!%20Gostaria%20de%20falar%20com%20um%20consultor%20do%20Pulse%20Doações." target="_blank" rel="noopener noreferrer">
                 Falar com Consultor
               </a>
             </Button>
