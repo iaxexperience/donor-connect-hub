@@ -81,10 +81,54 @@ export default function Caixa() {
 
   // Form state
   const [donorName, setDonorName] = useState("");
+  const [donorId, setDonorId] = useState<number | null>(null);
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Donor search autocomplete
+  const [suggestions, setSuggestions] = useState<DonorSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const searchDonors = async (term: string) => {
+    setDonorId(null);
+    if (term.length < 2) { setSuggestions([]); setShowSuggestions(false); return; }
+    setSearching(true);
+    const { data } = await supabase
+      .from("donors")
+      .select("id, name, email")
+      .ilike("name", `%${term}%`)
+      .limit(8);
+    setSuggestions(data || []);
+    setShowSuggestions(true);
+    setSearching(false);
+  };
+
+  const selectDonor = (donor: DonorSuggestion) => {
+    setDonorName(donor.name);
+    setDonorId(donor.id);
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
+
+  const resetForm = () => {
+    setDonorName(""); setDonorId(null); setAmount("");
+    setNotes(""); setPaymentMethod("pix");
+    setSuggestions([]); setShowSuggestions(false);
+  };
 
   const fetchTransacoes = async () => {
     setLoading(true);
@@ -112,6 +156,7 @@ export default function Caixa() {
 
     setSaving(true);
     const { error } = await supabase.from("caixa_transacoes").insert({
+      donor_id: donorId,
       donor_name: donorName.trim() || "Anônimo",
       amount: parseFloat(amount.replace(",", ".")),
       payment_method: paymentMethod,
@@ -124,7 +169,7 @@ export default function Caixa() {
       toast({ title: "Erro ao registrar", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Doação registrada!", description: `R$ ${amount} via ${methodLabel[paymentMethod]}` });
-      setDonorName(""); setAmount(""); setNotes(""); setPaymentMethod("pix");
+      resetForm();
       setOpenDialog(false);
       fetchTransacoes();
     }
@@ -215,9 +260,43 @@ ${linhas}
                 <DialogTitle>Registrar Nova Doação</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-2">
-                <div className="space-y-1">
+                <div className="space-y-1" ref={searchRef}>
                   <Label>Nome do Doador</Label>
-                  <Input placeholder='Nome completo ou "Anônimo"' value={donorName} onChange={e => setDonorName(e.target.value)} />
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input
+                      placeholder='Pesquisar doador cadastrado ou digitar manualmente...'
+                      value={donorName}
+                      onChange={e => { setDonorName(e.target.value); searchDonors(e.target.value); }}
+                      className="pl-9"
+                    />
+                    {searching && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">buscando...</span>}
+                    {donorId && <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />}
+                  </div>
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute z-50 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 overflow-hidden">
+                      {suggestions.map(d => (
+                        <button
+                          key={d.id}
+                          type="button"
+                          className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 text-left transition-colors"
+                          onClick={() => selectDonor(d)}
+                        >
+                          <User className="w-4 h-4 text-slate-400 shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-slate-800">{d.name}</p>
+                            <p className="text-xs text-slate-400">{d.email}</p>
+                          </div>
+                        </button>
+                      ))}
+                      <div className="border-t border-slate-100 px-4 py-2 text-xs text-slate-400">
+                        Não encontrou? Continue digitando para registrar manualmente.
+                      </div>
+                    </div>
+                  )}
+                  {showSuggestions && suggestions.length === 0 && donorName.length >= 2 && !searching && (
+                    <p className="text-xs text-slate-400 mt-1">Nenhum doador encontrado — será registrado manualmente.</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label>Valor (R$)</Label>

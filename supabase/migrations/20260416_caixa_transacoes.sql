@@ -1,7 +1,7 @@
 -- Tabela de transações do caixa de doações
 CREATE TABLE IF NOT EXISTS caixa_transacoes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  donor_id uuid REFERENCES profiles(id) ON DELETE SET NULL,
+  donor_id integer REFERENCES donors(id) ON DELETE SET NULL,
   donor_name text NOT NULL DEFAULT 'Anônimo',
   amount numeric(12,2) NOT NULL CHECK (amount > 0),
   payment_method text NOT NULL CHECK (payment_method IN ('dinheiro','pix','cartao','boleto')),
