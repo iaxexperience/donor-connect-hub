@@ -45,7 +45,6 @@ interface Transacao {
   compensated_at?: string;
   profiles?: { name: string };
   donors?: {
-    logradouro?: string;
     address_number?: string;
     neighborhood?: string;
     city?: string;
