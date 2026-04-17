@@ -19,10 +19,11 @@ import {
 } from "@/components/ui/table";
 import {
   Gift, Plus, Search, User, CheckCircle2, Clock, XCircle,
-  Scissors, Package, Pill, Car, Home, Building2, MapPin, HelpCircle, Baby,
+  Scissors, Package, Pill, Car, Home, Building2, MapPin, HelpCircle, Baby, FileText,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { gerarReciboFisicoPDF } from "@/lib/reciboService";
 
 type TipoDoacao =
   | "cabelo" | "fraldas_geriatricas" | "alimentos" | "remedios"
@@ -111,12 +112,23 @@ const tipoConfig: Record<TipoDoacao, { label: string; icon: React.ReactNode; col
 
 const imoveis: TipoDoacao[] = ["terreno", "casa", "predio_comercial"];
 
+interface OrgSettings {
+  system_name?: string;
+  logo_url?: string;
+  cnpj?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+}
+
 export default function DoacoesFisicas() {
   const { user } = useAuth();
   const { toast } = useToast();
 
   const [doacoes, setDoacoes] = useState<DoacaoFisica[]>([]);
   const [loading, setLoading] = useState(true);
+  const [orgSettings, setOrgSettings] = useState<OrgSettings>({});
+  const [emittingReceipt, setEmittingReceipt] = useState<string | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("todos");
   const [filterTipo, setFilterTipo] = useState<string>("todos");
@@ -182,6 +194,33 @@ export default function DoacoesFisicas() {
   };
 
   useEffect(() => { fetchDoacoes(); }, [filterStatus, filterTipo, searchTerm]);
+
+  useEffect(() => {
+    supabase.from("white_label_settings").select("system_name,logo_url,cnpj,address,phone,email")
+      .eq("id", 1).maybeSingle().then(({ data }) => { if (data) setOrgSettings(data); });
+  }, []);
+
+  const handleEmitirReciboFisico = async (d: DoacaoFisica) => {
+    setEmittingReceipt(d.id);
+    try {
+      await gerarReciboFisicoPDF({
+        donor_name: d.donor_name,
+        tipo_doacao: d.tipo_doacao,
+        subtipo: d.subtipo,
+        descricao: d.descricao,
+        quantidade: d.quantidade,
+        observacoes: d.observacoes,
+        status: d.status,
+        created_at: d.created_at,
+        recebido_em: d.recebido_em,
+        org: orgSettings,
+      });
+    } catch {
+      toast({ title: "Erro ao gerar recibo", variant: "destructive" });
+    } finally {
+      setEmittingReceipt(null);
+    }
+  };
 
   const handleSave = async () => {
     if (!donorName.trim()) { toast({ title: "Informe o nome do doador", variant: "destructive" }); return; }
@@ -500,6 +539,12 @@ export default function DoacoesFisicas() {
                               <CheckCircle2 className="w-3 h-3 mr-1" /> Receber
                             </Button>
                           )}
+                          <Button size="sm" variant="outline" className="text-xs rounded-lg h-7 text-blue-600 border-blue-200 hover:bg-blue-50 px-2"
+                            onClick={() => handleEmitirReciboFisico(d)}
+                            disabled={emittingReceipt === d.id}
+                            title="Emitir Recibo PDF">
+                            <FileText className="w-3 h-3" />
+                          </Button>
                           {d.status !== "cancelado" && d.status !== "recebido" && (
                             <Button size="sm" variant="ghost" className="text-xs rounded-lg h-7 text-red-500 hover:text-red-600 px-2"
                               onClick={() => handleCancelar(d.id)}>
