@@ -250,12 +250,8 @@ export const useDashboard = () => {
     .filter(d => isConfirmedStatus(d.status))
     .reduce((acc, d) => acc + Number(d.amount || 0), 0);
 
-  const confirmedCaixaTotal = caixaTransactions
-    .filter(t => isConfirmedStatus(t.status))
-    .reduce((acc, t) => acc + Number(t.amount || 0), 0);
-
   // Mantemos fallback: se o saldo real da API falhar ou for 0, usa a soma histórica do banco
-  const totalDonations = realBalance > 0 ? (realBalance + confirmedCaixaTotal) : (confirmedDonationsTotal + confirmedCaixaTotal);
+  const totalDonations = realBalance > 0 ? realBalance : confirmedDonationsTotal;
 
   return {
     isLoading: donationsLoading || balanceLoading || caixaLoading,
@@ -266,8 +262,8 @@ export const useDashboard = () => {
     recentDonations: getRecentDonations(),
     todayTotal,
     totalDonations,
-    avgTicket: (donations.length + caixaTransactions.length) > 0 ? (donations.reduce((acc, d) => acc + Number(d.amount || 0), 0) + confirmedCaixaTotal) / Math.max(donations.filter(d => isConfirmedStatus(d.status)).length + caixaTransactions.filter(t => isConfirmedStatus(t.status)).length, 1) : 0,
-    donationsCount: donations.length + caixaTransactions.length
+    avgTicket: donations.length > 0 ? donations.reduce((acc, d) => acc + Number(d.amount || 0), 0) / Math.max(donations.filter(d => isConfirmedStatus(d.status)).length, 1) : 0,
+    donationsCount: donations.length
   };
 
 };
