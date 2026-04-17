@@ -342,14 +342,15 @@ const FollowUps = () => {
   };
 
   const realStats = [
-    { label: "Pendentes", value: dbFollowUps.filter(f => f.status === "pendente").length, icon: Clock, color: "text-amber-600" },
-    { label: "Agendados", value: dbFollowUps.filter(f => f.status === "agendado").length, icon: CalendarClock, color: "text-primary" },
-    { label: "Atrasados", value: dbFollowUps.filter(f => f.status === "atrasado").length, icon: AlertTriangle, color: "text-destructive" },
-    { label: "Concluídos", value: dbFollowUps.filter(f => f.status === "concluido").length, icon: CheckCircle2, color: "text-green-600" },
+    { label: "Pendentes", value: dbFollowUps.filter(f => f.status?.toLowerCase() === "pendente").length, icon: Clock, color: "text-amber-600" },
+    { label: "Agendados", value: dbFollowUps.filter(f => f.status?.toLowerCase() === "agendado").length, icon: CalendarClock, color: "text-primary" },
+    { label: "Atrasados", value: dbFollowUps.filter(f => f.status?.toLowerCase() === "atrasado").length, icon: AlertTriangle, color: "text-destructive" },
+    { label: "Concluídos", value: dbFollowUps.filter(f => f.status?.toLowerCase() === "concluido").length, icon: CheckCircle2, color: "text-green-600" },
   ];
 
   const followUpList = dbFollowUps.map(f => ({
     ...f,
+    status: f.status?.toLowerCase(),
     dueDate: f.due_date,
     donorType: (f as any).donorType || "unico",
     lastDonation: (f as any).lastDonation || "Nunca",
