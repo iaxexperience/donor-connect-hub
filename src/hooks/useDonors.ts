@@ -168,9 +168,9 @@ export const useDonors = () => {
     importDonors: async (donorsList: Partial<Donor>[]) => {
       const { data, error } = await supabase
         .from('donors')
-        .insert(donorsList)
+        .upsert(donorsList, { onConflict: 'email', ignoreDuplicates: false })
         .select();
-        
+
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['donors'] });
       return data;
