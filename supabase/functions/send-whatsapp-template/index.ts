@@ -113,11 +113,9 @@ serve(async (req) => {
     // 7. Log to follow_up_logs
     await supabase.from('follow_up_logs').insert([{
       donor_id: donor.id,
-      donor_name: donor.name,
-      donor_type: donor.type || 'unico',
-      status: 'enviado',
       channel: 'whatsapp',
       template: resolvedTemplate,
+      status: 'enviado',
       sent_at: new Date().toISOString()
     }]);
 

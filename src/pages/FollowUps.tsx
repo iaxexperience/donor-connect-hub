@@ -44,7 +44,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 type DonorType = "unico" | "esporadico" | "recorrente";
-type FollowUpStatus = "pendente" | "agendado" | "concluido" | "atrasado";
+type FollowUpStatus = "pendente" | "agendado" | "enviado" | "atrasado";
 type FollowUpChannel = "telefone" | "whatsapp" | "email";
 
 interface FollowUp {
@@ -95,7 +95,7 @@ const followUps: FollowUp[] = [
   { id: 3, donorName: "Ana Oliveira", donorType: "esporadico", phone: "(31) 97666-9012", email: "ana@email.com", lastDonation: "2026-02-10", lastContact: "2026-02-15", dueDate: "2026-04-05", status: "atrasado", channel: "email", campaign: "Alimentação Infantil", totalDonations: 3, notes: "Preferência por e-mail" },
   { id: 4, donorName: "Carlos Mendes", donorType: "recorrente", phone: "(41) 96555-3456", email: "carlos@email.com", lastDonation: "2026-03-30", lastContact: "2026-04-01", dueDate: "2026-04-12", status: "pendente", channel: "telefone", campaign: "Natal Solidário", totalDonations: 8, notes: "Disponível após 18h" },
   { id: 5, donorName: "Patrícia Lima", donorType: "unico", phone: "(51) 95444-7890", email: "patricia@email.com", lastDonation: "2025-12-20", lastContact: "2025-12-22", dueDate: "2026-03-20", status: "atrasado", channel: "whatsapp", campaign: "Educação para Todos", totalDonations: 1, notes: "Sem resposta anterior" },
-  { id: 6, donorName: "Roberto Alves", donorType: "esporadico", phone: "(61) 94333-2345", email: "roberto@email.com", lastDonation: "2026-03-01", lastContact: "2026-03-05", dueDate: "2026-04-08", status: "concluido", channel: "telefone", campaign: "Alimentação Infantil", totalDonations: 4, notes: "Confirmou interesse em recorrência" },
+  { id: 6, donorName: "Roberto Alves", donorType: "esporadico", phone: "(61) 94333-2345", email: "roberto@email.com", lastDonation: "2026-03-01", lastContact: "2026-03-05", dueDate: "2026-04-08", status: "enviado", channel: "telefone", campaign: "Alimentação Infantil", totalDonations: 4, notes: "Confirmou interesse em recorrência" },
   { id: 7, donorName: "Fernanda Costa", donorType: "recorrente", phone: "(71) 93222-6789", email: "fernanda@email.com", lastDonation: "2026-04-01", lastContact: "2026-04-03", dueDate: "2026-04-15", status: "agendado", channel: "whatsapp", campaign: "Natal Solidário", totalDonations: 15, notes: "Top doadora, tratamento VIP" },
 ];
 
@@ -111,8 +111,8 @@ const donorTypeBadge: Record<string, string> = {
   esporadico: "bg-orange-100 text-orange-700 border-orange-200", 
   recorrente: "bg-green-100 text-green-700 border-green-200" 
 };
-const statusLabel: Record<string, string> = { pendente: "Pendente", agendado: "Agendado", concluido: "Concluído", atrasado: "Atrasado" };
-const statusColor: Record<string, string> = { pendente: "bg-amber-100 text-amber-800", agendado: "bg-blue-100 text-blue-800", concluido: "bg-green-100 text-green-800", atrasado: "bg-red-100 text-red-800" };
+const statusLabel: Record<string, string> = { pendente: "Pendente", agendado: "Agendado", enviado: "Concluído", atrasado: "Atrasado" };
+const statusColor: Record<string, string> = { pendente: "bg-amber-100 text-amber-800", agendado: "bg-blue-100 text-blue-800", enviado: "bg-green-100 text-green-800", atrasado: "bg-red-100 text-red-800" };
 const channelIcon: Record<string, any> = { telefone: Phone, whatsapp: MessageSquare, email: Mail };
 const logStatusColor: Record<string, string> = { enviado: "bg-green-100 text-green-800", falha: "bg-red-100 text-red-800", aguardando: "bg-amber-100 text-amber-800" };
 
@@ -280,7 +280,7 @@ const FollowUps = () => {
     { label: "Pendentes", value: dbFollowUps.filter(f => f.status?.toLowerCase() === "pendente").length, icon: Clock, color: "text-amber-600" },
     { label: "Agendados", value: dbFollowUps.filter(f => f.status?.toLowerCase() === "agendado").length, icon: CalendarClock, color: "text-primary" },
     { label: "Atrasados", value: dbFollowUps.filter(f => f.status?.toLowerCase() === "atrasado").length, icon: AlertTriangle, color: "text-destructive" },
-    { label: "Concluídos", value: dbFollowUps.filter(f => f.status?.toLowerCase() === "concluido").length, icon: CheckCircle2, color: "text-green-600" },
+    { label: "Concluídos", value: dbFollowUps.filter(f => f.status?.toLowerCase() === "enviado").length, icon: CheckCircle2, color: "text-green-600" },
   ];
 
   const followUpList = dbFollowUps.map(f => ({
@@ -305,7 +305,7 @@ const FollowUps = () => {
   });
 
   const completionRate = followUpList.length > 0 ? Math.round(
-    (followUpList.filter(f => f.status === "concluido").length / followUpList.length) * 100
+    (followUpList.filter(f => f.status === "enviado").length / followUpList.length) * 100
   ) : 0;
 
   const toggleRuleEnabled = (type: DonorType) => {
@@ -477,7 +477,7 @@ const FollowUps = () => {
                       <SelectItem value="pendente">Pendente</SelectItem>
                       <SelectItem value="agendado">Agendado</SelectItem>
                       <SelectItem value="atrasado">Atrasado</SelectItem>
-                      <SelectItem value="concluido">Concluído</SelectItem>
+                      <SelectItem value="enviado">Concluído</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -865,7 +865,7 @@ const FollowUps = () => {
                       <SelectContent>
                         <SelectItem value="pendente">Pendente</SelectItem>
                         <SelectItem value="agendado">Agendado</SelectItem>
-                        <SelectItem value="concluido">Concluído</SelectItem>
+                        <SelectItem value="enviado">Concluído</SelectItem>
                         <SelectItem value="atrasado">Atrasado</SelectItem>
                       </SelectContent>
                     </Select>

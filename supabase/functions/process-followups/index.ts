@@ -154,15 +154,13 @@ serve(async (req) => {
         }
 
         // Atualiza status (service role ignora RLS)
-        const { error: updateErr } = await supabase.from('follow_ups').update({ status: 'concluido' }).eq('id', fu.id);
+        const { error: updateErr } = await supabase.from('follow_ups').update({ status: 'enviado' }).eq('id', fu.id);
         if (updateErr) console.error(`[Worker] Falha ao atualizar status ID ${fu.id}:`, JSON.stringify(updateErr));
-        else console.log(`[Worker] Status ID ${fu.id} atualizado para concluido.`);
+        else console.log(`[Worker] Status ID ${fu.id} atualizado para enviado.`);
 
         // Log de sucesso
         const { error: logErr } = await supabase.from('follow_up_logs').insert([{
           donor_id: donor.id,
-          donor_name: donor.name,
-          donor_type: donorType,
           channel: 'whatsapp',
           template: templateName,
           status: 'enviado',
@@ -177,8 +175,6 @@ serve(async (req) => {
         console.error(`[Worker] Falha no follow-up ${fu.id}:`, err.message);
         await supabase.from('follow_up_logs').insert([{
           donor_id: fu.donors?.id,
-          donor_name: fu.donors?.name,
-          donor_type: fu.donors?.type || 'unico',
           channel: 'whatsapp',
           template: TEMPLATE_BY_TYPE[fu.donors?.type] || 'follow_up_primeiro_doador',
           status: 'falha',
