@@ -117,15 +117,28 @@ export async function gerarReciboPDF(data: ReciboData): Promise<void> {
   
   const qrSize = 30;
   const qrX = pageW - margin - qrSize;
-  const qrY = footerY - qrSize - 10;
+  const footerY = 280; // Definido antes do uso
+  const qrY = footerY - qrSize - 5;
+
+  doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
+  doc.setFontSize(7);
+  doc.setTextColor(150, 150, 150);
+  doc.text("Valide este recibo", qrX + qrSize/2, qrY + qrSize + 3, { align: "center" });
 
   // ── RODAPÉ ─────────────────────────────────────────────────────
-  const footerY = 280;
   doc.setFontSize(8);
   doc.setTextColor(180, 180, 180);
   doc.text(`Nº do Recibo: ${data.receipt_number} | Hash: ${data.validation_hash}`, pageW / 2, footerY, { align: "center" });
 
-  doc.save(`Recibo-${data.donor_name.split(' ')[0]}-${data.receipt_number.split('-').pop()}.pdf`);
+  // ── RETORNO OU SALVAMENTO ──────────────────────────────────────
+  const fileName = `Recibo-${data.donor_name.split(' ')[0]}-${data.receipt_number.split('-').pop()}.pdf`;
+  
+  // Se for solicitado retorno como blob (para envio via WhatsApp)
+  if ((data as any).returnBlob) {
+    return doc.output("blob") as any;
+  }
+
+  doc.save(fileName);
 }
 
 // ─────────────────────────────────────────────────────────────
