@@ -113,20 +113,25 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
       .select('*')
       .order('last_message_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching chats:', error);
-      return;
-    }
+    // Mapear nomes de doadores se o telefone bater
+    const enrichedChats = (data || []).map(chat => {
+      if (chat.nome === 'Contato' || !chat.nome) {
+        const normChat = normalizePhone(chat.telefone);
+        const donor = (donors || []).find(d => d.phone && normalizePhone(d.phone) === normChat);
+        if (donor) {
+          return { ...chat, nome: donor.name };
+        }
+      }
+      return chat;
+    });
 
     // Deduplicação em tempo de exibição (Client-side merge)
-    // Se existirem chats duplicados (com e sem 9 dígitos), mostramos apenas o mais recente
     const uniqueChats: Record<string, Chat> = {};
-    (data || []).forEach(chat => {
+    enrichedChats.forEach(chat => {
       const norm = normalizePhone(chat.telefone);
       if (!uniqueChats[norm]) {
         uniqueChats[norm] = chat;
       } else {
-        // Se este chat for mais recente que o já guardado para este número, substitui
         if (new Date(chat.last_message_at).getTime() > new Date(uniqueChats[norm].last_message_at).getTime()) {
           uniqueChats[norm] = chat;
         }
@@ -138,6 +143,18 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
     );
 
     setChats(newChats);
+
+    // 4. Sincronizar nomes de volta para o banco de dados (Background)
+    enrichedChats.forEach(async (chat) => {
+      const original = (data || []).find(d => d.id === chat.id);
+      if (original && (original.nome === 'Contato' || !original.nome) && chat.nome !== 'Contato' && chat.nome) {
+        console.log(`[WhatsAppChat] Auto-updating name for ${chat.telefone} to ${chat.nome}`);
+        await supabase
+          .from('whatsapp_chats')
+          .update({ nome: chat.nome, donor_id: (donors || []).find(d => d.phone && normalizePhone(d.phone) === normalizePhone(chat.telefone))?.id })
+          .eq('id', chat.id);
+      }
+    });
 
     // Auto-update selectedChat if its ID changed during merge but phone matches
     if (selectedChat) {
@@ -225,7 +242,7 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
     return () => {
       supabase.removeChannel(chatSubscription);
     };
-  }, [selectedChat?.id]); // Re-subscribe if selectedChat changes to keep context fresh
+  }, [selectedChat?.id, donors]); // Re-subscribe if selectedChat or donors list changes
 
   useEffect(() => {
     if (selectedChat) {
