@@ -10,11 +10,11 @@ const FooterSection = () => {
           </div>
           
           <div className="flex flex-col items-center md:items-end gap-2">
-            <p className="text-sm text-white/40 font-medium">
-              © {new Date().getFullYear()} Pulse Doações. Todos os direitos reservados.
+            <p className="text-sm text-white/40 font-medium tracking-tight">
+              © 2026 FAP — Todos os direitos reservados
             </p>
-            <p className="text-[10px] text-white/20 uppercase tracking-widest font-bold">
-              Solução completa para gestão do Terceiro Setor
+            <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-bold">
+              Desenvolvido por IAX — Inteligência Artificial Experience
             </p>
           </div>
         </div>

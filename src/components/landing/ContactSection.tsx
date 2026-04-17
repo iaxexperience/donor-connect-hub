@@ -39,9 +39,9 @@ const ContactSection = () => {
 
             <div className="space-y-4">
               {[
-                { icon: Mail, label: "contato@FAP Pulse.com.br" },
-                { icon: Phone, label: "+55 (11) 99999-9999" },
-                { icon: MapPin, label: "São Paulo, SP — Brasil" },
+                { icon: Mail, label: "comercial@iax.info" },
+                { icon: Phone, label: "83 996583281" },
+                { icon: MapPin, label: "Campina Grande - PB" },
               ].map((item) => (
                 <div key={item.label} className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
