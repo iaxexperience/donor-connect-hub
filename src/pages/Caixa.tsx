@@ -21,6 +21,7 @@ import {
   Wallet, Plus, FileText, TrendingUp, Banknote, CreditCard,
   QrCode, FileBarChart, Clock, CheckCircle2, XCircle, Printer,
   Search, User, Receipt, Link2, MessageCircle, AlertCircle, RotateCcw,
+  Unlock, Lock, Coins, CalendarDays, History, Info,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -99,6 +100,14 @@ export default function Caixa() {
   const [filterMethod, setFilterMethod] = useState<string>("todos");
   const [filterDate, setFilterDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [orgSettings, setOrgSettings] = useState<any>(null);
+
+  // Cashier status state
+  const [cashierData, setCashierData] = useState<any>(null);
+  const [cashierLoading, setCashierLoading] = useState(true);
+  const [openCashierDialog, setOpenCashierDialog] = useState(false);
+  const [closeCashierDialog, setCloseCashierDialog] = useState(false);
+  const [saldoInicial, setSaldoInicial] = useState("");
+  const [closingNotes, setClosingNotes] = useState("");
 
   // Form state
   const [donorName, setDonorName] = useState("");
@@ -193,9 +202,38 @@ export default function Caixa() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchTransacoes(); }, [filterDate, filterMethod]);
+  const fetchCashierStatus = async () => {
+    setCashierLoading(true);
+    const { data, error } = await supabase
+      .from("caixas_dia")
+      .select("*")
+      .eq("data", filterDate)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Erro ao buscar status do caixa:", error.message);
+    } else {
+      setCashierData(data);
+    }
+    setCashierLoading(false);
+  };
+
+  useEffect(() => {
+    fetchTransacoes();
+    fetchCashierStatus();
+  }, [filterDate, filterMethod]);
 
   const handleSave = async () => {
+    if (cashierData?.status === "fechado") {
+      toast({ title: "Caixa Fechado", description: "Não é possível registrar doações em um caixa fechado.", variant: "destructive" });
+      return;
+    }
+    if (!cashierData && filterDate === format(new Date(), "yyyy-MM-dd")) {
+      toast({ title: "Caixa não aberto", description: "Abra o caixa antes de registrar doações.", variant: "destructive" });
+      setOpenCashierDialog(true);
+      return;
+    }
+
     if (!donorName.trim()) { toast({ title: "Informe o nome do doador", variant: "destructive" }); return; }
     if (!amount || parseFloat(amount) <= 0) { toast({ title: "Informe um valor válido", variant: "destructive" }); return; }
 
@@ -218,10 +256,62 @@ export default function Caixa() {
       resetForm();
       setOpenDialog(false);
       fetchTransacoes();
+      // Atualiza o resumo do caixa se for para o dia atual (opcional, já que fetchTransacoes roda)
       // Emitir recibo automaticamente se confirmado
       if (data && data.status === "confirmado") {
         setTimeout(() => emitirRecibo(data as Transacao), 500);
       }
+    }
+    setSaving(false);
+  };
+
+  const handleAbrirCaixa = async () => {
+    setSaving(true);
+    const { error } = await supabase.from("caixas_dia").insert({
+      data: filterDate,
+      saldo_inicial: parseFloat(saldoInicial.replace(",", ".")) || 0,
+      status: "aberto",
+      created_at: new Date().toISOString(),
+    });
+
+    if (error) {
+      toast({ title: "Erro ao abrir caixa", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Caixa Aberto!", description: `Data: ${format(new Date(filterDate + "T12:00:00"), "dd/MM/yyyy")}` });
+      setOpenCashierDialog(false);
+      fetchCashierStatus();
+    }
+    setSaving(false);
+  };
+
+  const handleFecharCaixa = async () => {
+    setSaving(true);
+    const totals = {
+      dinheiro: confirmadas.filter(t => t.payment_method === "dinheiro").reduce((s, t) => s + t.amount, 0),
+      pix: confirmadas.filter(t => t.payment_method === "pix").reduce((s, t) => s + t.amount, 0),
+      cartao: confirmadas.filter(t => t.payment_method === "cartao").reduce((s, t) => s + t.amount, 0),
+      boleto: confirmadas.filter(t => t.payment_method === "boleto").reduce((s, t) => s + t.amount, 0),
+    };
+
+    const { error } = await supabase.from("caixas_dia").update({
+      status: "fechado",
+      total_dinheiro: totals.dinheiro,
+      total_pix: totals.pix,
+      total_cartao: totals.cartao,
+      total_boleto: totals.boleto,
+      total_geral: totalGeral,
+      qtd_transacoes: confirmadas.length,
+      fechado_por: user?.id,
+      fechado_em: new Date().toISOString(),
+      observacoes: closingNotes.trim() || null,
+    }).eq("data", filterDate);
+
+    if (error) {
+      toast({ title: "Erro ao fechar caixa", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Caixa Fechado com Sucesso!", description: "O resumo do dia foi armazenado." });
+      setCloseCashierDialog(false);
+      fetchCashierStatus();
     }
     setSaving(false);
   };
@@ -464,20 +554,142 @@ export default function Caixa() {
         </div>
       </div>
 
-      {/* Filtros */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <Input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} className="w-44 rounded-xl" />
-        <Select value={filterMethod} onValueChange={setFilterMethod}>
-          <SelectTrigger className="w-44 rounded-xl"><SelectValue placeholder="Modalidade" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todas modalidades</SelectItem>
-            <SelectItem value="dinheiro">Dinheiro</SelectItem>
-            <SelectItem value="pix">Pix</SelectItem>
-            <SelectItem value="cartao">Cartão</SelectItem>
-            <SelectItem value="boleto">Boleto</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Filtros e Status do Dia */}
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
+            <Input 
+              type="date" 
+              value={filterDate} 
+              onChange={e => setFilterDate(e.target.value)} 
+              className="pl-9 w-44 rounded-xl border-slate-200 focus:ring-primary/20 transition-all" 
+            />
+          </div>
+          <Select value={filterMethod} onValueChange={setFilterMethod}>
+            <SelectTrigger className="w-44 rounded-xl border-slate-200"><SelectValue placeholder="Modalidade" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todas modalidades</SelectItem>
+              <SelectItem value="dinheiro">Dinheiro</SelectItem>
+              <SelectItem value="pix">Pix</SelectItem>
+              <SelectItem value="cartao">Cartão</SelectItem>
+              <SelectItem value="boleto">Boleto</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          {cashierLoading ? (
+            <div className="h-10 w-32 bg-slate-100 animate-pulse rounded-xl" />
+          ) : !cashierData ? (
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-slate-50 text-slate-500 border-slate-200 py-1.5 px-3 rounded-lg">
+                <History className="w-3 h-3 mr-1.5" />Não Iniciado
+              </Badge>
+              {filterDate === format(new Date(), "yyyy-MM-dd") && (
+                <Button size="sm" onClick={() => setOpenCashierDialog(true)} className="rounded-xl gap-2 shadow-sm">
+                  <Unlock className="w-3.5 h-3.5" /> Abrir Caixa
+                </Button>
+              )}
+            </div>
+          ) : cashierData.status === "aberto" ? (
+            <div className="flex items-center gap-2">
+              <Badge className="bg-green-50 text-green-600 border-green-100 py-1.5 px-3 rounded-lg hover:bg-green-50">
+                <Unlock className="w-3.5 h-3.5 mr-1.5 shadow-sm" /> Caixa Aberto
+              </Badge>
+              <Button size="sm" variant="outline" onClick={() => setCloseCashierDialog(true)} className="rounded-xl gap-2 border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors">
+                <Lock className="w-3.5 h-3.5" /> Fechar Caixa
+              </Button>
+            </div>
+          ) : (
+            <Badge className="bg-red-50 text-red-600 border-red-100 py-1.5 px-3 rounded-lg hover:bg-red-50">
+              <Lock className="w-3.5 h-3.5 mr-1.5" /> Caixa Fechado
+            </Badge>
+          )}
+        </div>
       </div>
+
+      {/* Diálogo de Abertura de Caixa */}
+      <Dialog open={openCashierDialog} onOpenChange={setOpenCashierDialog}>
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Unlock className="w-5 h-5 text-primary" /> Abrir Caixa do Dia
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl space-y-2">
+              <p className="text-sm font-medium text-primary flex items-center gap-2">
+                <Info className="w-4 h-4" /> Data do Movimento
+              </p>
+              <p className="text-lg font-bold text-slate-900">
+                {format(new Date(filterDate + "T12:00:00"), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+              </p>
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label className="text-slate-700 font-semibold">Saldo Inicial (Troco em Dinheiro)</Label>
+              <div className="relative">
+                <Coins className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input 
+                  placeholder="0,00" 
+                  value={saldoInicial} 
+                  onChange={e => setSaldoInicial(e.target.value)} 
+                  className="pl-9 rounded-xl focus:ring-primary/20"
+                />
+              </div>
+              <p className="text-xs text-slate-400">Informe o valor em espécie disponível para início das operações.</p>
+            </div>
+
+            <Button className="w-full h-11 rounded-xl shadow-lg shadow-primary/20" onClick={handleAbrirCaixa} disabled={saving}>
+              {saving ? "Processando..." : "Confirmar Abertura de Caixa"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de Fechamento de Caixa */}
+      <Dialog open={closeCashierDialog} onOpenChange={setCloseCashierDialog}>
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="w-5 h-5 text-red-500" /> Fechamento de Caixa
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-3">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Resumo Financeiro</p>
+              <div className="grid grid-cols-2 gap-4">
+                {totalPorMetodo.map(m => (
+                  <div key={m.method}>
+                    <p className="text-xs text-slate-500">{methodLabel(m.method)}</p>
+                    <p className="text-sm font-bold text-slate-800">{formatCurrency(m.total)}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-slate-200 pt-3 flex justify-between items-center">
+                <p className="text-sm font-bold text-slate-600">Total Geral</p>
+                <p className="text-xl font-black text-primary">{formatCurrency(totalGeral)}</p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-slate-700 font-semibold">Observações de Fechamento</Label>
+              <Textarea 
+                placeholder="Ex: Diferença de valores, notas sobre sangria, etc..." 
+                value={closingNotes} 
+                onChange={e => setClosingNotes(e.target.value)}
+                className="rounded-xl focus:ring-primary/20"
+                rows={3}
+              />
+            </div>
+
+            <Button variant="destructive" className="w-full h-11 rounded-xl shadow-lg shadow-red-200" onClick={handleFecharCaixa} disabled={saving}>
+              {saving ? "Fechando..." : "Confirmar Fechamento Definitivo"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Cards resumo */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
