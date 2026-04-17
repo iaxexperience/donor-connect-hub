@@ -185,7 +185,13 @@ export const useDonors = () => {
         return true;
       });
 
-      if (newDonors.length === 0) return [];
+      const skipped = donorsList.length - newDonors.length;
+      console.log(`[importDonors] total: ${donorsList.length}, novos: ${newDonors.length}, pulados: ${skipped}`);
+      console.log('[importDonors] existingEmails:', [...existingEmails]);
+      console.log('[importDonors] existingDocs:', [...existingDocs]);
+      if (newDonors.length === 0) {
+        throw new Error(`Todos os ${donorsList.length} doadores do arquivo já existem no banco (email ou CPF/CNPJ duplicado).`);
+      }
 
       const { data, error } = await supabase
         .from('donors')
@@ -194,7 +200,7 @@ export const useDonors = () => {
 
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['donors'] });
-      return data;
+      return { data, inserted: newDonors.length, skipped };
     }
   };
 };
