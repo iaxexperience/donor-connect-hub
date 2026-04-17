@@ -792,31 +792,40 @@ const FollowUps = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {automationLogs.map((log) => {
-                    const ChannelIcon = channelIcon[log.channel];
-                    return (
+                  {dbLogs.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                        Nenhum envio registrado no histórico.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    dbLogs.map((log) => (
                       <TableRow key={log.id}>
-                        <TableCell className="font-medium">{log.donorName}</TableCell>
+                        <TableCell className="font-medium">{log.donor_name}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={donorTypeBadge[log.donorType]}>{donorTypeLabel[log.donorType]}</Badge>
+                          <Badge variant="outline" className={donorTypeBadge[log.donor_type || 'unico']}>
+                            {donorTypeLabel[log.donor_type || 'unico']}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1 text-muted-foreground">
-                            <ChannelIcon className="w-4 h-4" />
-                            <span className="text-xs capitalize">{log.channel}</span>
+                            <MessageSquare className="w-4 h-4" />
+                            <span className="text-xs">WhatsApp</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-xs font-mono">{log.template}</TableCell>
-                        <TableCell className="text-sm">{log.sentAt}</TableCell>
-                        <TableCell className="text-sm text-center">{log.retryCount}</TableCell>
+                        <TableCell className="text-xs font-mono">{log.template || "Padrão"}</TableCell>
+                        <TableCell className="text-sm">
+                          {log.sent_at ? new Date(log.sent_at).toLocaleString('pt-BR') : 'Agora'}
+                        </TableCell>
+                        <TableCell className="text-sm text-center">{log.retry_count || 0}</TableCell>
                         <TableCell>
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${logStatusColor[log.status]}`}>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${logStatusColor[log.status || 'aguardando']}`}>
                             {log.status === "enviado" ? "Enviado" : log.status === "falha" ? "Falha" : "Aguardando"}
                           </span>
                         </TableCell>
                       </TableRow>
-                    );
-                  })}
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
