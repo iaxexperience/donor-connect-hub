@@ -166,41 +166,44 @@ export const useDonors = () => {
     isRegistering: donationMutation.isPending || addDonorMutation.isPending || updateTypeMutation.isPending || updateDonorMutation.isPending || deleteDonorMutation.isPending,
     isDonationPending: donationMutation.isPending,
     importDonors: async (donorsList: Partial<Donor>[]) => {
-      const { data: existing, error: fetchError } = await supabase
-        .from('donors')
-        .select('email, document_id');
-      if (fetchError) throw fetchError;
-
-      const existingEmails = new Set((existing || []).map(d => d.email).filter(Boolean));
-      const existingDocs = new Set((existing || []).map(d => d.document_id).filter(Boolean));
-
+      // Deduplicate within the CSV itself
       const seenEmails = new Set<string>();
       const seenDocs = new Set<string>();
-
-      const newDonors = donorsList.filter(d => {
-        if (d.email && (existingEmails.has(d.email) || seenEmails.has(d.email))) return false;
-        if (d.document_id && (existingDocs.has(d.document_id) || seenDocs.has(d.document_id))) return false;
+      const deduplicated = donorsList.filter(d => {
+        if (d.email && seenEmails.has(d.email)) return false;
+        if (d.document_id && seenDocs.has(d.document_id)) return false;
         if (d.email) seenEmails.add(d.email);
         if (d.document_id) seenDocs.add(d.document_id);
         return true;
       });
 
-      const skipped = donorsList.length - newDonors.length;
-      console.log(`[importDonors] total: ${donorsList.length}, novos: ${newDonors.length}, pulados: ${skipped}`);
-      console.log('[importDonors] existingEmails:', [...existingEmails]);
-      console.log('[importDonors] existingDocs:', [...existingDocs]);
-      if (newDonors.length === 0) {
-        throw new Error(`Todos os ${donorsList.length} doadores do arquivo já existem no banco (email ou CPF/CNPJ duplicado).`);
+      // Group by which unique key to use for upsert
+      const withEmail = deduplicated.filter(d => d.email);
+      const withDocOnly = deduplicated.filter(d => !d.email && d.document_id);
+      const noKey = deduplicated.filter(d => !d.email && !d.document_id);
+
+      let totalInserted = 0;
+
+      if (withEmail.length > 0) {
+        const { error } = await supabase.from('donors').upsert(withEmail, { onConflict: 'email' });
+        if (error) throw error;
+        totalInserted += withEmail.length;
       }
 
-      const { data, error } = await supabase
-        .from('donors')
-        .insert(newDonors)
-        .select();
+      if (withDocOnly.length > 0) {
+        const { error } = await supabase.from('donors').upsert(withDocOnly, { onConflict: 'document_id' });
+        if (error) throw error;
+        totalInserted += withDocOnly.length;
+      }
 
-      if (error) throw error;
+      if (noKey.length > 0) {
+        const { error } = await supabase.from('donors').insert(noKey);
+        if (error) throw error;
+        totalInserted += noKey.length;
+      }
+
       queryClient.invalidateQueries({ queryKey: ['donors'] });
-      return { data, inserted: newDonors.length, skipped };
+      return { data: null, inserted: totalInserted, skipped: donorsList.length - deduplicated.length };
     }
   };
 };
