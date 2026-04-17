@@ -166,44 +166,27 @@ export const useDonors = () => {
     isRegistering: donationMutation.isPending || addDonorMutation.isPending || updateTypeMutation.isPending || updateDonorMutation.isPending || deleteDonorMutation.isPending,
     isDonationPending: donationMutation.isPending,
     importDonors: async (donorsList: Partial<Donor>[]) => {
-      // Deduplicate within the CSV itself
-      const seenEmails = new Set<string>();
-      const seenDocs = new Set<string>();
-      const deduplicated = donorsList.filter(d => {
-        if (d.email && seenEmails.has(d.email)) return false;
-        if (d.document_id && seenDocs.has(d.document_id)) return false;
-        if (d.email) seenEmails.add(d.email);
-        if (d.document_id) seenDocs.add(d.document_id);
-        return true;
-      });
-
-      // Group by which unique key to use for upsert
-      const withEmail = deduplicated.filter(d => d.email);
-      const withDocOnly = deduplicated.filter(d => !d.email && d.document_id);
-      const noKey = deduplicated.filter(d => !d.email && !d.document_id);
-
-      let totalInserted = 0;
+      const withEmail = donorsList.filter(d => d.email);
+      const withDocOnly = donorsList.filter(d => !d.email && d.document_id);
+      const noKey = donorsList.filter(d => !d.email && !d.document_id);
 
       if (withEmail.length > 0) {
         const { error } = await supabase.from('donors').upsert(withEmail, { onConflict: 'email' });
         if (error) throw error;
-        totalInserted += withEmail.length;
       }
 
       if (withDocOnly.length > 0) {
         const { error } = await supabase.from('donors').upsert(withDocOnly, { onConflict: 'document_id' });
         if (error) throw error;
-        totalInserted += withDocOnly.length;
       }
 
       if (noKey.length > 0) {
         const { error } = await supabase.from('donors').insert(noKey);
         if (error) throw error;
-        totalInserted += noKey.length;
       }
 
       queryClient.invalidateQueries({ queryKey: ['donors'] });
-      return { data: null, inserted: totalInserted, skipped: donorsList.length - deduplicated.length };
+      return { data: null, inserted: donorsList.length, skipped: 0 };
     }
   };
 };
