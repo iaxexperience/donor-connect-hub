@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { 
   Bell, Globe, Lock, Palette, Save, 
   Upload, Sparkles, Building2, Clock,
-  Shield, Key, Smartphone, Activity,
+  Shield, Key, Smartphone, Activity, History, ListFilter,
   AlertTriangle, UserCircle, FileText, User, Check, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,12 @@ const Configuracoes = () => {
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // Audit Logs state
+  const [logs, setLogs] = useState<any[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [filterAction, setFilterAction] = useState<string>("all");
 
   const passwordRules = {
     length: newPassword.length >= 8,
@@ -132,9 +138,45 @@ const Configuracoes = () => {
       }
     };
 
+    const loadUserRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+        if (profile) setUserRole(profile.role);
+      }
+    };
+
     loadSettings();
     loadUserProfile();
+    loadUserRole();
   }, []);
+
+  const fetchLogs = async () => {
+    setLogsLoading(true);
+    let query = supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(100);
+    
+    if (filterAction !== "all") {
+      query = query.eq('action', filterAction);
+    }
+
+    const { data, error } = await query;
+    if (!error) setLogs(data || []);
+    setLogsLoading(false);
+  };
+
+  const saveLog = async (action: string, resource: string, details: any = {}) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase.from('audit_logs').insert({
+      user_id: user.id,
+      user_name: userProfile.name || user.email,
+      user_email: user.email,
+      action,
+      resource,
+      details,
+    });
+  };
 
   const handleUpdatePassword = async () => {
     if (newPassword !== confirmNewPassword) {
@@ -154,6 +196,7 @@ const Configuracoes = () => {
       if (error) throw error;
 
       toast({ title: "Senha atualizada!", description: "Sua senha foi alterada com sucesso." });
+      saveLog('UPDATE_PASSWORD', 'seguranca', { user_email: userProfile.email });
       setNewPassword("");
       setConfirmNewPassword("");
       setCurrentPassword("");
@@ -277,6 +320,7 @@ const Configuracoes = () => {
         });
       } else {
         toast({ title: "Configurações Salvas!", description: "Tudo pronto!" });
+        saveLog('UPDATE_SETTINGS', 'configuracoes', settings);
       }
     } catch (err) {
       toast({ title: "Salvo localmente", description: "Configurações aplicadas ao seu navegador." });
@@ -308,6 +352,12 @@ const Configuracoes = () => {
             <Lock className="w-4 h-4" />
             <span className="font-bold">Segurança</span>
           </TabsTrigger>
+          {userRole === 'admin' && (
+            <TabsTrigger value="auditoria" onClick={fetchLogs} className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2 text-primary">
+              <History className="w-4 h-4" />
+              <span className="font-bold">Auditoria</span>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* TAB: GERAL */}
@@ -627,6 +677,111 @@ const Configuracoes = () => {
               <p className="text-xs text-amber-700 leading-relaxed">Você mudou sua senha pela última vez há 45 dias. É recomendável trocar sua senha a cada 90 dias para manter sua conta segura.</p>
             </div>
           </div>
+        <TabsContent value="auditoria" className="space-y-6 animate-in fade-in-50 duration-500">
+          <Card className="border-slate-100 shadow-sm rounded-2xl bg-white overflow-hidden">
+            <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <History className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg font-bold">Logs de Auditoria</CardTitle>
+                    <CardDescription className="text-xs">Registro de todas as ações críticas realizadas no sistema.</CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={fetchLogs} disabled={logsLoading} className="rounded-xl h-9">
+                    <Activity className={`w-4 h-4 mr-2 ${logsLoading ? "animate-spin" : ""}`} /> Atualizar
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="p-4 border-b border-slate-50 flex gap-2">
+                 <Button 
+                   variant={filterAction === "all" ? "secondary" : "ghost"} 
+                   size="sm" 
+                   onClick={() => {setFilterAction("all"); setTimeout(fetchLogs, 10);}}
+                   className="rounded-lg text-xs font-bold"
+                 >Todos</Button>
+                 <Button 
+                   variant={filterAction === "UPDATE_SETTINGS" ? "secondary" : "ghost"} 
+                   size="sm" 
+                   onClick={() => {setFilterAction("UPDATE_SETTINGS"); setTimeout(fetchLogs, 10);}}
+                   className="rounded-lg text-xs font-bold"
+                 >Configurações</Button>
+                 <Button 
+                   variant={filterAction === "OPEN_CASHIER" ? "secondary" : "ghost"} 
+                   size="sm" 
+                   onClick={() => {setFilterAction("OPEN_CASHIER"); setTimeout(fetchLogs, 10);}}
+                   className="rounded-lg text-xs font-bold"
+                 >Abrir Caixa</Button>
+                 <Button 
+                   variant={filterAction === "CLOSE_CASHIER" ? "secondary" : "ghost"} 
+                   size="sm" 
+                   onClick={() => {setFilterAction("CLOSE_CASHIER"); setTimeout(fetchLogs, 10);}}
+                   className="rounded-lg text-xs font-bold"
+                 >Fechar Caixa</Button>
+              </div>
+              <div className="relative overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/50 text-[10px] uppercase tracking-widest text-slate-400 font-bold">
+                      <th className="px-6 py-3 border-b border-slate-100">Data/Hora</th>
+                      <th className="px-6 py-3 border-b border-slate-100">Usuário</th>
+                      <th className="px-6 py-3 border-b border-slate-100">Ação</th>
+                      <th className="px-6 py-3 border-b border-slate-100">Recurso</th>
+                      <th className="px-6 py-3 border-b border-slate-100 text-right">Detalhes</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {logs.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-12 text-center text-slate-400 font-medium">
+                          Nenhum registro encontrado no período.
+                        </td>
+                      </tr>
+                    ) : (
+                      logs.map((log) => (
+                        <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap text-xs font-medium text-slate-500">
+                            <span className="flex items-center gap-1.5">
+                              <Clock className="w-3 h-3 opacity-50" />
+                              {format(new Date(log.created_at), "dd/MM HH:mm")}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-slate-800">{log.user_name}</span>
+                              <span className="text-[10px] text-slate-400">{log.user_email}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge variant="outline" className={`text-[10px] font-black uppercase tracking-tighter ${
+                              log.action.includes('CLOSE') ? "text-red-600 border-red-100 bg-red-50" :
+                              log.action.includes('OPEN') ? "text-emerald-600 border-emerald-100 bg-emerald-50" :
+                              "text-blue-600 border-blue-100 bg-blue-50"
+                            }`}>
+                              {log.action}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{log.resource}</span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right">
+                             <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-primary">
+                               <FileText className="w-3.5 h-3.5" />
+                             </Button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

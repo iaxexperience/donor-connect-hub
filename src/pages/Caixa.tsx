@@ -202,6 +202,23 @@ export default function Caixa() {
     setLoading(false);
   };
 
+  const saveLog = async (action: string, resource: string, details: any = {}) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Busca o nome do perfil para o log
+    const { data: profile } = await supabase.from('profiles').select('name').eq('id', user.id).single();
+
+    await supabase.from('audit_logs').insert({
+      user_id: user.id,
+      user_name: profile?.name || user.email,
+      user_email: user.email,
+      action,
+      resource,
+      details,
+    });
+  };
+
   const fetchCashierStatus = async () => {
     setCashierLoading(true);
     const { data, error } = await supabase
@@ -277,6 +294,7 @@ export default function Caixa() {
       toast({ title: "Erro ao abrir caixa", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Caixa Aberto!", description: `Data: ${format(new Date(filterDate + "T12:00:00"), "dd/MM/yyyy")}` });
+      saveLog('OPEN_CASHIER', 'caixa', { data_movimento: filterDate, saldo_inicial: saldoInicial });
       setOpenCashierDialog(false);
       fetchCashierStatus();
     }
@@ -309,6 +327,7 @@ export default function Caixa() {
       toast({ title: "Erro ao fechar caixa", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Caixa Fechado com Sucesso!", description: "O resumo do dia foi armazenado." });
+      saveLog('CLOSE_CASHIER', 'caixa', { data_movimento: filterDate, total_geral: totalGeral });
       setCloseCashierDialog(false);
       fetchCashierStatus();
     }
