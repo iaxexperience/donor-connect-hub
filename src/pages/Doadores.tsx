@@ -100,6 +100,14 @@ const Doadores = () => {
     link.click();
   };
 
+  const normalizeString = (str: string) => {
+    return str
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // Remove acentos
+      .trim();
+  };
+
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -152,15 +160,16 @@ const Doadores = () => {
           }
 
           const formattedDonors = data.slice(startIndex).map((row: any) => {
-            const rawType = (row[columns.type] || "lead").toString().toLowerCase();
-            let finalType = "lead";
+            const rawType = normalizeString((row[columns.type] || "lead").toString());
+            let finalType: "lead" | "unico" | "esporadico" | "recorrente" = "lead";
+            
             if (rawType.includes("recorrente")) finalType = "recorrente";
-            else if (rawType.includes("esporadico") || rawType.includes("esporádica")) finalType = "esporadico";
-            else if (rawType.includes("unico") || rawType.includes("única")) finalType = "unico";
+            else if (rawType.includes("esporadico") || rawType.includes("esporadica")) finalType = "esporadico";
+            else if (rawType.includes("unico") || rawType.includes("unica")) finalType = "unico";
 
             return {
-              name: row[columns.name] || "Doador sem Nome",
-              email: row[columns.email] || "sem@email.com",
+              name: (row[columns.name] || "Doador sem Nome").toString().trim(),
+              email: (row[columns.email] || "sem@email.com").toString().trim(),
               phone: (row[columns.phone] || "").toString().replace(/\D/g, ""),
               document_id: row[columns.document_id] || null,
               type: finalType,
