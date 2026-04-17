@@ -271,7 +271,6 @@ export default function Caixa() {
       data: filterDate,
       saldo_inicial: parseFloat(saldoInicial.replace(",", ".")) || 0,
       status: "aberto",
-      created_at: new Date().toISOString(),
     });
 
     if (error) {
