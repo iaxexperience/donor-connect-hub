@@ -432,7 +432,7 @@ Hoje é ${new Date().toLocaleDateString("pt-BR", { weekday: "long", year: "numer
   } catch (err: any) {
     console.error("[AI Agent] Erro:", err.message);
     return new Response(JSON.stringify({ error: err.message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

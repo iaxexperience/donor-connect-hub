@@ -27,10 +27,9 @@ import { ptBR } from "date-fns/locale";
 import { gerarReciboPDF } from "@/lib/reciboService";
 import { metaService, MetaConfig } from "@/services/metaService";
 
-// URL pública da Edge Function — acessível sem login, independente do ambiente
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
+// Link de validação pública — aponta para a rota do frontend
 const receiptUrl = (hash: string) =>
-  `${SUPABASE_URL}/functions/v1/receipt-view?hash=${hash}`;
+  `${window.location.origin}/validate-receipt/${hash}`;
 
 type PaymentMethod = "dinheiro" | "pix" | "cartao" | "boleto";
 type CartaoTipo = "debito" | "credito";
