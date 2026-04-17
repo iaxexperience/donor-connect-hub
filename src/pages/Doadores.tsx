@@ -133,13 +133,34 @@ const Doadores = () => {
     if (!file) return;
 
     setIsImporting(true);
-    Papa.parse(file, {
-      header: false,
-      skipEmptyLines: true,
-      encoding: "UTF-8",
-      complete: async (results) => {
-        try {
-          const { data } = results;
+
+    // Detect encoding: check for UTF-8 BOM, otherwise use Windows-1252 (Excel default on Windows)
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const bytes = new Uint8Array(e.target!.result as ArrayBuffer);
+      const hasUtf8Bom = bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF;
+      // Heuristic: if any byte > 0x7F that forms a valid UTF-8 sequence, it's UTF-8
+      let looksLikeUtf8 = hasUtf8Bom;
+      if (!hasUtf8Bom) {
+        for (let i = 0; i < Math.min(bytes.length, 2000); i++) {
+          if (bytes[i] > 0x7F) {
+            // Check if it's a valid UTF-8 multibyte sequence
+            if ((bytes[i] & 0xE0) === 0xC0 && i + 1 < bytes.length && (bytes[i + 1] & 0xC0) === 0x80) {
+              looksLikeUtf8 = true;
+              break;
+            }
+          }
+        }
+      }
+      const encoding = looksLikeUtf8 ? "UTF-8" : "windows-1252";
+      const text = new TextDecoder(encoding).decode(bytes.slice(hasUtf8Bom ? 3 : 0));
+
+      Papa.parse(text, {
+        header: false,
+        skipEmptyLines: true,
+        complete: async (results) => {
+          try {
+            const { data } = results;
           if (!data || data.length === 0) throw new Error("Arquivo vazio.");
 
           let startIndex = 0;
