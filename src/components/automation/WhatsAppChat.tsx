@@ -393,8 +393,39 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
       }
     }
   };
+  
+  const handleDeleteChat = async () => {
+    if (!selectedChat) return;
 
-  const handleCallAction = (type: 'video' | 'audio') => {
+    if (confirm("Tem certeza que deseja EXCLUIR toda a conversa? Isso removerá o contato da lista e apagará todas as mensagens permanentemente.")) {
+      try {
+        const norm = normalizePhone(selectedChat.telefone);
+        const { data: relatedChats } = await supabase
+          .from('whatsapp_chats')
+          .select('id, telefone');
+
+        const relatedIds = (relatedChats || [])
+          .filter(c => normalizePhone(c.telefone) === norm)
+          .map(c => c.id);
+
+        const { error } = await supabase
+          .from('whatsapp_chats')
+          .delete()
+          .in('id', relatedIds);
+
+        if (error) {
+          toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+        } else {
+          setSelectedChat(null);
+          setMessages([]);
+          toast({ title: "Sucesso", description: "Conversa excluída com sucesso." });
+          fetchChats();
+        }
+      } catch (err: any) {
+        toast({ title: "Erro", description: err.message, variant: "destructive" });
+      }
+    }
+  };
     toast({
       title: type === 'video' ? "Chamada de Vídeo" : "Chamada de Áudio",
       description: "A API do WhatsApp Business não suporta chamadas VoIP diretamente via navegador. Use o seu celular físico para realizar chamadas.",
@@ -575,11 +606,15 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
                     </DropdownMenuItem>
 
                     <DropdownMenuItem onClick={clearChat}>
-                      <Trash2 className="w-4 h-4 mr-2" /> Limpar conversa
+                      <Trash2 className="w-4 h-4 mr-2" /> Limpar histórico
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem onClick={handleDeleteChat} className="text-destructive font-bold">
+                      <XCircle className="w-4 h-4 mr-2" /> Excluir conversa
                     </DropdownMenuItem>
 
                     <DropdownMenuItem
-                      className="text-destructive"
+                      className="text-muted-foreground opacity-50"
                       onClick={() => toast({ title: "Bloquear Contato", description: "O bloqueio deve ser feito diretamente pelo celular vinculado." })}
                     >
                       <XCircle className="w-4 h-4 mr-2" /> Bloquear
