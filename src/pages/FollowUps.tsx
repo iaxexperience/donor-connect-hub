@@ -294,9 +294,10 @@ const FollowUps = () => {
         if (!callError && res?.success) {
           count++;
           // 1. Atualiza status no banco de dados
-          await supabase.from('follow_ups').update({ status: 'concluido' }).eq('id', fu.id);
+          const { error: upError } = await supabase.from('follow_ups').update({ status: 'concluido' }).eq('id', fu.id);
+          if (upError) console.error(`[DB Error] Falha ao atualizar status de ${fu.id}:`, upError);
           
-          // 2. Registra no histórico de automação
+          // 2. Registra no histórico de automação (Sucesso)
           await supabase.from('follow_up_logs').insert([{
             donor_id: fu.donors?.id,
             donor_name: fu.donors?.name,
@@ -307,15 +308,32 @@ const FollowUps = () => {
             sent_at: new Date().toISOString()
           }]);
         } else {
-          console.error(`[TESTE] Erro ao enviar para ${fu.donors?.name}:`, callError || res?.error);
+          const errorMsg = callError?.message || res?.error || "Erro desconhecido na Meta API";
+          console.error(`[TESTE] Falha para ${fu.donors?.name}:`, errorMsg);
+          
+          // Registra falha no histórico para transparência
+          await supabase.from('follow_up_logs').insert([{
+            donor_id: fu.donors?.id,
+            donor_name: fu.donors?.name,
+            donor_type: (fu as any).donorType || 'unico',
+            status: 'falha',
+            error_message: errorMsg,
+            channel: 'whatsapp',
+            template: 'fapagra',
+            sent_at: new Date().toISOString()
+          }]);
         }
       }
 
-      // 3. Força a atualização de todas as abas e contadores
-      queryClient.invalidateQueries({ queryKey: ['followups'] });
-      queryClient.invalidateQueries({ queryKey: ['followup-logs'] });
+      // 3. Força atualização total
+      await queryClient.refetchQueries({ queryKey: ['followups'] });
+      await queryClient.refetchQueries({ queryKey: ['followup-logs'] });
 
-      toast({ title: "SUCESSO NO TESTE", description: `${count} mensagens enviadas e registradas com sucesso!` });
+      if (count > 0) {
+        toast({ title: "SUCESSO NO TESTE", description: `${count} mensagens enviadas e registradas!` });
+      } else {
+        toast({ title: "AVISO", description: "O processamento terminou, mas 0 mensagens foram enviadas com sucesso. Verifique o Histórico para ver os detalhes dos erros.", variant: "destructive" });
+      }
     } catch (err: any) {
       toast({ title: "ERRO DE CONEXÃO", description: err.message, variant: "destructive" });
     } finally {
