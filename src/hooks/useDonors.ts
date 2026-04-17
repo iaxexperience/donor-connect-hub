@@ -166,9 +166,24 @@ export const useDonors = () => {
     isRegistering: donationMutation.isPending || addDonorMutation.isPending || updateTypeMutation.isPending || updateDonorMutation.isPending || deleteDonorMutation.isPending,
     isDonationPending: donationMutation.isPending,
     importDonors: async (donorsList: Partial<Donor>[]) => {
+      const { data: existing, error: fetchError } = await supabase
+        .from('donors')
+        .select('email, document_id');
+      if (fetchError) throw fetchError;
+
+      const existingEmails = new Set((existing || []).map(d => d.email).filter(Boolean));
+      const existingDocs = new Set((existing || []).map(d => d.document_id).filter(Boolean));
+
+      const newDonors = donorsList.filter(d =>
+        (!d.email || !existingEmails.has(d.email)) &&
+        (!d.document_id || !existingDocs.has(d.document_id))
+      );
+
+      if (newDonors.length === 0) return [];
+
       const { data, error } = await supabase
         .from('donors')
-        .upsert(donorsList, { onConflict: 'email', ignoreDuplicates: false })
+        .insert(newDonors)
         .select();
 
       if (error) throw error;
