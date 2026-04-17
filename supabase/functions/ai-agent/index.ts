@@ -350,7 +350,7 @@ serve(async (req) => {
   const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!anthropicKey) {
     return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY não configurada nas secrets do Supabase." }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
