@@ -202,9 +202,21 @@ const FollowUps = () => {
         setAutomationGlobal(data.enabled);
         if (data.rules) {
           // Merge database data with initial rules to restore icons and colors
+          const dbRules = data.rules as any[];
           const mergedRules = initialAutomationRules.map(initial => {
-            const dbRule = (data.rules as any[]).find(r => r.type === initial.type);
-            return dbRule ? { ...initial, ...dbRule } : initial;
+            const dbRule = dbRules.find(r => r.type === initial.type);
+            if (!dbRule) return initial;
+            
+            // Explicitly keep UI fields from 'initial' and settings from 'dbRule'
+            return {
+              ...initial,
+              ...dbRule,
+              icon: initial.icon,
+              color: initial.color,
+              bg: initial.bg,
+              label: initial.label,
+              rule: initial.rule
+            };
           });
           setAutomationRules(mergedRules);
         }
@@ -215,12 +227,17 @@ const FollowUps = () => {
   }, []);
 
   const handleSaveAutomation = async () => {
+    // Strip UI components (icons, colors) before saving to DB
+    const rulesToSave = automationRules.map(({ type, enabled, channel, template, sendHour, followUpDays, maxRetries }) => ({
+      type, enabled, channel, template, sendHour, followUpDays, maxRetries
+    }));
+
     const { error } = await supabase
       .from('follow_up_settings')
       .upsert({ 
         id: 1,
         enabled: automationGlobal,
-        rules: automationRules as any,
+        rules: rulesToSave as any,
         updated_at: new Date().toISOString()
       });
 
