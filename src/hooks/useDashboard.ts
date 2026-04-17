@@ -28,9 +28,25 @@ export const useDashboard = () => {
     },
   });
 
+  const { data: caixaTransactions = [], isLoading: caixaLoading } = useQuery({
+    queryKey: ['caixa-transactions-full'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('caixa_transacoes')
+        .select('*, donors(name, type)')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error("[useDashboard] Error fetching caixa transactions:", error);
+        return [];
+      }
+      return data;
+    },
+  });
+
   // Helper — 'pago' é o valor correto do enum donation_status no banco
   const isConfirmedStatus = (status: string) =>
-    ['pago', 'confirmed', 'Confirmado', 'CONFIRMED'].includes(status);
+    ['pago', 'confirmed', 'Confirmado', 'CONFIRMED', 'confirmado'].includes(status);
 
   // 1. Recebimentos Mensais (Últimos 6 meses)
   const getMonthlyData = () => {
@@ -41,7 +57,7 @@ export const useDashboard = () => {
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthLabel = months[d.getMonth()];
-      const total = donations
+      const totalDonations = donations
         .filter(don => {
           if (!isConfirmedStatus(don.status)) return false;
           const dateStr = don.confirmed_at || don.donation_date;
@@ -51,7 +67,15 @@ export const useDashboard = () => {
         })
         .reduce((acc, don) => acc + (don.amount || 0), 0);
 
-      result.push({ name: monthLabel, total });
+      const totalCaixa = caixaTransactions
+        .filter(t => {
+          if (!isConfirmedStatus(t.status)) return false;
+          const donDate = new Date(t.created_at);
+          return donDate.getMonth() === d.getMonth() && donDate.getFullYear() === d.getFullYear();
+        })
+        .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+
+      result.push({ name: monthLabel, total: totalDonations + totalCaixa });
     }
     return result;
   };
@@ -85,7 +109,7 @@ export const useDashboard = () => {
       d.setDate(now.getDate() - i);
       const dayLabel = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`;
       
-      const total = donations
+      const totalDonations = donations
         .filter(don => {
           const dateStr = don.confirmed_at || don.donation_date;
           if (!dateStr) return false;
@@ -93,7 +117,11 @@ export const useDashboard = () => {
         })
         .reduce((acc, don) => acc + (don.amount || 0), 0);
 
-      result.push({ day: dayLabel, value: total });
+      const totalCaixa = caixaTransactions
+        .filter(t => new Date(t.created_at).toDateString() === d.toDateString())
+        .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+
+      result.push({ day: dayLabel, value: totalDonations + totalCaixa });
     }
     return result;
   };
@@ -112,11 +140,26 @@ export const useDashboard = () => {
 
   // 5. Doações Recentes
   const getRecentDonations = () => {
-    return donations.slice(0, 4).map(d => ({
-      name: d.donors?.name || "Anônimo",
+    const combined = [
+      ...donations.map(d => ({
+        name: d.donors?.name || "Anônimo",
+        amount: d.amount,
+        date: new Date(d.confirmed_at || d.donation_date || new Date()),
+        status: d.status || "Confirmado"
+      })),
+      ...caixaTransactions.map(t => ({
+        name: t.donor_name || t.donors?.name || "Anônimo",
+        amount: t.amount,
+        date: new Date(t.created_at),
+        status: t.status || "Confirmado"
+      }))
+    ].sort((a, b) => b.date.getTime() - a.date.getTime());
+
+    return combined.slice(0, 4).map(d => ({
+      name: d.name,
       amount: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(d.amount),
-      time: new Date(d.confirmed_at || d.donation_date || new Date()).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' }),
-      status: d.status || "Confirmado"
+      time: d.date.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' }),
+      status: d.status
     }));
   };
 
@@ -137,6 +180,16 @@ export const useDashboard = () => {
              donDate.getUTCFullYear() === todayYear;
     })
     .reduce((acc, d) => acc + Number(d.amount || 0), 0);
+
+  const caixaTodayTotal = caixaTransactions
+    .filter(t => {
+      if (!isConfirmedStatus(t.status)) return false;
+      const tDate = new Date(t.created_at);
+      return tDate.getUTCDate() === todayDay && 
+             tDate.getUTCMonth() === todayMonth && 
+             tDate.getUTCFullYear() === todayYear;
+    })
+    .reduce((acc, t) => acc + Number(t.amount || 0), 0);
 
   // Banco do Brasil credits for today
   const { data: bbTodayCredits = [] } = useQuery({
@@ -160,7 +213,7 @@ export const useDashboard = () => {
   });
 
   const bbTodayTotal = bbTodayCredits.reduce((acc: number, t: any) => acc + Number(t.amount || 0), 0);
-  const todayTotal = todayDonationsTotal + bbTodayTotal;
+  const todayTotal = todayDonationsTotal + bbTodayTotal + caixaTodayTotal;
 
   // Busca do "Saldo Real ASAAS" via Edge Function proxy
   // Isso substitui a soma burra das doações do banco pelo saldo financeiro real.
@@ -197,11 +250,15 @@ export const useDashboard = () => {
     .filter(d => isConfirmedStatus(d.status))
     .reduce((acc, d) => acc + Number(d.amount || 0), 0);
 
+  const confirmedCaixaTotal = caixaTransactions
+    .filter(t => isConfirmedStatus(t.status))
+    .reduce((acc, t) => acc + Number(t.amount || 0), 0);
+
   // Mantemos fallback: se o saldo real da API falhar ou for 0, usa a soma histórica do banco
-  const totalDonations = realBalance > 0 ? realBalance : confirmedDonationsTotal;
+  const totalDonations = realBalance > 0 ? (realBalance + confirmedCaixaTotal) : (confirmedDonationsTotal + confirmedCaixaTotal);
 
   return {
-    isLoading: donationsLoading || balanceLoading,
+    isLoading: donationsLoading || balanceLoading || caixaLoading,
     monthlyData: getMonthlyData(),
     campaignData: getCampaignMix(),
     evolutionData: getEvolutionData(),
@@ -209,8 +266,8 @@ export const useDashboard = () => {
     recentDonations: getRecentDonations(),
     todayTotal,
     totalDonations,
-    avgTicket: donations.length > 0 ? donations.reduce((acc, d) => acc + Number(d.amount || 0), 0) / Math.max(donations.filter(d => isConfirmedStatus(d.status)).length, 1) : 0,
-    donationsCount: donations.length
+    avgTicket: (donations.length + caixaTransactions.length) > 0 ? (donations.reduce((acc, d) => acc + Number(d.amount || 0), 0) + confirmedCaixaTotal) / Math.max(donations.filter(d => isConfirmedStatus(d.status)).length + caixaTransactions.filter(t => isConfirmedStatus(t.status)).length, 1) : 0,
+    donationsCount: donations.length + caixaTransactions.length
   };
 
 };
