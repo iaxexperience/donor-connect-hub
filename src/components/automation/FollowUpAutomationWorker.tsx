@@ -129,9 +129,12 @@ async function logFollowUp(
 }
 
 // ── Worker principal ──────────────────────────────────────────────────────────
+// Desativado: automação agora é gerenciada pelo edge function process-followups
+// via pg_cron (roda diariamente às 09:00 Brasília no servidor).
 export const FollowUpAutomationWorker = () => {
   useEffect(() => {
     const run = async () => {
+      return; // automação server-side via pg_cron
       const isEnabled = localStorage.getItem("automation_global") === "true";
       if (!isEnabled) return;
 

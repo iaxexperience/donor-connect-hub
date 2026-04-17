@@ -6,11 +6,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const TEMPLATE_BY_TYPE: Record<string, string> = {
-  unico: 'follow_up_primeiro_doador',
-  esporadico: 'follow_up_engajamento',
-  recorrente: 'follow_up_fidelizacao',
+const RULES: Record<string, { days: number; template: string }> = {
+  recorrente: { days: 30, template: 'follow_up_fidelizacao' },
+  esporadico: { days: 60, template: 'follow_up_engajamento' },
+  unico:      { days: 90, template: 'follow_up_primeiro_doador' },
 };
+
+function daysSince(dateStr: string): number {
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -23,47 +27,10 @@ serve(async (req) => {
   );
 
   try {
-    const { force = false, manual = false } = await req.json().catch(() => ({}));
-    console.log(`[Worker] Iniciando processamento (force: ${force}, manual: ${manual})...`);
+    const { manual = false, force = false, auto = false } = await req.json().catch(() => ({}));
+    console.log(`[Worker] Iniciando (manual:${manual} force:${force} auto:${auto})...`);
 
-    // 1. Carregar configurações de automação
-    const { data: settings } = await supabase
-      .from('follow_up_settings')
-      .select('*')
-      .eq('id', 1)
-      .maybeSingle();
-
-    // Modo manual ignora a chave de automação global
-    if (!manual && !settings?.enabled) {
-      console.log("[Worker] Automação global desativada.");
-      return new Response(JSON.stringify({ message: "Automação desativada" }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    // 2. Buscar follow-ups pendentes e agendados
-    const todayStr = new Date().toISOString().split('T')[0];
-    const now = new Date();
-    const currentHourMin = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-    console.log(`[Worker] Data: ${todayStr}, Hora: ${currentHourMin}`);
-
-    const query = supabase
-      .from('follow_ups')
-      .select('*, donors(id, name, phone, type)')
-      .in('status', ['agendado', 'pendente']);
-
-    // Modo manual processa todos os pendentes; automático só processa os vencidos
-    if (!manual) query.lte('due_date', todayStr);
-
-    const { data: followUps, error: fuError } = await query;
-
-    if (fuError) throw fuError;
-
-    console.log(`[Worker] Encontrados ${followUps?.length || 0} follow-ups para processar.`);
-
-    // 3. Credenciais WhatsApp
+    // Credenciais WhatsApp
     const { data: waConfig } = await supabase
       .from('whatsapp_settings')
       .select('phone_number_id, access_token')
@@ -76,114 +43,141 @@ serve(async (req) => {
 
     let sentCount = 0;
     let failCount = 0;
-    const results = [];
+    const results: any[] = [];
 
-    for (const fu of (followUps || [])) {
-      try {
-        const donor = fu.donors;
-        if (!donor?.name || !donor?.phone) {
-          console.log(`[Worker] Doador sem nome ou telefone (ID: ${fu.id}), pulando.`);
-          continue;
-        }
+    // ── MODO AUTO: verifica doadores por data da última doação ────────────────
+    if (auto) {
+      console.log('[Worker] Modo AUTO: verificando doadores por última doação...');
 
-        const donorType = donor.type || 'unico';
+      const { data: donors, error: donorErr } = await supabase
+        .from('donors')
+        .select('id, name, phone, type, last_donation_date, total_donated, donation_count')
+        .in('type', ['recorrente', 'esporadico', 'unico'])
+        .not('phone', 'is', null)
+        .not('last_donation_date', 'is', null);
 
-        // Verifica horário de envio (apenas em modo automático, não manual/force)
-        if (!manual && !force && settings?.rules) {
-          const rule = settings.rules.find((r: any) => r.type === donorType);
-          if (rule?.enabled === false) {
-            console.log(`[Worker] Regra desativada para tipo ${donorType}, pulando.`);
-            continue;
-          }
-          if (rule?.sendHour && rule.sendHour > currentHourMin && fu.due_date === todayStr) {
-            console.log(`[Worker] Aguardando horário ${rule.sendHour} para ${donor.name}`);
-            continue;
-          }
-        }
+      if (donorErr) throw donorErr;
+      console.log(`[Worker] ${donors?.length || 0} doadores elegíveis encontrados.`);
 
-        const templateName = TEMPLATE_BY_TYPE[donorType] || 'follow_up_primeiro_doador';
+      for (const donor of donors || []) {
+        const rule = RULES[donor.type];
+        if (!rule) continue;
 
-        // Buscar valor da última doação
-        const { data: latestDonation } = await supabase
-          .from('donations')
-          .select('amount')
+        const elapsed = daysSince(donor.last_donation_date);
+        if (elapsed < rule.days) continue; // ainda não atingiu o prazo
+
+        // Verifica se já foi enviado recentemente (dentro do mesmo período)
+        const { data: lastLog } = await supabase
+          .from('follow_up_logs')
+          .select('sent_at')
           .eq('donor_id', donor.id)
-          .eq('status', 'pago')
-          .order('confirmed_at', { ascending: false })
+          .eq('status', 'enviado')
+          .order('sent_at', { ascending: false })
           .limit(1)
           .maybeSingle();
 
-        const amount = latestDonation?.amount || 0;
-        const formattedAmount = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount);
-
-        // Formatar telefone com código do país
-        let cleanPhone = donor.phone.replace(/\D/g, '');
-        if (!cleanPhone.startsWith('55')) cleanPhone = '55' + cleanPhone;
-
-        console.log(`[Worker] Enviando '${templateName}' para ${donor.name} (${cleanPhone})...`);
-
-        const waResponse = await fetch(`https://graph.facebook.com/v20.0/${waConfig.phone_number_id}/messages`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${waConfig.access_token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            messaging_product: 'whatsapp',
-            recipient_type: 'individual',
-            to: cleanPhone,
-            type: 'template',
-            template: {
-              name: templateName,
-              language: { code: 'pt_BR' },
-              components: [{
-                type: 'BODY',
-                parameters: [
-                  { type: 'text', text: donor.name },
-                  { type: 'text', text: formattedAmount }
-                ]
-              }]
-            }
-          })
-        });
-
-        const waResult = await waResponse.json();
-
-        if (waResult.error) {
-          throw new Error(`Meta API: ${waResult.error.message}`);
+        if (lastLog?.sent_at && daysSince(lastLog.sent_at) < rule.days) {
+          console.log(`[Worker] ${donor.name} já recebeu follow-up há menos de ${rule.days} dias, pulando.`);
+          continue;
         }
 
-        // Atualiza status (service role ignora RLS)
-        const { error: updateErr } = await supabase.from('follow_ups').update({ status: 'enviado' }).eq('id', fu.id);
-        if (updateErr) console.error(`[Worker] Falha ao atualizar status ID ${fu.id}:`, JSON.stringify(updateErr));
-        else console.log(`[Worker] Status ID ${fu.id} atualizado para enviado.`);
+        console.log(`[Worker] ${donor.name} (${donor.type}) — ${elapsed} dias desde última doação → enviando ${rule.template}...`);
 
-        // Log de sucesso
-        const { error: logErr } = await supabase.from('follow_up_logs').insert([{
-          donor_id: donor.id,
-          channel: 'whatsapp',
-          template: templateName,
-          status: 'enviado',
-          sent_at: new Date().toISOString()
-        }]);
-        if (logErr) console.error(`[Worker] Falha ao inserir log:`, JSON.stringify(logErr));
+        try {
+          await sendWhatsApp(supabase, waConfig, donor, rule.template);
 
-        sentCount++;
-        results.push({ donor: donor.name, status: 'sucesso', template: templateName, updateErr: updateErr?.message, logErr: logErr?.message });
+          // Registra na fila como enviado
+          await supabase.from('follow_ups').insert([{
+            donor_id: donor.id,
+            due_date: new Date().toISOString().split('T')[0],
+            status: 'enviado',
+            note: `Auto: ${donor.type} ${elapsed}d`,
+          }]);
 
-      } catch (err: any) {
-        console.error(`[Worker] Falha no follow-up ${fu.id}:`, err.message);
-        await supabase.from('follow_up_logs').insert([{
-          donor_id: fu.donors?.id,
-          channel: 'whatsapp',
-          template: TEMPLATE_BY_TYPE[fu.donors?.type] || 'follow_up_primeiro_doador',
-          status: 'falha',
-          error_message: err.message,
-          sent_at: new Date().toISOString()
-        }]);
+          await supabase.from('follow_up_logs').insert([{
+            donor_id: donor.id,
+            channel: 'whatsapp',
+            template: rule.template,
+            status: 'enviado',
+            sent_at: new Date().toISOString(),
+          }]);
 
-        failCount++;
-        results.push({ donor: fu.donors?.name, status: 'erro', error: err.message });
+          sentCount++;
+          results.push({ donor: donor.name, type: donor.type, days: elapsed, template: rule.template, status: 'sucesso' });
+          console.log(`[Worker] ✓ Enviado para ${donor.name}`);
+
+        } catch (err: any) {
+          console.error(`[Worker] Falha para ${donor.name}:`, err.message);
+
+          await supabase.from('follow_up_logs').insert([{
+            donor_id: donor.id,
+            channel: 'whatsapp',
+            template: rule.template,
+            status: 'falha',
+            error_message: err.message,
+            sent_at: new Date().toISOString(),
+          }]);
+
+          failCount++;
+          results.push({ donor: donor.name, status: 'erro', error: err.message });
+        }
+      }
+    }
+
+    // ── MODO MANUAL / FILA: processa follow_ups existentes ───────────────────
+    if (manual || force) {
+      console.log('[Worker] Modo MANUAL: processando fila de follow-ups...');
+
+      const { data: followUps, error: fuError } = await supabase
+        .from('follow_ups')
+        .select('*, donors(id, name, phone, type)')
+        .in('status', ['agendado', 'pendente']);
+
+      if (fuError) throw fuError;
+      console.log(`[Worker] ${followUps?.length || 0} follow-ups na fila.`);
+
+      for (const fu of followUps || []) {
+        const donor = fu.donors;
+        if (!donor?.name || !donor?.phone) continue;
+
+        const templateName = RULES[donor.type]?.template || 'follow_up_primeiro_doador';
+
+        try {
+          await sendWhatsApp(supabase, waConfig, donor, templateName);
+
+          const { error: updateErr } = await supabase
+            .from('follow_ups')
+            .update({ status: 'enviado' })
+            .eq('id', fu.id);
+
+          if (updateErr) console.error(`[Worker] Falha ao atualizar status ${fu.id}:`, updateErr.message);
+
+          await supabase.from('follow_up_logs').insert([{
+            donor_id: donor.id,
+            channel: 'whatsapp',
+            template: templateName,
+            status: 'enviado',
+            sent_at: new Date().toISOString(),
+          }]);
+
+          sentCount++;
+          results.push({ donor: donor.name, status: 'sucesso', template: templateName });
+
+        } catch (err: any) {
+          console.error(`[Worker] Falha para ${donor.name}:`, err.message);
+
+          await supabase.from('follow_up_logs').insert([{
+            donor_id: donor.id,
+            channel: 'whatsapp',
+            template: templateName,
+            status: 'falha',
+            error_message: err.message,
+            sent_at: new Date().toISOString(),
+          }]);
+
+          failCount++;
+          results.push({ donor: donor.name, status: 'erro', error: err.message });
+        }
       }
     }
 
@@ -202,3 +196,51 @@ serve(async (req) => {
     });
   }
 });
+
+async function sendWhatsApp(supabase: any, waConfig: any, donor: any, templateName: string) {
+  // Buscar valor da última doação
+  const { data: latestDonation } = await supabase
+    .from('donations')
+    .select('amount')
+    .eq('donor_id', donor.id)
+    .eq('status', 'pago')
+    .order('confirmed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const amount = latestDonation?.amount || 0;
+  const formattedAmount = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount);
+
+  let cleanPhone = donor.phone.replace(/\D/g, '');
+  if (!cleanPhone.startsWith('55')) cleanPhone = '55' + cleanPhone;
+
+  const waResponse = await fetch(`https://graph.facebook.com/v20.0/${waConfig.phone_number_id}/messages`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${waConfig.access_token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: cleanPhone,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: 'pt_BR' },
+        components: [{
+          type: 'BODY',
+          parameters: [
+            { type: 'text', text: donor.name },
+            { type: 'text', text: formattedAmount },
+          ],
+        }],
+      },
+    }),
+  });
+
+  const waResult = await waResponse.json();
+  if (waResult.error) throw new Error(`Meta API: ${waResult.error.message}`);
+
+  return waResult;
+}
