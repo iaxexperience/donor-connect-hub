@@ -23,7 +23,6 @@ import ApiDocumentation from "./pages/ApiDocumentation";
 import Pipeline from "./pages/Pipeline";
 import DonorForm from "./pages/DonorForm";
 import WhatsApp from "./pages/WhatsApp";
-import AgenteIA from "./pages/AgenteIA";
 import Caixa from "./pages/Caixa";
 import DoacoesFisicas from "./pages/DoacoesFisicas";
 import ValidateReceipt from "./pages/ValidateReceipt";
@@ -100,7 +99,6 @@ const App = () => (
                     <Route path="bb" element={<IntegracaoBB />} />
                     <Route path="api-aberta" element={<ApiAberta />} />
                     <Route path="api-documentacao" element={<ApiDocumentation />} />
-                    <Route path="agente-ia" element={<AgenteIA />} />
                     <Route path="caixa" element={<Caixa />} />
                     <Route path="doacoes-fisicas" element={<DoacoesFisicas />} />
                   </Route>

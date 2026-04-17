@@ -43,7 +43,6 @@ const mainItems = [
   { title: "Follow-ups", url: "/dashboard/followups", icon: CalendarClock },
   { title: "Usuários", url: "/dashboard/usuarios", icon: Users },
   { title: "Relatórios", url: "/dashboard/relatorios", icon: BarChart3 },
-  { title: "Agente IA", url: "/dashboard/agente-ia", icon: Sparkles },
   { title: "Caixa", url: "/dashboard/caixa", icon: PiggyBank },
   { title: "Doações Físicas", url: "/dashboard/doacoes-fisicas", icon: Gift },
 ];
@@ -114,7 +113,6 @@ export function AppSidebar() {
   const filteredMainItems = mainItems.filter(item => {
     if (item.title === "Usuários") return role === "admin";
     if (item.title === "Relatórios") return role === "admin" || role === "gestor";
-    if (item.title === "Agente IA") return role === "admin" || role === "gestor";
     return true;
   });
 
