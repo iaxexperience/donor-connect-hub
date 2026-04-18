@@ -203,7 +203,7 @@ const Login = () => {
               © 2026 FAP — Todos os direitos reservados
             </p>
             <p className="text-[9px] text-slate-300 uppercase tracking-[0.2em] font-bold text-center">
-              Desenvolvido por IAX — Inteligência Artificial Experience
+              Desenvolvido por IAX — Inteligência Artificial Experience — Atualização 1.0
             </p>
           </div>
         </motion.div>

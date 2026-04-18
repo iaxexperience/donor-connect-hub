@@ -14,7 +14,7 @@ const FooterSection = () => {
               © 2026 FAP — Todos os direitos reservados
             </p>
             <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-bold">
-              Desenvolvido por IAX — Inteligência Artificial Experience
+              Desenvolvido por IAX — Inteligência Artificial Experience — Atualização 1.0
             </p>
           </div>
         </div>
