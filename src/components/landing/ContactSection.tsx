@@ -57,7 +57,7 @@ const ContactSection = () => {
               Fale com nosso time
             </h2>
             <p className="text-muted-foreground mb-8">
-              Quer saber como a FAP Pulse pode ajudar sua organização? Entre em contato para uma demonstração personalizada.
+              Quer saber como o Pulse Doações pode ajudar sua organização? Entre em contato para uma demonstração personalizada.
             </p>
 
             <div className="space-y-4">

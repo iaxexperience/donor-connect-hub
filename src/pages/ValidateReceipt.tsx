@@ -73,7 +73,7 @@ export default function ValidateReceipt() {
           ) : (
             <Heart className="w-10 h-10 mx-auto mb-3" fill="currentColor" />
           )}
-          <h1 className="font-bold text-xl">{orgSettings?.system_name || "FAP Pulse"}</h1>
+          <h1 className="font-bold text-xl">{orgSettings?.system_name || "Pulse Doações"}</h1>
           {orgSettings?.cnpj && <p className="text-xs text-white/70 mt-1">CNPJ: {orgSettings.cnpj}</p>}
         </div>
 
@@ -85,7 +85,7 @@ export default function ValidateReceipt() {
                 <CheckCircle2 className="w-8 h-8 text-green-500 shrink-0" />
                 <div>
                   <p className="font-bold text-green-700 text-lg">Recibo Válido</p>
-                  <p className="text-xs text-slate-400">Este recibo é autêntico e foi emitido por {orgSettings?.system_name || "FAP Pulse"}</p>
+                  <p className="text-xs text-slate-400">Este recibo é autêntico e foi emitido por {orgSettings?.system_name || "Pulse Doações"}</p>
                 </div>
               </div>
 
@@ -119,7 +119,7 @@ export default function ValidateReceipt() {
 
         <div className="px-8 pb-6 text-center text-xs text-slate-400">
           {orgSettings?.address && <p>{orgSettings.address}</p>}
-          <p className="mt-1">Validação antifraude • {orgSettings?.system_name || "FAP Pulse"}</p>
+          <p className="mt-1">Validação antifraude • {orgSettings?.system_name || "Pulse Doações"}</p>
         </div>
       </div>
     </div>

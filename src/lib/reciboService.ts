@@ -201,7 +201,7 @@ export async function gerarReciboFisicoPDF(data: ReciboFisicoData): Promise<void
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(15);
   doc.setFont("helvetica", "bold");
-  doc.text(data.org.system_name || "FAP Pulse", logoEndX, 18);
+  doc.text(data.org.system_name || "Pulse Doações", logoEndX, 18);
 
   if (data.org.cnpj) {
     doc.setFontSize(8);
@@ -342,7 +342,7 @@ export async function gerarReciboFisicoPDF(data: ReciboFisicoData): Promise<void
   doc.setFontSize(7);
   doc.setTextColor(160, 160, 170);
   doc.text(
-    `Documento gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} • ${data.org.system_name || "FAP Pulse"}`,
+    `Documento gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} • ${data.org.system_name || "Pulse Doações"}`,
     pageW / 2, footerY + 8, { align: "center" }
   );
 

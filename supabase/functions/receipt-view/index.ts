@@ -55,7 +55,7 @@ serve(async (req) => {
     supabase.from("white_label_settings").select("*").eq("id", 1).maybeSingle(),
   ]);
 
-  const orgName = org?.system_name || "FAP Pulse";
+  const orgName = org?.system_name || "Pulse Doações";
   const orgCnpj = org?.cnpj || "";
   const orgAddress = org?.address || "";
   const orgLogo = org?.logo_url || "";

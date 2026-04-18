@@ -25,7 +25,7 @@ const CTASection = () => {
             sua captação de recursos?
           </h2>
           <p className="text-white/80 text-lg md:text-xl max-w-2xl mx-auto mb-12 font-medium">
-            Junte-se a centenas de organizações que já aceleraram seu impacto social com a inteligência do FAP Pulse.
+            Junte-se a centenas de organizações que já aceleraram seu impacto social com a inteligência do Pulse Doações.
           </p>
           <div className="flex flex-col sm:flex-row gap-5 justify-center">
             <Button size="xl" className="bg-white text-blue-600 hover:bg-blue-50 shadow-2xl rounded-2xl font-bold px-10" asChild>
