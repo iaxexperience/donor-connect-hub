@@ -93,12 +93,17 @@ serve(async (req) => {
     console.log(`[BB OAuth] Token obtained successfully.`);
 
     // 3. Build date range (default: last 7 days for sandbox)
-    const today = new Date();
-    const weekAgo = new Date(today);
-    weekAgo.setDate(weekAgo.getDate() - 7);
+    // We must use America/Sao_Paulo timezone because BB API rejects future dates,
+    // and Edge Functions run in UTC (which is +3h ahead of Brazil).
+    const now = new Date();
+    const brazilTime = new Date(now.getTime() - (3 * 60 * 60 * 1000));
+    const weekAgoBrazil = new Date(brazilTime);
+    weekAgoBrazil.setDate(weekAgoBrazil.getDate() - 7);
     
-    const since = dataInicio || weekAgo.toISOString().split('T')[0];
-    const until = dataFim || today.toISOString().split('T')[0];
+    const since = dataInicio || weekAgoBrazil.toISOString().split('T')[0];
+    const until = dataFim || brazilTime.toISOString().split('T')[0];
+
+    console.log(`[BB Dates] UTC: ${now.toISOString()}, BRT: ${brazilTime.toISOString()}, Period: ${since} to ${until}`);
 
     const agencia = numeroAgencia || bbSettings.agencia || '';
     const conta = numeroConta || bbSettings.conta || '';
