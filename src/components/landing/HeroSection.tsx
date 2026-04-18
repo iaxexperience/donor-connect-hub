@@ -51,7 +51,7 @@ const HeroSection = () => {
                 </button>
               </Link>
               <a 
-                href="https://web.whatsapp.com/send?phone=5583996583281&text=Ol%C3%A1!%20Gostaria%20de%20agendar%20uma%20demonstra%C3%A7%C3%A3o%20do%20Pulse%20Doa%C3%A7%C3%B5es." 
+                href="https://wa.me/5583996583281?text=Ol%C3%A1!%20Gostaria%20de%20agendar%20uma%20demonstra%C3%A7%C3%A3o%20do%20Pulse%20Doa%C3%A7%C3%B5es." 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="h-14 px-10 border-2 border-white/20 bg-white/5 backdrop-blur-sm text-white hover:bg-white/10 rounded-2xl font-bold text-lg flex items-center justify-center transition-all duration-300 active:scale-95 text-center leading-tight"
