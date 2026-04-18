@@ -97,11 +97,16 @@ serve(async (req) => {
     // and Edge Functions run in UTC (which is +3h ahead of Brazil).
     const now = new Date();
     const brazilTime = new Date(now.getTime() - (3 * 60 * 60 * 1000));
-    const weekAgoBrazil = new Date(brazilTime);
+    // Use yesterday as default end date — BB API only has closed (T-1) transactions
+    const yesterdayBrazil = new Date(brazilTime);
+    yesterdayBrazil.setDate(yesterdayBrazil.getDate() - 1);
+    const weekAgoBrazil = new Date(yesterdayBrazil);
     weekAgoBrazil.setDate(weekAgoBrazil.getDate() - 7);
-    
+
     const since = dataInicio || weekAgoBrazil.toISOString().split('T')[0];
-    const until = dataFim || brazilTime.toISOString().split('T')[0];
+    // Cap user-supplied dataFim to yesterday to avoid "data futura" error from BB API
+    const maxDate = yesterdayBrazil.toISOString().split('T')[0];
+    const until = dataFim && dataFim < maxDate ? dataFim : maxDate;
 
     console.log(`[BB Dates] UTC: ${now.toISOString()}, BRT: ${brazilTime.toISOString()}, Period: ${since} to ${until}`);
 
