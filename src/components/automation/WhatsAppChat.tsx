@@ -562,22 +562,25 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
         </ScrollArea>
       </div>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-background relative overflow-hidden">
+      {/* Main Chat Area — hidden on mobile when no chat selected */}
+      <div className={`${!selectedChat ? 'hidden md:flex' : 'flex'} flex-1 flex-col bg-background relative overflow-hidden min-w-0`}>
         {selectedChat ? (
           <>
             {/* Header */}
-            <div className="h-16 border-b flex items-center justify-between px-6 bg-card">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10">
+            <div className="h-16 border-b flex items-center justify-between px-4 md:px-6 bg-card gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Button variant="ghost" size="icon" className="md:hidden shrink-0" onClick={() => setSelectedChat(null)}>
+                  ←
+                </Button>
+                <Avatar className="h-10 w-10 shrink-0">
                   <AvatarFallback className="bg-primary/10 text-primary">
                     {selectedChat.nome?.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <h3 className="font-bold text-sm leading-none">{selectedChat.nome}</h3>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Conectado via WhatsApp • {selectedChat.telefone}
+                <div className="min-w-0">
+                  <h3 className="font-bold text-sm leading-none truncate">{selectedChat.nome}</h3>
+                  <p className="text-[10px] text-muted-foreground mt-1 truncate">
+                    {selectedChat.telefone}
                     {selectedChat.telefone.length === 12 && selectedChat.telefone.startsWith('55') && ' (Normalizado)'}
                   </p>
                 </div>
@@ -712,39 +715,6 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
         )}
       </div>
 
-      {/* Optional Info Panel (Hidden by default) */}
-      <div className="w-0 border-l bg-card hidden xl:block xl:w-72 transition-all">
-        {selectedChat && (
-          <div className="p-6 space-y-6">
-            <div className="text-center space-y-2">
-              <Avatar className="h-20 w-20 mx-auto border-2 border-primary/20">
-                <AvatarFallback className="bg-primary/5 text-primary text-xl font-bold">
-                  {selectedChat.nome?.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h3 className="font-bold text-base">{selectedChat.nome}</h3>
-                <p className="text-xs text-muted-foreground">{selectedChat.telefone}</p>
-              </div>
-            </div>
-
-            <div className="space-y-4 pt-4 border-t">
-              <div className="flex items-center gap-3 text-sm">
-                <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                  <User className="w-4 h-4" />
-                </div>
-                <span>Perfil do Doador</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                  <Badge className="w-4 h-4 bg-green-500 rounded-full p-0" />
-                </div>
-                <span className="text-green-600 font-medium">Ativo</span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
