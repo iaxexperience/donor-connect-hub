@@ -502,9 +502,9 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
   );
 
   return (
-    <div className="flex h-[calc(100vh-12rem)] bg-card border rounded-xl overflow-hidden shadow-sm">
-      {/* Left Sidebar: Contacts List */}
-      <div className="w-80 border-r flex flex-col bg-muted/20">
+    <div className="flex h-[calc(100vh-14rem)] min-h-[500px] bg-card border rounded-xl overflow-hidden shadow-sm">
+      {/* Left Sidebar: Contacts List — hidden on mobile when a chat is open */}
+      <div className={`${selectedChat ? 'hidden md:flex' : 'flex'} w-full md:w-72 lg:w-80 shrink-0 border-r flex-col bg-muted/20`}>
         <div className="p-4 border-b space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-lg">Conversas</h2>
