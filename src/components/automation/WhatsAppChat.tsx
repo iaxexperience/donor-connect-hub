@@ -49,7 +49,8 @@ interface Chat {
 interface Message {
   id: string;
   chat_id: string;
-  text_body: string;
+  text_body: string | null;
+  text?: string | null;  // campo legado
   is_from_me: boolean;
   status: string;
   created_at: string;
@@ -542,7 +543,7 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-xs text-muted-foreground">
-                    <p className="truncate pr-4">{chat.last_message || "Sem mensagens"}</p>
+                    <p className="truncate pr-4">{chat.last_message ?? chat.last_message_legacy || "Sem mensagens"}</p>
                     {chat.unread_count > 0 && (
                       <Badge variant="default" className="h-4 min-w-4 px-1 rounded-full text-[10px] flex items-center justify-center bg-primary">
                         {chat.unread_count}
@@ -648,7 +649,7 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
                             ? 'bg-primary text-primary-foreground rounded-tr-none'
                             : 'bg-card border text-card-foreground rounded-tl-none'
                           }`}>
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text_body}</p>
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text_body ?? msg.text ?? ""}</p>
                           <div className={`flex items-center gap-1 mt-1 justify-end opacity-70`}>
                             <span className="text-[9px]">
                               {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
