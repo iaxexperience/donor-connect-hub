@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git checkout *)"
+      "Bash(git checkout *)",
+      "Bash(cat .gitmodules)",
+      "Bash(git submodule *)",
+      "Bash(git rm *)",
+      "Bash(git stash *)",
+      "Bash(git rebase *)",
+      "Bash(git merge *)"
     ]
   }
 }
