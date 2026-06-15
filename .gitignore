@@ -25,3 +25,7 @@ dist-ssr
 
 # Projetos locais (não parte do build)
 political-compass-ai/
+
+# Bun lockfiles (incompatibilidade de versão com Cloudflare)
+bun.lockb
+bun.lock
