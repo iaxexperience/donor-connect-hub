@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Projetos locais (não parte do build)
+political-compass-ai/
