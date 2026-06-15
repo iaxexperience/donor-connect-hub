@@ -205,8 +205,15 @@ serve(async (req) => {
       if (message) {
         const messageId = message.id;
         const msgType = message.type;
-        const isEcho = body.entry[0].id === message.from ||
-          (value.metadata?.display_phone_number && value.metadata.display_phone_number.includes(message.from));
+
+        // CORREÇÃO: Detecta echo comparando o número `from` com o nosso próprio número
+        // (display_phone_number da metadata), não com o WABA ID (entry[0].id)
+        const myDisplayPhone = value.metadata?.display_phone_number ?? '';
+        const myPhoneNorm = normalizePhone(myDisplayPhone);
+        const fromNorm = normalizePhone(message.from ?? '');
+        const isEcho = myPhoneNorm.length > 0 && fromNorm === myPhoneNorm;
+
+        console.log(`[Echo Detection] from=${message.from} (norm=${fromNorm}), myPhone=${myDisplayPhone} (norm=${myPhoneNorm}), isEcho=${isEcho}`);
 
         let targetPhone = message.from;
         if (isEcho && message.to) targetPhone = message.to;
@@ -214,6 +221,8 @@ serve(async (req) => {
         const phoneNormalized = normalizePhone(targetPhone);
         const profileName = value.contacts?.[0]?.profile?.name || 'WhatsApp Contact';
         const text = msgType === 'text' ? (message.text?.body ?? '') : `[${msgType}]`;
+
+        console.log(`[Message] id=${messageId}, type=${msgType}, phone=${phoneNormalized}, isEcho=${isEcho}, text="${text?.substring(0,60)}"`);
 
         // 2a. Salva mensagem do usuário no banco
         await handleMessageSync(supabase, {
