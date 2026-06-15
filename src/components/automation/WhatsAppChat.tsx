@@ -543,7 +543,7 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-xs text-muted-foreground">
-                    <p className="truncate pr-4">{chat.last_message ?? chat.last_message_legacy || "Sem mensagens"}</p>
+                    <p className="truncate pr-4">{chat.last_message || "Sem mensagens"}</p>
                     {chat.unread_count > 0 && (
                       <Badge variant="default" className="h-4 min-w-4 px-1 rounded-full text-[10px] flex items-center justify-center bg-primary">
                         {chat.unread_count}
