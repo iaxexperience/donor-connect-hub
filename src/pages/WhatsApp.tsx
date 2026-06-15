@@ -494,14 +494,26 @@ const WhatsApp = () => {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
-        <div className="flex items-center justify-between bg-card p-1 rounded-2xl border shadow-sm sticky top-0 z-10 overflow-x-auto no-scrollbar">
-          <TabsList className="bg-transparent border-none w-full justify-start h-auto flex-wrap md:flex-nowrap gap-1">
-            <TabsTrigger value="templates" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 h-auto flex-1 min-w-[120px]"><FileJson className="mr-2 h-4 w-4" /> Templates</TabsTrigger>
-            <TabsTrigger value="send" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 h-auto flex-1 min-w-[120px]"><Send className="mr-2 h-4 w-4" /> Enviar</TabsTrigger>
-            <TabsTrigger value="chat" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 h-auto flex-1 min-w-[120px]"><MessageSquare className="mr-2 h-4 w-4" /> Chat ao Vivo</TabsTrigger>
-            <TabsTrigger value="automation" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 h-auto flex-1 min-w-[120px]"><Zap className="mr-2 h-4 w-4" /> Automação</TabsTrigger>
-            <TabsTrigger value="history" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 h-auto flex-1 min-w-[120px]"><History className="mr-2 h-4 w-4" /> Histórico</TabsTrigger>
-            <TabsTrigger value="config" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 h-auto flex-1 min-w-[120px]"><Settings className="mr-2 h-4 w-4" /> API</TabsTrigger>
+        <div className="bg-card p-1 rounded-2xl border shadow-sm sticky top-0 z-10">
+          <TabsList className="bg-transparent border-none w-full h-auto grid grid-cols-3 sm:grid-cols-6 gap-1">
+            <TabsTrigger value="templates" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 h-auto flex-col sm:flex-row gap-1 text-xs sm:text-sm">
+              <FileJson className="h-4 w-4 shrink-0" /><span>Templates</span>
+            </TabsTrigger>
+            <TabsTrigger value="send" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 h-auto flex-col sm:flex-row gap-1 text-xs sm:text-sm">
+              <Send className="h-4 w-4 shrink-0" /><span>Enviar</span>
+            </TabsTrigger>
+            <TabsTrigger value="chat" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 h-auto flex-col sm:flex-row gap-1 text-xs sm:text-sm">
+              <MessageSquare className="h-4 w-4 shrink-0" /><span>Chat</span>
+            </TabsTrigger>
+            <TabsTrigger value="automation" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 h-auto flex-col sm:flex-row gap-1 text-xs sm:text-sm">
+              <Zap className="h-4 w-4 shrink-0" /><span>Automação</span>
+            </TabsTrigger>
+            <TabsTrigger value="history" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 h-auto flex-col sm:flex-row gap-1 text-xs sm:text-sm">
+              <History className="h-4 w-4 shrink-0" /><span>Histórico</span>
+            </TabsTrigger>
+            <TabsTrigger value="config" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground py-2 h-auto flex-col sm:flex-row gap-1 text-xs sm:text-sm">
+              <Settings className="h-4 w-4 shrink-0" /><span>API</span>
+            </TabsTrigger>
           </TabsList>
         </div>
 
