@@ -8,7 +8,10 @@
       "Bash(git stash *)",
       "Bash(git rebase *)",
       "Bash(git merge *)",
-      "Bash(bun install *)"
+      "Bash(bun install *)",
+      "Read(//c/Users/maxra/Desktop/**)",
+      "PowerShell(node \"C:\\\\Users\\\\maxra\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Nova-pasta-donor-connect-hub\\\\99a0a18a-a3a2-426a-bf73-975e617ea08e\\\\scratchpad\\\\import_donors.mjs\" 2>&1)",
+      "PowerShell(node \"C:\\\\Users\\\\maxra\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\d--Nova-pasta-donor-connect-hub\\\\99a0a18a-a3a2-426a-bf73-975e617ea08e\\\\scratchpad\\\\fix_name.mjs\" 2>&1)"
     ]
   }
 }

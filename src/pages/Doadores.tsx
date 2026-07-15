@@ -300,7 +300,14 @@ const Doadores = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading font-bold text-2xl text-foreground">Doadores</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="font-heading font-bold text-2xl text-foreground">Doadores</h1>
+            {!donorsLoading && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                {donors.length.toLocaleString('pt-BR')} cadastrados
+              </span>
+            )}
+          </div>
           <p className="text-muted-foreground text-sm">Gerencie sua base de doadores e acompanhe contribuições.</p>
         </div>
         <div className="flex gap-2">

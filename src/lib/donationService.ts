@@ -59,20 +59,31 @@ export const typeBadgeStyle = (type: string) => {
 };
 
 /**
- * Fetches all donors from Supabase.
+ * Fetches all donors from Supabase using pagination to bypass the 1000-row default limit.
  */
 export const getDonors = async (): Promise<Donor[]> => {
-  const { data, error } = await supabase
-    .from('donors')
-    .select('*')
-    .order('name', { ascending: true });
+  const PAGE_SIZE = 1000;
+  const all: any[] = [];
+  let from = 0;
 
-  if (error) {
-    console.error('Error fetching donors:', error);
-    throw error;
+  while (true) {
+    const { data, error } = await supabase
+      .from('donors')
+      .select('*')
+      .order('name', { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) {
+      console.error('Error fetching donors:', error);
+      throw error;
+    }
+
+    all.push(...(data ?? []));
+    if (!data || data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
   }
 
-  return data.map(d => ({
+  return all.map(d => ({
     ...d,
     name: d.name || "Doador sem Nome",
     email: d.email || "sem@email.com",
