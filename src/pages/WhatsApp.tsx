@@ -254,6 +254,18 @@ const WhatsApp = () => {
       waba_id: (config.waba_id || "").replace(/\D/g, "")
     };
 
+    // Tokens permanentes de System User da Meta têm normalmente 150+ caracteres.
+    // Um token muito curto quase sempre significa que só uma parte foi colada
+    // (seleção incompleta, ou o gerenciador de senhas do navegador sobrescreveu o campo).
+    if (cleanConfig.access_token.length < 100) {
+      toast({
+        title: "Token parece incompleto",
+        description: `O token colado tem só ${cleanConfig.access_token.length} caracteres — tokens permanentes da Meta costumam ter 150+. Copie o token novamente do Business Manager e cole aqui, sem clicar em nenhuma sugestão de senha do navegador.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     localStorage.setItem("meta_config", JSON.stringify(cleanConfig));
     setConfig(cleanConfig);
     setIsConfigSaved(true);
@@ -1053,14 +1065,25 @@ const WhatsApp = () => {
                        </div>
                        <div className="space-y-2">
                           <Label>System User Access Token (Permanent)</Label>
-                          <Input 
+                          <Input
                             type="password"
-                            placeholder="EAAGL..." 
-                            className="h-12 border-2 font-mono text-xs" 
+                            name="whatsapp-system-user-token"
+                            autoComplete="new-password"
+                            data-lpignore="true"
+                            data-1p-ignore="true"
+                            placeholder="EAAGL..."
+                            className="h-12 border-2 font-mono text-xs"
                             value={config.access_token}
                             onChange={(e) => setConfig({...config, access_token: e.target.value})}
                           />
-                          <p className="text-[10px] text-muted-foreground bg-muted p-2 rounded">Dica: Use um token de usuário do sistema para que nunca expire.</p>
+                          <p className="text-[10px] text-muted-foreground bg-muted p-2 rounded">
+                            Dica: Use um token de usuário do sistema para que nunca expire. Cole o token inteiro (geralmente 150+ caracteres) — não aceite sugestões de senha salva do navegador neste campo.
+                            {config.access_token && (
+                              <span className={config.access_token.length < 100 ? "block mt-1 font-bold text-destructive" : "block mt-1"}>
+                                {config.access_token.length} caracteres colados
+                              </span>
+                            )}
+                          </p>
                        </div>
                     </div>
 
