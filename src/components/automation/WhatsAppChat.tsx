@@ -34,7 +34,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { metaService } from "@/services/metaService";
+import { metaService, getMetaConfig } from "@/services/metaService";
 import { useToast } from "@/components/ui/use-toast";
 
 interface Chat {
@@ -338,9 +338,8 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
     setIsSending(true);
 
     try {
-      const savedConfig = localStorage.getItem("meta_config");
-      if (savedConfig) {
-        const config = JSON.parse(savedConfig);
+      const config = await getMetaConfig();
+      if (config?.phone_number_id && config?.access_token) {
         await metaService.sendTextMessage(selectedChat.telefone, currentText, config);
       } else {
         toast({ title: "Aviso", description: "Configure as credenciais da Meta API na aba API para enviar via WhatsApp.", variant: "default" });

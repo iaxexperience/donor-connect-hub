@@ -26,7 +26,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { gerarReciboPDF } from "@/lib/reciboService";
-import { metaService, MetaConfig } from "@/services/metaService";
+import { metaService, MetaConfig, getMetaConfig } from "@/services/metaService";
 
 // Link de validação pública — aponta para a rota do frontend
 const receiptUrl = (hash: string) =>

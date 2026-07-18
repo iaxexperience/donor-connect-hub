@@ -6,6 +6,44 @@ export interface MetaConfig {
   waba_id?: string;
 }
 
+/**
+ * Fonte única das credenciais Meta: busca em whatsapp_settings (o mesmo banco
+ * usado pela Edge Function do webhook), com fallback para o localStorage se
+ * o banco estiver vazio/inacessível. Evita cada tela usar uma cópia própria
+ * e potencialmente desatualizada das credenciais.
+ */
+export async function getMetaConfig(): Promise<MetaConfig | null> {
+  try {
+    const { data, error } = await supabase
+      .from('whatsapp_settings')
+      .select('waba_id, phone_number_id, access_token')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (!error && data && data.phone_number_id && data.access_token) {
+      const config: MetaConfig = {
+        waba_id: data.waba_id || "",
+        phone_number_id: data.phone_number_id,
+        access_token: data.access_token,
+      };
+      localStorage.setItem("meta_config", JSON.stringify(config));
+      return config;
+    }
+  } catch (err) {
+    console.error('[metaService] Erro ao buscar whatsapp_settings, usando localStorage:', err);
+  }
+
+  const saved = localStorage.getItem("meta_config");
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 // ── Internal helper ────────────────────────────────────────────────────────
 // Uses the neutral "api-proxy" Edge Function instead of "meta-whatsapp-proxy"
 // to avoid CSP/ad-blocker blocks in preview environments like Lovable.
