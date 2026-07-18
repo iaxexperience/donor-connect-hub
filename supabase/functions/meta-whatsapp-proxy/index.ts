@@ -87,13 +87,31 @@ async function callGPTMaker(phone: string, prompt: string, chatName: string): Pr
 }
 
 /**
+ * Busca as credenciais Meta salvas na tabela whatsapp_settings (tela "Configuração API").
+ * Faz fallback para as env vars da Edge Function quando a tabela não tem o valor.
+ */
+async function getWhatsAppCredentials(supabase: any): Promise<{ phoneNumberId: string; accessToken: string; verifyToken: string }> {
+  const { data, error } = await supabase
+    .from('whatsapp_settings')
+    .select('phone_number_id, access_token, verify_token')
+    .eq('id', 1)
+    .maybeSingle();
+
+  if (error) console.error('[Settings] Erro ao buscar whatsapp_settings:', error);
+
+  return {
+    phoneNumberId: data?.phone_number_id || Deno.env.get('WHATSAPP_PHONE_NUMBER_ID') || '',
+    accessToken: data?.access_token || Deno.env.get('WHATSAPP_ACCESS_TOKEN') || '',
+    verifyToken: (data?.verify_token || Deno.env.get('WHATSAPP_VERIFY_TOKEN') || '').trim(),
+  };
+}
+
+/**
  * Envia uma mensagem de texto de volta ao usuário via Meta API.
  * Retorna o ID real da mensagem (wam_xxx) para evitar duplicatas com o echo.
- * Requer as env vars: WHATSAPP_PHONE_NUMBER_ID e WHATSAPP_ACCESS_TOKEN
  */
-async function sendMetaReply(toPhone: string, text: string): Promise<string | null> {
-  const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
-  const accessToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
+async function sendMetaReply(toPhone: string, text: string, creds: { phoneNumberId: string; accessToken: string }): Promise<string | null> {
+  const { phoneNumberId, accessToken } = creds;
 
   if (!phoneNumberId || !accessToken) {
     console.log('[Meta Reply] WHATSAPP_PHONE_NUMBER_ID ou WHATSAPP_ACCESS_TOKEN não configurados. Não enviando resposta ao usuário.');
@@ -142,8 +160,12 @@ serve(async (req) => {
     const token = url.searchParams.get('hub.verify_token');
     const challenge = url.searchParams.get('hub.challenge');
 
-    const verifyToken = Deno.env.get('WHATSAPP_VERIFY_TOKEN')?.trim();
-    
+    const handshakeSupabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
+    const { verifyToken } = await getWhatsAppCredentials(handshakeSupabase);
+
     console.log(`[Handshake] Mode: ${mode}, Token Received: ${token}, Challenge: ${challenge}`);
     console.log(`[Handshake] Expected Token: ${verifyToken}`);
 
@@ -237,7 +259,8 @@ serve(async (req) => {
           if (botReply) {
             // Envia de volta ao usuário via Meta API e obtém o ID real (wam_xxx)
             // Usar o ID real evita duplicata quando a Meta mandar o echo desta mensagem
-            const wamId = await sendMetaReply(phoneNormalized, botReply);
+            const creds = await getWhatsAppCredentials(supabase);
+            const wamId = await sendMetaReply(phoneNormalized, botReply, creds);
 
             // Salva resposta do bot com o ID real (wam_xxx) se disponível,
             // ou com ID gerado como fallback (quando não há credenciais Meta)

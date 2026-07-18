@@ -105,12 +105,34 @@ const WhatsApp = () => {
 
   // Initial load
   useEffect(() => {
-    const saved = localStorage.getItem("meta_config");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setConfig(parsed);
-      setIsConfigSaved(true);
-    }
+    const loadConfig = async () => {
+      const saved = localStorage.getItem("meta_config");
+      if (saved) {
+        setConfig(JSON.parse(saved));
+        setIsConfigSaved(true);
+      }
+
+      // Banco é a fonte de verdade (funciona entre navegadores/dispositivos);
+      // sobrescreve o localStorage se houver dados salvos lá.
+      const { data, error } = await supabase
+        .from('whatsapp_settings')
+        .select('waba_id, phone_number_id, access_token')
+        .eq('id', 1)
+        .maybeSingle();
+
+      if (!error && data && (data.waba_id || data.phone_number_id || data.access_token)) {
+        const dbConfig = {
+          waba_id: data.waba_id || "",
+          phone_number_id: data.phone_number_id || "",
+          access_token: data.access_token || "",
+        };
+        setConfig(dbConfig);
+        localStorage.setItem("meta_config", JSON.stringify(dbConfig));
+        setIsConfigSaved(true);
+      }
+    };
+
+    loadConfig();
     loadHistory();
     loadStoredTemplates();
     checkConnection();
@@ -212,23 +234,42 @@ const WhatsApp = () => {
     }
   };
 
-  const handleSaveConfig = () => {
+  const handleSaveConfig = async () => {
     if (!config.phone_number_id || !config.access_token) {
       toast({ title: "Campos obrigatórios", description: "Phone ID e Token são essenciais.", variant: "destructive" });
       return;
     }
-    
-    // Sanitize config - remove spaces
+
+    // IDs da Meta são sempre numéricos. Remove qualquer caractere invisível/oculto
+    // que possa ter vindo de um copiar-colar (espaços, quebras de linha, caracteres
+    // de largura zero) e que faz a Graph API rejeitar o ID como "não existente".
     const cleanConfig = {
-      phone_number_id: config.phone_number_id.trim(),
+      phone_number_id: config.phone_number_id.replace(/\D/g, ""),
       access_token: config.access_token.trim(),
-      waba_id: config.waba_id?.trim() || ""
+      waba_id: (config.waba_id || "").replace(/\D/g, "")
     };
-    
+
     localStorage.setItem("meta_config", JSON.stringify(cleanConfig));
     setConfig(cleanConfig);
     setIsConfigSaved(true);
-    toast({ title: "Configuração Salva", description: "Suas credenciais foram armazenadas e limpas (sem espaços)." });
+
+    // Persiste também no banco (whatsapp_settings), para não depender só do
+    // localStorage deste navegador — é a mesma tabela usada pela Edge Function
+    // do webhook (meta-whatsapp-proxy).
+    try {
+      const { error } = await supabase.from('whatsapp_settings').upsert({
+        id: 1,
+        waba_id: cleanConfig.waba_id,
+        phone_number_id: cleanConfig.phone_number_id,
+        access_token: cleanConfig.access_token,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) console.error('[WhatsApp] Erro ao salvar whatsapp_settings:', error);
+    } catch (e) {
+      console.error('[WhatsApp] Erro ao salvar whatsapp_settings:', e);
+    }
+
+    toast({ title: "Configuração Salva", description: "Suas credenciais foram armazenadas e limpas (sem espaços ou caracteres ocultos)." });
   };
   
   const handleCreateTemplate = async () => {

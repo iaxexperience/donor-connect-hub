@@ -5,6 +5,7 @@ export interface WhatsAppSettings {
   phone_number_id: string;
   access_token: string;
   webhook_url: string;
+  verify_token?: string;
 }
 
 export const getWhatsAppSettings = async (): Promise<WhatsAppSettings | null> => {
