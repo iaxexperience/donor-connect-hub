@@ -1087,7 +1087,18 @@ const WhatsApp = () => {
                           />
                        </div>
                        <div className="space-y-2">
-                          <Label>System User Access Token (Permanent)</Label>
+                          <div className="flex items-center justify-between">
+                            <Label>System User Access Token (Permanent)</Label>
+                            {config.access_token && (
+                              <button
+                                type="button"
+                                onClick={() => setConfig({...config, access_token: ""})}
+                                className="text-[10px] font-bold text-primary hover:underline"
+                              >
+                                Limpar token
+                              </button>
+                            )}
+                          </div>
                           <Input
                             type="password"
                             name="whatsapp-system-user-token"
@@ -1100,12 +1111,17 @@ const WhatsApp = () => {
                             onChange={(e) => setConfig({...config, access_token: e.target.value})}
                           />
                           <p className="text-[10px] text-muted-foreground bg-muted p-2 rounded">
-                            Dica: Use um token de usuário do sistema para que nunca expire. Cole o token inteiro (geralmente 150+ caracteres) — não aceite sugestões de senha salva do navegador neste campo.
-                            {config.access_token && (
-                              <span className={config.access_token.length < 100 ? "block mt-1 font-bold text-destructive" : "block mt-1"}>
-                                {config.access_token.length} caracteres colados
-                              </span>
-                            )}
+                            Dica: Use um token de usuário do sistema para que nunca expire. Clique em "Limpar token" antes de colar de novo — não aceite sugestões de senha salva do navegador neste campo.
+                            {config.access_token && (() => {
+                              const eaaCount = (config.access_token.match(/EAA/g) || []).length;
+                              const suspicious = config.access_token.length < 100 || eaaCount > 1;
+                              return (
+                                <span className={suspicious ? "block mt-1 font-bold text-destructive" : "block mt-1"}>
+                                  {config.access_token.length} caracteres colados
+                                  {eaaCount > 1 && ` — atenção: "EAA" aparece ${eaaCount}x, parece token duplicado!`}
+                                </span>
+                              );
+                            })()}
                           </p>
                        </div>
                     </div>
