@@ -235,6 +235,36 @@ serve(async (req) => {
         return ok({ ok: true, service: 'meta', timestamp: new Date().toISOString() });
       }
 
+      if (action === 'save_settings') {
+        if (!phone_number_id || !access_token) {
+          return ok({ __error: true, error: 'Phone Number ID e Access Token são necessários.' });
+        }
+
+        const supabase = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+        );
+
+        const { data, error } = await supabase
+          .from('whatsapp_settings')
+          .upsert({
+            id: 1,
+            waba_id: waba_id || null,
+            phone_number_id,
+            access_token,
+            updated_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.error('[api-proxy] save_settings error:', JSON.stringify(error));
+          return ok({ __error: true, error: error.message });
+        }
+
+        return ok({ ok: true, saved: data });
+      }
+
       if (action === 'test_connection') {
         if (!access_token) {
           return ok({ __error: true, error: 'Access Token é necessário.' });

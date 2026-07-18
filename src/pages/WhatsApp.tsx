@@ -258,23 +258,20 @@ const WhatsApp = () => {
     setConfig(cleanConfig);
     setIsConfigSaved(true);
 
-    // Persiste também no banco (whatsapp_settings), para não depender só do
-    // localStorage deste navegador — é a mesma tabela usada pela Edge Function
-    // do webhook (meta-whatsapp-proxy).
+    // Persiste também no banco (whatsapp_settings) via Edge Function (service role,
+    // não depende da sessão/RLS do navegador) — é a mesma tabela usada pela
+    // Edge Function do webhook (meta-whatsapp-proxy).
     try {
-      const { error } = await supabase.from('whatsapp_settings').upsert({
-        id: 1,
-        waba_id: cleanConfig.waba_id,
-        phone_number_id: cleanConfig.phone_number_id,
-        access_token: cleanConfig.access_token,
-        updated_at: new Date().toISOString(),
-      });
-      if (error) console.error('[WhatsApp] Erro ao salvar whatsapp_settings:', error);
-    } catch (e) {
+      await metaService.saveSettings(cleanConfig);
+      toast({ title: "Configuração Salva", description: "Credenciais armazenadas neste navegador e no banco de dados." });
+    } catch (e: any) {
       console.error('[WhatsApp] Erro ao salvar whatsapp_settings:', e);
+      toast({
+        title: "Salvo só neste navegador",
+        description: `Não foi possível gravar no banco de dados: ${e.message}`,
+        variant: "destructive",
+      });
     }
-
-    toast({ title: "Configuração Salva", description: "Suas credenciais foram armazenadas e limpas (sem espaços ou caracteres ocultos)." });
   };
 
   const handleTestConnection = async () => {

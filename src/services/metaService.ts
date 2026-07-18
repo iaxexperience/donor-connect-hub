@@ -174,6 +174,23 @@ export const metaService = {
     return resp;
   },
 
+  /** Salva as credenciais na tabela whatsapp_settings via api-proxy (usa service role, não depende de RLS/sessão) */
+  async saveSettings(config: MetaConfig): Promise<void> {
+    const resp = await callProxy({
+      service: 'meta',
+      action: 'save_settings',
+      config: {
+        waba_id: config.waba_id?.trim(),
+        phone_number_id: config.phone_number_id?.trim(),
+        access_token: config.access_token?.trim(),
+      },
+      payload: {},
+    });
+    if (!resp?.ok) {
+      throw new Error(resp?.error || 'Falha ao salvar credenciais no banco de dados.');
+    }
+  },
+
   /** Testa a conexão validando WABA ID e Phone Number ID separadamente na Graph API */
   async testConnection(config: MetaConfig): Promise<{
     phone: { ok: boolean; data?: any; error?: string };
