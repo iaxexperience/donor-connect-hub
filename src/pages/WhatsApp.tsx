@@ -239,15 +239,9 @@ const WhatsApp = () => {
     }
   };
 
-  const handleSaveConfig = async () => {
-    if (!config.phone_number_id || !config.access_token) {
-      toast({ title: "Campos obrigatórios", description: "Phone ID e Token são essenciais.", variant: "destructive" });
-      return;
-    }
-
-    // IDs da Meta são sempre numéricos. Remove qualquer caractere invisível/oculto
-    // que possa ter vindo de um copiar-colar (espaços, quebras de linha, caracteres
-    // de largura zero) e que faz a Graph API rejeitar o ID como "não existente".
+  // Valida e limpa os campos antes de usar/salvar. Retorna null (e já mostra o
+  // toast de erro) se algo estiver claramente errado — token curto ou duplicado.
+  const sanitizeAndValidateConfig = (): MetaConfig | null => {
     const cleanConfig = {
       phone_number_id: config.phone_number_id.replace(/\D/g, ""),
       access_token: config.access_token.trim(),
@@ -263,7 +257,7 @@ const WhatsApp = () => {
         description: `O token colado tem só ${cleanConfig.access_token.length} caracteres — tokens permanentes da Meta costumam ter 150+. Copie o token novamente do Business Manager e cole aqui, sem clicar em nenhuma sugestão de senha do navegador.`,
         variant: "destructive",
       });
-      return;
+      return null;
     }
 
     // Todo token válido da Meta começa com "EAA" uma única vez. Se aparecer mais
@@ -273,11 +267,23 @@ const WhatsApp = () => {
     if (eaaOccurrences > 1) {
       toast({
         title: "Token parece duplicado",
-        description: `O campo parece ter dois tokens colados juntos (encontrei "EAA" ${eaaOccurrences} vezes, um token válido só tem uma). Clique no campo, selecione tudo (Ctrl+A), apague e cole o token correto uma única vez.`,
+        description: `O campo parece ter dois tokens colados juntos (encontrei "EAA" ${eaaOccurrences} vezes, um token válido só tem uma). Clique em "Limpar token", cole o token correto uma única vez e tente de novo.`,
         variant: "destructive",
       });
+      return null;
+    }
+
+    return cleanConfig;
+  };
+
+  const handleSaveConfig = async () => {
+    if (!config.phone_number_id || !config.access_token) {
+      toast({ title: "Campos obrigatórios", description: "Phone ID e Token são essenciais.", variant: "destructive" });
       return;
     }
+
+    const cleanConfig = sanitizeAndValidateConfig();
+    if (!cleanConfig) return;
 
     localStorage.setItem("meta_config", JSON.stringify(cleanConfig));
     setConfig(cleanConfig);
@@ -304,10 +310,14 @@ const WhatsApp = () => {
       toast({ title: "Campos obrigatórios", description: "Preencha o Access Token e ao menos um dos IDs antes de testar.", variant: "destructive" });
       return;
     }
+
+    const cleanConfig = sanitizeAndValidateConfig();
+    if (!cleanConfig) return;
+
     setIsTestingConnection(true);
     setConnectionTestResult(null);
     try {
-      const result = await metaService.testConnection(config);
+      const result = await metaService.testConnection(cleanConfig);
       setConnectionTestResult(result);
       if (result.phone.ok && result.waba.ok) {
         toast({ title: "Conexão OK!", description: "WABA ID e Phone Number ID validados com sucesso na Meta." });
