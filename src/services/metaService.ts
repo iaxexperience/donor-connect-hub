@@ -174,6 +174,26 @@ export const metaService = {
     return resp;
   },
 
+  /** Testa a conexão validando WABA ID e Phone Number ID separadamente na Graph API */
+  async testConnection(config: MetaConfig): Promise<{
+    phone: { ok: boolean; data?: any; error?: string };
+    waba: { ok: boolean; data?: any; error?: string };
+  }> {
+    if (!config.access_token) {
+      throw new Error("Access Token é necessário para testar a conexão.");
+    }
+    return await callProxy({
+      service: 'meta',
+      action: 'test_connection',
+      config: {
+        waba_id: config.waba_id?.trim(),
+        phone_number_id: config.phone_number_id?.trim(),
+        access_token: config.access_token?.trim(),
+      },
+      payload: {},
+    });
+  },
+
   /** Busca templates da Meta API via api-proxy */
   async fetchMetaTemplates(config: MetaConfig) {
     const wabaId = config.waba_id?.trim();

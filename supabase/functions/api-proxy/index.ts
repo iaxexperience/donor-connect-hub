@@ -235,6 +235,35 @@ serve(async (req) => {
         return ok({ ok: true, service: 'meta', timestamp: new Date().toISOString() });
       }
 
+      if (action === 'test_connection') {
+        if (!access_token) {
+          return ok({ __error: true, error: 'Access Token é necessário.' });
+        }
+
+        const checkId = async (id: string, fields: string) => {
+          if (!id) return { ok: false, error: 'Não informado.' };
+          try {
+            const res = await fetch(`https://graph.facebook.com/v22.0/${id}?fields=${fields}`, {
+              headers: { 'Authorization': `Bearer ${access_token}` },
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.error) {
+              return { ok: false, error: data.error?.message || `HTTP ${res.status}` };
+            }
+            return { ok: true, data };
+          } catch (err: any) {
+            return { ok: false, error: err.message };
+          }
+        };
+
+        const [phone, waba] = await Promise.all([
+          checkId(phone_number_id, 'id,display_phone_number,verified_name'),
+          checkId(waba_id, 'id,name'),
+        ]);
+
+        return ok({ phone, waba });
+      }
+
       return ok({ __error: true, error: 'Ação desconhecida.' });
     }
 
