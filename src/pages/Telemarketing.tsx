@@ -65,10 +65,7 @@ const Telemarketing = () => {
   const [sendingWpp, setSendingWpp] = useState<number | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem("meta_config");
-    if (saved) {
-      try { setMetaConfig(JSON.parse(saved)); } catch { /* ignore */ }
-    }
+    getMetaConfig().then(config => { if (config) setMetaConfig(config); });
     const logs = localStorage.getItem("telemarketing_logs");
     if (logs) {
       try { setCallLogs(JSON.parse(logs)); } catch { /* ignore */ }
