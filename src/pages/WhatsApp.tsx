@@ -266,6 +266,19 @@ const WhatsApp = () => {
       return;
     }
 
+    // Todo token válido da Meta começa com "EAA" uma única vez. Se aparecer mais
+    // de uma vez é sinal de que dois tokens ficaram concatenados no campo
+    // (colou por cima sem limpar o campo antes, ou colou duas vezes).
+    const eaaOccurrences = (cleanConfig.access_token.match(/EAA/g) || []).length;
+    if (eaaOccurrences > 1) {
+      toast({
+        title: "Token parece duplicado",
+        description: `O campo parece ter dois tokens colados juntos (encontrei "EAA" ${eaaOccurrences} vezes, um token válido só tem uma). Clique no campo, selecione tudo (Ctrl+A), apague e cole o token correto uma única vez.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     localStorage.setItem("meta_config", JSON.stringify(cleanConfig));
     setConfig(cleanConfig);
     setIsConfigSaved(true);
