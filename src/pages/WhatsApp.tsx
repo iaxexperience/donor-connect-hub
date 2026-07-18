@@ -66,6 +66,11 @@ const WhatsApp = () => {
     waba_id: ""
   });
   const [isConfigSaved, setIsConfigSaved] = useState(false);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [connectionTestResult, setConnectionTestResult] = useState<{
+    phone: { ok: boolean; data?: any; error?: string };
+    waba: { ok: boolean; data?: any; error?: string };
+  } | null>(null);
   
   // 0. Create Template Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -270,6 +275,28 @@ const WhatsApp = () => {
     }
 
     toast({ title: "Configuração Salva", description: "Suas credenciais foram armazenadas e limpas (sem espaços ou caracteres ocultos)." });
+  };
+
+  const handleTestConnection = async () => {
+    if (!config.access_token || (!config.waba_id && !config.phone_number_id)) {
+      toast({ title: "Campos obrigatórios", description: "Preencha o Access Token e ao menos um dos IDs antes de testar.", variant: "destructive" });
+      return;
+    }
+    setIsTestingConnection(true);
+    setConnectionTestResult(null);
+    try {
+      const result = await metaService.testConnection(config);
+      setConnectionTestResult(result);
+      if (result.phone.ok && result.waba.ok) {
+        toast({ title: "Conexão OK!", description: "WABA ID e Phone Number ID validados com sucesso na Meta." });
+      } else {
+        toast({ title: "Falha na validação", description: "Confira o detalhe de cada ID abaixo do formulário.", variant: "destructive" });
+      }
+    } catch (e: any) {
+      toast({ title: "Erro ao testar conexão", description: e.message, variant: "destructive" });
+    } finally {
+      setIsTestingConnection(false);
+    }
   };
   
   const handleCreateTemplate = async () => {
@@ -1053,10 +1080,39 @@ const WhatsApp = () => {
                           </div>
                        </div>
                     </div>
+
+                    {connectionTestResult && (
+                      <div className="space-y-2 pt-2">
+                        <div className={`text-xs p-3 rounded-lg border flex items-start gap-2 ${connectionTestResult.phone.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                          <span className="font-bold shrink-0">Phone Number ID:</span>
+                          <span>
+                            {connectionTestResult.phone.ok
+                              ? `OK — ${connectionTestResult.phone.data?.verified_name || connectionTestResult.phone.data?.display_phone_number || 'válido'}`
+                              : connectionTestResult.phone.error}
+                          </span>
+                        </div>
+                        <div className={`text-xs p-3 rounded-lg border flex items-start gap-2 ${connectionTestResult.waba.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                          <span className="font-bold shrink-0">WABA ID:</span>
+                          <span>
+                            {connectionTestResult.waba.ok
+                              ? `OK — ${connectionTestResult.waba.data?.name || 'válido'}`
+                              : connectionTestResult.waba.error}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                  </CardContent>
-                 <CardFooter className="bg-muted/30 p-8 border-t">
-                    <Button className="w-full h-14 text-xl font-black bg-slate-900 shadow-xl" onClick={handleSaveConfig}>
+                 <CardFooter className="bg-muted/30 p-8 border-t flex flex-col sm:flex-row gap-3">
+                    <Button className="w-full sm:flex-1 h-14 text-xl font-black bg-slate-900 shadow-xl" onClick={handleSaveConfig}>
                        SALVAR E VALIDAR CREDENCIAIS
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full sm:w-auto h-14 px-8 text-base font-bold border-2"
+                      onClick={handleTestConnection}
+                      disabled={isTestingConnection}
+                    >
+                       {isTestingConnection ? "Testando..." : "Testar Conexão"}
                     </Button>
                  </CardFooter>
               </Card>
