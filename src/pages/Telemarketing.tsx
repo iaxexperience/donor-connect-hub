@@ -18,7 +18,7 @@ import {
 import { useTelemarketing } from "@/hooks/useTelemarketing";
 import { typeLabel, typeBadgeStyle } from "@/lib/donationService";
 import { useFollowUps } from "@/hooks/useFollowUps";
-import { metaService, MetaConfig } from "@/services/metaService";
+import { metaService, MetaConfig, getMetaConfig } from "@/services/metaService";
 import { useToast } from "@/hooks/use-toast";
 import { format, addDays } from "date-fns";
 import type { Donor } from "@/lib/donationService";

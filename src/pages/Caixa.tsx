@@ -139,10 +139,7 @@ export default function Caixa() {
   useEffect(() => {
     supabase.from("white_label_settings").select("*").eq("id", 1).maybeSingle()
       .then(({ data }) => { if (data) setOrgSettings(data); });
-    const saved = localStorage.getItem("meta_config");
-    if (saved) {
-      try { setMetaConfig(JSON.parse(saved)); } catch { /* config inválida */ }
-    }
+    getMetaConfig().then(config => { if (config) setMetaConfig(config); });
   }, []);
 
   const searchDonors = async (term: string) => {
