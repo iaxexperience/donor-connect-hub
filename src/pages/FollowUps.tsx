@@ -292,7 +292,7 @@ const FollowUps = () => {
     setIsProcessingNow(true);
     try {
       const { data: res, error: callError } = await supabase.functions.invoke('process-followups', {
-        body: { manual: true, force: true }
+        body: { manual: true }
       });
 
       if (callError) throw new Error(callError.message);
@@ -321,8 +321,8 @@ const FollowUps = () => {
   };
 
   const realStats = [
-    { label: "Pendentes", value: dbFollowUps.filter(f => f.status?.toLowerCase() === "pendente").length, icon: Clock, color: "text-amber-600" },
-    { label: "Agendados", value: dbFollowUps.filter(f => f.status?.toLowerCase() === "agendado").length, icon: CalendarClock, color: "text-primary" },
+    { label: "Pendentes", value: dbFollowUps.filter(f => effectiveStatus(f) === "pendente").length, icon: Clock, color: "text-amber-600" },
+    { label: "Agendados", value: dbFollowUps.filter(f => effectiveStatus(f) === "agendado").length, icon: CalendarClock, color: "text-primary" },
     { label: "Atrasados", value: dbFollowUps.filter(f => effectiveStatus(f) === "atrasado").length, icon: AlertTriangle, color: "text-destructive" },
     { label: "ConcluÃ­dos", value: dbFollowUps.filter(f => f.status?.toLowerCase() === "enviado").length, icon: CheckCircle2, color: "text-green-600" },
   ];
@@ -942,4 +942,5 @@ const FollowUps = () => {
 };
 
 export default FollowUps;
+
 

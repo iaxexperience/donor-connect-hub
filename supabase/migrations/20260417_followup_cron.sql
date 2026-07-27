@@ -10,7 +10,7 @@ select cron.unschedule('followup-auto-daily') where exists (
 -- Agenda verificação automática todo dia às 12:00 UTC (09:00 Brasília)
 select cron.schedule(
   'followup-auto-daily',
-  '0 12 * * *',
+  '0 * * * *',
   $$
   select
     extensions.http_post(

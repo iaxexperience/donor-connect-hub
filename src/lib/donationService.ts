@@ -16,6 +16,7 @@ export interface Donor {
   name: string;
   email: string;
   phone: string;
+  whatsapp_opt_in?: boolean;
   type: DonorType;
   total_donated: number;
   last_donation_date: string | null;
