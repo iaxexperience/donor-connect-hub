@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+﻿import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface FollowUp {
@@ -7,6 +7,12 @@ export interface FollowUp {
   due_date: string;
   status: string;
   note: string;
+  donorName?: string;
+  phone?: string;
+  email?: string;
+  donorType?: string;
+  totalDonations?: number;
+  lastDonation?: string | null;
   donors?: {
     name: string;
     phone: string;
@@ -42,10 +48,12 @@ export const useFollowUps = () => {
   });
 
   const updateFollowUpMutation = useMutation({
-    mutationFn: async ({ id, status, note }: { id: number; status: string; note?: string }) => {
+    mutationFn: async ({ id, status, note, due_date }: { id: number; status: string; note?: string; due_date?: string }) => {
+      const changes: { status: string; note?: string; due_date?: string } = { status, note };
+      if (due_date) changes.due_date = due_date;
       const { data, error } = await supabase
         .from('follow_ups')
-        .update({ status, note })
+        .update(changes)
         .eq('id', id)
         .select()
         .single();
@@ -75,7 +83,8 @@ export const useFollowUps = () => {
   return {
     followUps,
     isLoading,
-    updateFollowUp: updateFollowUpMutation.mutate,
+    updateFollowUp: updateFollowUpMutation.mutateAsync,
     createFollowUp: createFollowUpMutation.mutateAsync,
   };
 };
+
