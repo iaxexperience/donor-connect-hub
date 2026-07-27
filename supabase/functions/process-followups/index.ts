@@ -1,255 +1,194 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+﻿import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const RULES: Record<string, { days: number; template: string }> = {
-  recorrente: { days: 30, template: 'inicio_atendimento' },
-  esporadico: { days: 60, template: 'inicio_atendimento' },
-  unico:      { days: 90, template: 'inicio_atendimento' },
+type Channel = "whatsapp" | "email" | "telefone";
+type Rule = {
+  type: string;
+  enabled: boolean;
+  channel: Channel;
+  template: string;
+  sendHour: string;
+  followUpDays: number;
+  maxRetries: number;
 };
 
-function daysSince(dateStr: string): number {
-  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
-}
+const DEFAULT_RULES: Rule[] = [
+  { type: "unico", enabled: true, channel: "whatsapp", template: "follow_up_primeiro_doador", sendHour: "10:00", followUpDays: 90, maxRetries: 2 },
+  { type: "esporadico", enabled: true, channel: "whatsapp", template: "follow_up_engajamento", sendHour: "14:00", followUpDays: 60, maxRetries: 3 },
+  { type: "recorrente", enabled: true, channel: "whatsapp", template: "follow_up_fidelizacao", sendHour: "09:00", followUpDays: 30, maxRetries: 1 },
+];
+
+const today = () => new Date().toISOString().slice(0, 10);
+const daysSince = (date: string) => Math.floor((Date.now() - new Date(date).getTime()) / 86_400_000);
+const saoPauloHour = () => new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", hour12: false,
+}).format(new Date());
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
   );
 
   try {
-    const { manual = false, force = false, auto = false } = await req.json().catch(() => ({}));
-    console.log(`[Worker] Iniciando (manual:${manual} force:${force} auto:${auto})...`);
+    const { manual = false, auto = false } = await req.json().catch(() => ({}));
+    const { data: settings, error: settingsError } = await supabase
+      .from("follow_up_settings").select("enabled, rules").eq("id", 1).maybeSingle();
+    if (settingsError) throw settingsError;
 
-    if (auto) {
-      const { data: settings, error: settingsError } = await supabase
-        .from('follow_up_settings')
-        .select('enabled')
-        .eq('id', 1)
-        .maybeSingle();
+    const rules = normalizeRules(settings?.rules);
+    if (auto && !settings?.enabled) return json({ success: true, skipped: true, reason: "automation_disabled", sent: 0, failed: 0 });
 
-      if (settingsError) throw settingsError;
-      if (!settings?.enabled) {
-        return new Response(JSON.stringify({ success: true, skipped: true, reason: 'automation_disabled', sent: 0, failed: 0 }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-    }
-
-    // Credenciais WhatsApp
     const { data: waConfig } = await supabase
-      .from('whatsapp_settings')
-      .select('phone_number_id, access_token')
-      .eq('id', 1)
-      .maybeSingle();
+      .from("whatsapp_settings").select("phone_number_id, access_token").eq("id", 1).maybeSingle();
 
-    if (!waConfig?.phone_number_id || !waConfig?.access_token) {
-      throw new Error('WhatsApp não configurado em whatsapp_settings.');
-    }
+    let sent = 0;
+    let failed = 0;
+    let queued = 0;
+    let skipped = 0;
+    const results: Record<string, unknown>[] = [];
 
-    let sentCount = 0;
-    let failCount = 0;
-    const results: any[] = [];
-
-    // ── MODO AUTO: verifica doadores por data da última doação ────────────────
     if (auto) {
-      console.log('[Worker] Modo AUTO: verificando doadores por última doação...');
-
-      const { data: donors, error: donorErr } = await supabase
-        .from('donors')
-        .select('id, name, phone, type, last_donation_date, total_donated, donation_count')
-        .in('type', ['recorrente', 'esporadico', 'unico'])
-        .not('phone', 'is', null)
-        .not('last_donation_date', 'is', null);
-
-      if (donorErr) throw donorErr;
-      console.log(`[Worker] ${donors?.length || 0} doadores elegíveis encontrados.`);
+      const currentHour = saoPauloHour();
+      const activeRules = rules.filter((rule) => rule.enabled && currentHour >= rule.sendHour);
+      const { data: donors, error } = await supabase
+        .from("donors")
+        .select("id, name, phone, email, type, last_donation_date, whatsapp_opt_in")
+        .in("type", activeRules.map((rule) => rule.type))
+        .not("last_donation_date", "is", null);
+      if (error) throw error;
 
       for (const donor of donors || []) {
-        const rule = RULES[donor.type];
-        if (!rule) continue;
+        const rule = activeRules.find((candidate) => candidate.type === donor.type);
+        if (!rule || daysSince(donor.last_donation_date) < rule.followUpDays) continue;
 
-        const elapsed = daysSince(donor.last_donation_date);
-        if (elapsed < rule.days) continue; // ainda não atingiu o prazo
-
-        // Verifica se já foi enviado recentemente (dentro do mesmo período)
-        const { data: lastLog } = await supabase
-          .from('follow_up_logs')
-          .select('sent_at')
-          .eq('donor_id', donor.id)
-          .eq('status', 'enviado')
-          .order('sent_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (lastLog?.sent_at && daysSince(lastLog.sent_at) < rule.days) {
-          console.log(`[Worker] ${donor.name} já recebeu follow-up há menos de ${rule.days} dias, pulando.`);
+        const { data: lastLog } = await supabase.from("follow_up_logs")
+          .select("sent_at").eq("donor_id", donor.id).eq("template", rule.template)
+          .order("sent_at", { ascending: false }).limit(1).maybeSingle();
+        if (lastLog?.sent_at && daysSince(lastLog.sent_at) < rule.followUpDays) {
+          skipped++;
           continue;
         }
 
-        console.log(`[Worker] ${donor.name} (${donor.type}) — ${elapsed} dias desde última doação → enviando ${rule.template}...`);
+        if (rule.channel !== "whatsapp") {
+          await supabase.from("follow_ups").insert({ donor_id: donor.id, due_date: today(), status: "pendente", note: `Contato automático via ${rule.channel}` });
+          await logAttempt(supabase, donor, rule, "aguardando", 0);
+          queued++;
+          continue;
+        }
 
-        try {
-          await sendWhatsApp(supabase, waConfig, donor, rule.template);
-
-          // Registra na fila como enviado
-          await supabase.from('follow_ups').insert([{
-            donor_id: donor.id,
-            due_date: new Date().toISOString().split('T')[0],
-            status: 'enviado',
-            note: `Auto: ${donor.type} ${elapsed}d`,
-          }]);
-
-          await supabase.from('follow_up_logs').insert([{
-            donor_id: donor.id,
-            channel: 'whatsapp',
-            template: rule.template,
-            status: 'enviado',
-            sent_at: new Date().toISOString(),
-          }]);
-
-          sentCount++;
-          results.push({ donor: donor.name, type: donor.type, days: elapsed, template: rule.template, status: 'sucesso' });
-          console.log(`[Worker] ✓ Enviado para ${donor.name}`);
-
-        } catch (err: any) {
-          console.error(`[Worker] Falha para ${donor.name}:`, err.message);
-
-          await supabase.from('follow_up_logs').insert([{
-            donor_id: donor.id,
-            channel: 'whatsapp',
-            template: rule.template,
-            status: 'falha',
-            error_message: err.message,
-            sent_at: new Date().toISOString(),
-          }]);
-
-          failCount++;
-          results.push({ donor: donor.name, status: 'erro', error: err.message });
+        const outcome = await processWhatsApp(supabase, waConfig, donor, rule);
+        sent += outcome.sent;
+        failed += outcome.failed;
+        skipped += outcome.skipped;
+        results.push(outcome.result);
+        if (outcome.sent) {
+          await supabase.from("follow_ups").insert({ donor_id: donor.id, due_date: today(), status: "enviado", note: `Automático: ${donor.type}` });
         }
       }
     }
 
-    // ── MODO MANUAL / FILA: processa follow_ups existentes ───────────────────
-    if (manual || force) {
-      console.log('[Worker] Modo MANUAL: processando fila de follow-ups...');
+    if (manual) {
+      const { data: followUps, error } = await supabase.from("follow_ups")
+        .select("*, donors(id, name, phone, email, type, whatsapp_opt_in)")
+        .in("status", ["agendado", "pendente"])
+        .lte("due_date", today());
+      if (error) throw error;
 
-      const { data: followUps, error: fuError } = await supabase
-        .from('follow_ups')
-        .select('*, donors(id, name, phone, type)')
-        .in('status', ['agendado', 'pendente']);
-
-      if (fuError) throw fuError;
-      console.log(`[Worker] ${followUps?.length || 0} follow-ups na fila.`);
-
-      for (const fu of followUps || []) {
-        const donor = fu.donors;
-        if (!donor?.name || !donor?.phone) continue;
-
-        const templateName = RULES[donor.type]?.template || 'follow_up_primeiro_doador';
-
-        try {
-          await sendWhatsApp(supabase, waConfig, donor, templateName);
-
-          const { error: updateErr } = await supabase
-            .from('follow_ups')
-            .update({ status: 'enviado' })
-            .eq('id', fu.id);
-
-          if (updateErr) console.error(`[Worker] Falha ao atualizar status ${fu.id}:`, updateErr.message);
-
-          await supabase.from('follow_up_logs').insert([{
-            donor_id: donor.id,
-            channel: 'whatsapp',
-            template: templateName,
-            status: 'enviado',
-            sent_at: new Date().toISOString(),
-          }]);
-
-          sentCount++;
-          results.push({ donor: donor.name, status: 'sucesso', template: templateName });
-
-        } catch (err: any) {
-          console.error(`[Worker] Falha para ${donor.name}:`, err.message);
-
-          await supabase.from('follow_up_logs').insert([{
-            donor_id: donor.id,
-            channel: 'whatsapp',
-            template: templateName,
-            status: 'falha',
-            error_message: err.message,
-            sent_at: new Date().toISOString(),
-          }]);
-
-          failCount++;
-          results.push({ donor: donor.name, status: 'erro', error: err.message });
+      for (const followUp of followUps || []) {
+        const donor = followUp.donors;
+        const rule = rules.find((candidate) => candidate.type === donor?.type);
+        if (!donor || !rule || !rule.enabled) {
+          skipped++;
+          continue;
         }
+        if (rule.channel !== "whatsapp") {
+          await logAttempt(supabase, donor, rule, "aguardando", 0);
+          queued++;
+          continue;
+        }
+
+        const outcome = await processWhatsApp(supabase, waConfig, donor, rule);
+        sent += outcome.sent;
+        failed += outcome.failed;
+        skipped += outcome.skipped;
+        results.push(outcome.result);
+        if (outcome.sent) await supabase.from("follow_ups").update({ status: "enviado" }).eq("id", followUp.id);
+        if (outcome.exhausted) await supabase.from("follow_ups").update({ status: "atrasado" }).eq("id", followUp.id);
       }
     }
 
-    console.log(`[Worker] Concluído: ${sentCount} enviados, ${failCount} falhas.`);
-
-    return new Response(JSON.stringify({ success: true, sent: sentCount, failed: failCount, results }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-
-  } catch (err: any) {
-    console.error('[Worker] Erro Fatal:', err.message);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return json({ success: true, sent, failed, queued, skipped, results });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro desconhecido";
+    return json({ error: message }, 500);
   }
 });
 
-async function sendWhatsApp(supabase: any, waConfig: any, donor: any, templateName: string) {
-  // Buscar valor da última doação
-  const { data: latestDonation } = await supabase
-    .from('donations')
-    .select('amount')
-    .eq('donor_id', donor.id)
-    .eq('status', 'pago')
-    .order('confirmed_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const amount = latestDonation?.amount || 0;
-  const formattedAmount = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount);
-
-  let cleanPhone = donor.phone.replace(/\D/g, '');
-  if (!cleanPhone.startsWith('55')) cleanPhone = '55' + cleanPhone;
-
-  const waResponse = await fetch(`https://graph.facebook.com/v20.0/${waConfig.phone_number_id}/messages`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${waConfig.access_token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      recipient_type: 'individual',
-      to: cleanPhone,
-      type: 'template',
-      template: {
-        name: templateName,
-        language: { code: 'pt_BR' },
-      },
-    }),
+function normalizeRules(value: unknown): Rule[] {
+  if (!Array.isArray(value)) return DEFAULT_RULES;
+  return DEFAULT_RULES.map((fallback) => {
+    const saved = value.find((item) => item && typeof item === "object" && (item as Record<string, unknown>).type === fallback.type) as Partial<Rule> | undefined;
+    return { ...fallback, ...saved, type: fallback.type };
   });
+}
 
-  const waResult = await waResponse.json();
-  if (waResult.error) throw new Error(`Meta API: ${waResult.error.message}`);
+async function processWhatsApp(supabase: any, waConfig: any, donor: any, rule: Rule) {
+  if (!donor.whatsapp_opt_in) {
+    return { sent: 0, failed: 0, skipped: 1, exhausted: false, result: { donor: donor.name, status: "ignorado", reason: "sem_opt_in" } };
+  }
+  if (!donor.phone || !waConfig?.phone_number_id || !waConfig?.access_token) {
+    return { sent: 0, failed: 1, skipped: 0, exhausted: false, result: { donor: donor.name, status: "erro", reason: "whatsapp_nao_configurado" } };
+  }
 
-  return waResult;
+  const { data: failures } = await supabase.from("follow_up_logs")
+    .select("retry_count").eq("donor_id", donor.id).eq("template", rule.template)
+    .eq("status", "falha").order("sent_at", { ascending: false }).limit(rule.maxRetries);
+  const retryCount = failures?.length || 0;
+  if (retryCount >= rule.maxRetries) {
+    return { sent: 0, failed: 0, skipped: 1, exhausted: true, result: { donor: donor.name, status: "ignorado", reason: "tentativas_esgotadas" } };
+  }
+
+  try {
+    await sendWhatsApp(waConfig, donor, rule.template);
+    await logAttempt(supabase, donor, rule, "enviado", retryCount);
+    return { sent: 1, failed: 0, skipped: 0, exhausted: false, result: { donor: donor.name, status: "sucesso", template: rule.template } };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Falha no envio";
+    const nextRetry = retryCount + 1;
+    await logAttempt(supabase, donor, rule, "falha", nextRetry, message);
+    return { sent: 0, failed: 1, skipped: 0, exhausted: nextRetry >= rule.maxRetries, result: { donor: donor.name, status: "erro", error: message } };
+  }
+}
+
+async function logAttempt(supabase: any, donor: any, rule: Rule, status: "enviado" | "falha" | "aguardando", retryCount: number, errorMessage?: string) {
+  await supabase.from("follow_up_logs").insert({
+    donor_id: donor.id, donor_name: donor.name, donor_type: donor.type,
+    channel: rule.channel, template: rule.template, status,
+    retry_count: retryCount, error_message: errorMessage, sent_at: new Date().toISOString(),
+  });
+}
+
+async function sendWhatsApp(waConfig: { phone_number_id: string; access_token: string }, donor: { phone: string }, template: string) {
+  let phone = donor.phone.replace(/\D/g, "");
+  if (!phone.startsWith("55")) phone = `55${phone}`;
+  const response = await fetch(`https://graph.facebook.com/v20.0/${waConfig.phone_number_id}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${waConfig.access_token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to: phone, type: "template", template: { name: template, language: { code: "pt_BR" } } }),
+  });
+  const result = await response.json();
+  if (!response.ok || result.error) throw new Error(`Meta API: ${result.error?.message || response.statusText}`);
+  return result;
+}
+
+function json(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
