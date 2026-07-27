@@ -55,7 +55,32 @@ interface Message {
   status: string;
   created_at: string;
   message_id: string;
+  metadata?: { type?: string; media_id?: string; mime_type?: string; storage_path?: string; caption?: string | null } | null;
 }
+
+const MessageContent = ({ message }: { message: Message }) => {
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const body = message.text_body ?? message.text ?? "";
+  const mediaType = message.metadata?.type;
+  const storagePath = message.metadata?.storage_path;
+  const caption = message.metadata?.caption;
+
+  useEffect(() => {
+    let active = true;
+    if (!storagePath) { setMediaUrl(null); return; }
+    supabase.storage.from('whatsapp-media').createSignedUrl(storagePath, 3600).then(({ data, error }) => {
+      if (active) setMediaUrl(error ? null : data?.signedUrl || null);
+    });
+    return () => { active = false; };
+  }, [storagePath]);
+
+  if (storagePath && !mediaUrl) return <p className="text-xs opacity-70">Carregando mídia...</p>;
+  if (mediaUrl && mediaType === 'image') return <div className="space-y-2"><a href={mediaUrl} target="_blank" rel="noreferrer"><img src={mediaUrl} alt={caption || "Imagem recebida pelo WhatsApp"} className="max-h-80 max-w-full rounded-lg object-contain" loading="lazy" /></a>{caption && <p className="text-sm whitespace-pre-wrap break-words">{caption}</p>}</div>;
+  if (mediaUrl && mediaType === 'audio') return <audio controls preload="metadata" className="w-[260px] max-w-full" src={mediaUrl}>Seu navegador não suporta áudio.</audio>;
+  if (mediaUrl && mediaType === 'video') return <video controls preload="metadata" className="max-h-80 max-w-full rounded-lg" src={mediaUrl}>Seu navegador não suporta vídeo.</video>;
+  if (mediaUrl && (mediaType === 'document' || mediaType === 'sticker')) return <a href={mediaUrl} target="_blank" rel="noreferrer" className="text-sm underline">Abrir arquivo recebido</a>;
+  return <p className="text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{body}</p>;
+};
 
 interface Donor {
   id: number;
@@ -631,8 +656,8 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
             </div>
 
             {/* Messages Area */}
-            <ScrollArea className="flex-1 p-6 bg-slate-50/50 dark:bg-slate-900/10">
-              <div className="space-y-4">
+            <ScrollArea className="flex-1 min-w-0 bg-slate-50/50 dark:bg-slate-900/10">
+              <div className="w-full min-w-0 max-w-full space-y-4 px-4 py-6 md:px-6 overflow-hidden">
                 {messages.map((msg, i) => {
                   const showDate = i === 0 || new Date(msg.created_at).toDateString() !== new Date(messages[i - 1].created_at).toDateString();
 
@@ -646,12 +671,12 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
                         </div>
                       )}
 
-                      <div className={`flex ${msg.is_from_me ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl shadow-sm ${msg.is_from_me
+                      <div className={`flex w-full min-w-0 max-w-full ${msg.is_from_me ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`min-w-0 max-w-[75%] px-4 py-2.5 rounded-2xl shadow-sm ${msg.is_from_me
                             ? 'bg-primary text-primary-foreground rounded-tr-none'
                             : 'bg-card border text-card-foreground rounded-tl-none'
                           }`}>
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text_body ?? msg.text ?? ""}</p>
+                          <MessageContent message={msg} />
                           <div className={`flex items-center gap-1 mt-1 justify-end opacity-70`}>
                             <span className="text-[9px]">
                               {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

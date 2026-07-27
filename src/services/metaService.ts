@@ -4,6 +4,8 @@ export interface MetaConfig {
   phone_number_id: string;
   access_token: string;
   waba_id?: string;
+  webhook_url?: string;
+  verify_token?: string;
 }
 
 /**
@@ -221,6 +223,8 @@ export const metaService = {
         waba_id: config.waba_id?.trim(),
         phone_number_id: config.phone_number_id?.trim(),
         access_token: config.access_token?.trim(),
+        webhook_url: config.webhook_url?.trim(),
+        verify_token: config.verify_token?.trim(),
       },
       payload: {},
     });

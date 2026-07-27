@@ -7,9 +7,9 @@ const corsHeaders = {
 };
 
 const RULES: Record<string, { days: number; template: string }> = {
-  recorrente: { days: 30, template: 'follow_up_fidelizacao' },
-  esporadico: { days: 60, template: 'follow_up_engajamento' },
-  unico:      { days: 90, template: 'follow_up_primeiro_doador' },
+  recorrente: { days: 30, template: 'inicio_atendimento' },
+  esporadico: { days: 60, template: 'inicio_atendimento' },
+  unico:      { days: 90, template: 'inicio_atendimento' },
 };
 
 function daysSince(dateStr: string): number {
@@ -29,6 +29,22 @@ serve(async (req) => {
   try {
     const { manual = false, force = false, auto = false } = await req.json().catch(() => ({}));
     console.log(`[Worker] Iniciando (manual:${manual} force:${force} auto:${auto})...`);
+
+    if (auto) {
+      const { data: settings, error: settingsError } = await supabase
+        .from('follow_up_settings')
+        .select('enabled')
+        .eq('id', 1)
+        .maybeSingle();
+
+      if (settingsError) throw settingsError;
+      if (!settings?.enabled) {
+        return new Response(JSON.stringify({ success: true, skipped: true, reason: 'automation_disabled', sent: 0, failed: 0 }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     // Credenciais WhatsApp
     const { data: waConfig } = await supabase
@@ -228,13 +244,6 @@ async function sendWhatsApp(supabase: any, waConfig: any, donor: any, templateNa
       template: {
         name: templateName,
         language: { code: 'pt_BR' },
-        components: [{
-          type: 'BODY',
-          parameters: [
-            { type: 'text', text: donor.name },
-            { type: 'text', text: formattedAmount },
-          ],
-        }],
       },
     }),
   });

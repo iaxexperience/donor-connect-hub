@@ -15,17 +15,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useDonors } from "@/hooks/useDonors";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  validateMetaCredentials, 
   fetchMetaTemplates, 
   sendWhatsAppDirectMessage,
   sendWhatsAppTemplate,
   createMetaTemplate
 } from "@/lib/whatsappService";
-import { 
-  getWhatsAppSettings, 
-  saveWhatsAppSettings 
-} from "@/lib/whatsappSettingsService";
+import { getWhatsAppSettings } from "@/lib/whatsappSettingsService";
 import { useCampaigns } from "@/hooks/useCampaigns";
+import { metaService } from "@/services/metaService";
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
@@ -77,6 +74,7 @@ const Integracoes = () => {
   const [phoneId, setPhoneId] = useState("");
   const [accessToken, setAccessToken] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
+  const [verifyToken, setVerifyToken] = useState("pulse2026");
 
   const [templates, setTemplates] = useState<any[]>(() => {
     try {
@@ -123,10 +121,7 @@ const Integracoes = () => {
           setPhoneId(settings.phone_number_id || "");
           setAccessToken(settings.access_token || "");
           setWebhookUrl(settings.webhook_url || "");
-          
-          if (settings.waba_id && settings.phone_number_id && settings.access_token) {
-            setWaConnected(true);
-          }
+          setVerifyToken(settings.verify_token || "pulse2026");
         }
       } catch (err) {
         console.error("Erro ao carregar configurações:", err);
@@ -269,23 +264,29 @@ const Integracoes = () => {
 
   const handleSaveCredentials = async () => {
     try {
-      await saveWhatsAppSettings({
-        waba_id: wabaId,
-        phone_number_id: phoneId,
-        access_token: accessToken,
-        webhook_url: webhookUrl
-      });
-      // Synchronize localStorage so whatsappService picks them up immediately
-      localStorage.setItem("meta_waba_id", wabaId);
-      localStorage.setItem("meta_phone_id", phoneId);
-      localStorage.setItem("meta_access_token", accessToken);
-      if (wabaId && phoneId && accessToken) setWaConnected(true);
-      toast({ title: "Configurações Salvas!", description: "Credenciais ativas. Agora você pode enviar mensagens e templates." });
+      const config = {
+        waba_id: wabaId.trim(),
+        phone_number_id: phoneId.trim(),
+        access_token: accessToken.trim(),
+        webhook_url: webhookUrl.trim() || "https://zljlhlfbtnzbmeaglkll.supabase.co/functions/v1/meta-whatsapp-proxy",
+        verify_token: verifyToken.trim(),
+      };
+      await metaService.saveSettings(config);
+      const result = await metaService.testConnection(config);
+      if (!result.phone.ok || !result.waba.ok) {
+        throw new Error(`Credenciais salvas, mas a Meta recusou a conexao. Phone ID: ${result.phone.error || "OK"}. WABA ID: ${result.waba.error || "OK"}.`);
+      }
+      setWebhookUrl(config.webhook_url);
+      setWaConnected(true);
+      localStorage.setItem("meta_waba_id", config.waba_id);
+      localStorage.setItem("meta_phone_id", config.phone_number_id);
+      localStorage.setItem("meta_access_token", config.access_token);
+      toast({ title: "Conexao estabelecida", description: "Credenciais validadas e salvas no servidor." });
     } catch (e: any) {
+      setWaConnected(false);
       toast({ title: "Erro ao Salvar", description: e.message, variant: "destructive" });
     }
   };
-
   const handleSendMessage = async () => {
     if (!selectedDonor || !chatInput.trim() || isSendingMessage) return;
 
@@ -314,19 +315,20 @@ const Integracoes = () => {
   };
 
   const handleTestWhatsApp = async () => {
-    if (!phoneId || !accessToken) {
-      toast({ title: "Erro de Configuração", description: "Informe o Phone ID e o Access Token.", variant: "destructive" });
+    if (!wabaId || !phoneId || !accessToken) {
+      toast({ title: "Erro de configuracao", description: "Informe o WABA ID, Phone ID e Access Token.", variant: "destructive" });
       return;
     }
     setIsTestingWa(true);
     try {
-      const result = await validateMetaCredentials(wabaId, phoneId, accessToken);
-      if (result.success) {
+      const result = await metaService.testConnection({ waba_id: wabaId, phone_number_id: phoneId, access_token: accessToken });
+      if (result.phone.ok && result.waba.ok) {
         setWaConnected(true);
-        toast({ title: "Conexão Estabelecida!", description: "Sua API do WhatsApp está pronta para uso." });
+        toast({ title: "Conexao estabelecida!", description: "Sua API do WhatsApp esta pronta para uso." });
       } else {
         setWaConnected(false);
-        toast({ title: "Falha na Conexão", description: result.error, variant: "destructive" });
+        const details = `Phone ID: ${result.phone.error || "OK"}. WABA ID: ${result.waba.error || "OK"}.`;
+        toast({ title: "Falha na conexao", description: details, variant: "destructive" });
       }
     } catch (e: any) {
       setWaConnected(false);
@@ -335,7 +337,6 @@ const Integracoes = () => {
       setIsTestingWa(false);
     }
   };
-
   const handleProcessBatchSend = async () => {
     if (!selectedBatchTemplate) {
       toast({ title: "Erro", description: "Selecione um template primeiro.", variant: "destructive" });
@@ -778,14 +779,14 @@ const Integracoes = () => {
                 <div className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
                   <Code className="w-4 h-4 text-blue-500 shrink-0" />
                   <code className="text-xs text-blue-700 font-mono flex-1 break-all select-all">
-                    https://zljlhlfbtnzbmeaglkll.supabase.co/functions/v1/whatsapp-webhook
+                    https://zljlhlfbtnzbmeaglkll.supabase.co/functions/v1/meta-whatsapp-proxy
                   </code>
                   <Button
                     size="sm"
                     variant="ghost"
                     className="h-8 px-3 rounded-xl"
                     onClick={() => {
-                      navigator.clipboard.writeText("https://zljlhlfbtnzbmeaglkll.supabase.co/functions/v1/whatsapp-webhook");
+                      navigator.clipboard.writeText("https://zljlhlfbtnzbmeaglkll.supabase.co/functions/v1/meta-whatsapp-proxy");
                       toast({ title: "URL Copiada!", description: "Cole no campo Callback URL do Meta Developer." });
                     }}
                   >
@@ -797,9 +798,13 @@ const Integracoes = () => {
                   <div className="text-xs text-amber-800 leading-relaxed">
                     <strong>Para receber mensagens no chat:</strong> Registre a URL acima como Callback URL no{" "}
                     <a href="https://developers.facebook.com" target="_blank" rel="noreferrer" className="underline font-bold">Meta Developer Portal</a>{" "}
-                    e configure o Verify Token como <code className="font-mono bg-amber-100 px-1 rounded">pulse_verify_token</code>.
+                    e use no portal o mesmo Verify Token informado abaixo.
                     Assine o campo <code className="font-mono bg-amber-100 px-1 rounded">messages</code> no Webhook.
                   </div>
+                </div>
+                <div className="space-y-4">
+                  <Label className="font-bold text-slate-700 text-base">Verify Token do Webhook</Label>
+                  <Input type="password" value={verifyToken} onChange={(e) => setVerifyToken(e.target.value)} className="h-14 rounded-2xl bg-white border-amber-200 font-mono px-5" placeholder="Token usado no Meta Developer" />
                 </div>
               </div>
 

@@ -55,7 +55,7 @@ serve(async (req) => {
 
     // ── META / WHATSAPP ─────────────────────────────────────────────────────
     if (service === 'meta') {
-      const { waba_id, phone_number_id, access_token } = config || {};
+      const { waba_id, phone_number_id, access_token, webhook_url, verify_token } = config || {};
 
       if (action === 'create_template') {
         if (!waba_id || !access_token) {
@@ -252,6 +252,8 @@ serve(async (req) => {
             waba_id: waba_id || null,
             phone_number_id,
             access_token,
+            webhook_url: webhook_url || null,
+            verify_token: verify_token || null,
             updated_at: new Date().toISOString(),
           })
           .select()

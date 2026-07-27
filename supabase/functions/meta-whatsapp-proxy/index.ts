@@ -142,6 +142,29 @@ async function sendMetaReply(toPhone: string, text: string, creds: { phoneNumber
   }
 }
 
+async function persistIncomingMedia(supabase: any, message: any): Promise<Record<string, unknown> | null> {
+  const media = message?.[message?.type];
+  const mediaId = media?.id;
+  if (!mediaId) return null;
+  try {
+    const { accessToken } = await getWhatsAppCredentials(supabase);
+    if (!accessToken) throw new Error('Access token do WhatsApp não configurado.');
+    const metadataResponse = await fetch(`https://graph.facebook.com/v22.0/${mediaId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+    const metadata = await metadataResponse.json();
+    if (!metadataResponse.ok || !metadata?.url) throw new Error(metadata?.error?.message || 'A Meta não retornou a URL da mídia.');
+    const mediaResponse = await fetch(metadata.url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!mediaResponse.ok) throw new Error(`Falha ao baixar mídia da Meta (${mediaResponse.status}).`);
+    const mimeType = metadata.mime_type || media?.mime_type || mediaResponse.headers.get('content-type') || 'application/octet-stream';
+    const extensions: Record<string, string> = { 'image/jpeg':'jpg','image/png':'png','image/webp':'webp','audio/ogg':'ogg','audio/mpeg':'mp3','audio/mp4':'m4a','audio/aac':'aac','video/mp4':'mp4','application/pdf':'pdf' };
+    const storagePath = `${message.from || 'unknown'}/${message.id}.${extensions[mimeType.split(';')[0]] || 'bin'}`;
+    const { error } = await supabase.storage.from('whatsapp-media').upload(storagePath, await mediaResponse.arrayBuffer(), { contentType: mimeType, upsert: true });
+    if (error) throw error;
+    return { type: message.type, media_id: mediaId, mime_type: mimeType, storage_path: storagePath, caption: media?.caption || null };
+  } catch (error) {
+    console.error(`[Media] Não foi possível persistir ${mediaId}:`, error);
+    return { type: message.type, media_id: mediaId, mime_type: media?.mime_type || null };
+  }
+}
 serve(async (req) => {
   console.log(`[Meta Proxy] Request Received: ${req.method} ${req.url}`);
   
@@ -242,13 +265,14 @@ serve(async (req) => {
 
         const phoneNormalized = normalizePhone(targetPhone);
         const profileName = value.contacts?.[0]?.profile?.name || 'WhatsApp Contact';
-        const text = msgType === 'text' ? (message.text?.body ?? '') : `[${msgType}]`;
+        const mediaMetadata = msgType === 'text' ? null : await persistIncomingMedia(supabase, message);
+        const text = msgType === 'text' ? (message.text?.body ?? '') : ((mediaMetadata?.caption as string | null) || `[${msgType}]`);
 
         console.log(`[Message] id=${messageId}, type=${msgType}, phone=${phoneNormalized}, isEcho=${isEcho}, text="${text?.substring(0,60)}"`);
 
         // 2a. Salva mensagem do usuário no banco
         await handleMessageSync(supabase, {
-          messageId, phoneNormalized, text, isEcho, profileName, status: isEcho ? 'sent' : 'received'
+          messageId, phoneNormalized, text, isEcho, profileName, status: isEcho ? 'sent' : 'received', metadata: mediaMetadata
         });
 
         // 2b. Se for mensagem RECEBIDA do usuário (não eco), chama o GPTMaker
@@ -295,7 +319,7 @@ serve(async (req) => {
  * Função unificada para salvar mensagens e atualizar chats
  */
 async function handleMessageSync(supabase: any, data: any) {
-  const { messageId, phoneNormalized, text, isEcho, profileName, status } = data;
+  const { messageId, phoneNormalized, text, isEcho, profileName, status, metadata } = data;
 
   console.log(`[Sync] Iniciando sincronização para o telefone ${phoneNormalized}`);
 
@@ -334,7 +358,8 @@ async function handleMessageSync(supabase: any, data: any) {
       text_body: text, 
       is_from_me: isEcho, 
       message_id: messageId, 
-      status: status || (isEcho ? 'sent' : 'received')
+      status: status || (isEcho ? 'sent' : 'received'),
+      metadata: metadata || null
     }], { onConflict: 'message_id' });
 
     if (msgError) {

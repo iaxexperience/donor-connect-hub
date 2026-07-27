@@ -152,8 +152,11 @@ const FollowUps = () => {
     
     setIsScheduling(true);
     try {
-      if (newFollowUpDonorId === "all_in_class") {
-        const targets = donors.filter(d => newFollowUpClassification === "all" || d.type === newFollowUpClassification);
+      if (newFollowUpDonorId === "all_in_class" || newFollowUpDonorId.startsWith("all:")) {
+        const targetClassification = newFollowUpDonorId.startsWith("all:")
+          ? newFollowUpDonorId.split(":")[1]
+          : newFollowUpClassification;
+        const targets = donors.filter(d => targetClassification === "all" || d.type === targetClassification);
         if (targets.length === 0) {
           toast({ title: "Nenhum doador encontrado nesta classificação." });
           setIsScheduling(false);
@@ -373,6 +376,15 @@ const FollowUps = () => {
                     <SelectValue placeholder="Selecione um doador" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="all:recorrente" className="font-bold text-green-700">
+                      Todos recorrentes ({donors.filter(d => d.type === "recorrente").length} doadores)
+                    </SelectItem>
+                    <SelectItem value="all:esporadico" className="font-bold text-orange-700">
+                      Todos esporádicos ({donors.filter(d => d.type === "esporadico").length} doadores)
+                    </SelectItem>
+                    <SelectItem value="all:unico" className="font-bold text-blue-700">
+                      Todos únicos ({donors.filter(d => d.type === "unico").length} doadores)
+                    </SelectItem>
                     {newFollowUpClassification !== "all" && (
                       <SelectItem value="all_in_class" className="font-bold text-blue-600">
                         Todos desta classificação ({donors.filter(d => d.type === newFollowUpClassification).length} doadores)

@@ -1,3 +1,4 @@
+import { expect, test } from "vitest";
 import { sendWhatsAppThankYou } from "../lib/whatsappService";
 
 export const testWhatsAppPayload = async () => {
@@ -21,3 +22,7 @@ export const testWhatsAppPayload = async () => {
   console.log("WhatsApp Payload Test Passed Successfully!");
   return true;
 };
+
+test("builds the WhatsApp thank-you template payload", async () => {
+  await expect(testWhatsAppPayload()).resolves.toBe(true);
+});
