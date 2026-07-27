@@ -304,8 +304,10 @@ const FollowUps = () => {
         toast({ title: "Sucesso!", description: `${res.sent} mensagens enviadas e fila atualizada!` });
       } else if (res?.failed > 0) {
         toast({ title: "Aviso", description: `0 enviadas, ${res.failed} falhas. Verifique o HistÃ³rico.`, variant: "destructive" });
+      } else if (res?.queued > 0) {
+        toast({ title: "Contatos adicionados à fila", description: `${res.queued} follow-up(s) aguardam contato manual.` });
       } else {
-        toast({ title: "Fila Vazia", description: "NÃ£o hÃ¡ follow-ups pendentes para hoje." });
+        toast({ title: "Fila processada", description: res?.skipped > 0 ? `${res.skipped} item(ns) ignorados por regras, opt-in ou limite de tentativas.` : "Não há follow-ups vencidos para hoje." });
       }
     } catch (err: any) {
       toast({ title: "Erro de ConexÃ£o", description: err.message, variant: "destructive" });
