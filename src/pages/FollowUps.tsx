@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useFollowUpLogs } from "@/hooks/useFollowUpLogs";
 import {
@@ -742,7 +742,7 @@ const FollowUps = () => {
                   <p className="font-medium text-foreground">Como funciona a automaÃ§Ã£o</p>
                   <ul className="list-disc pl-4 space-y-0.5">
                     <li>O sistema verifica diariamente os doadores que atingiram o prazo de follow-up.</li>
-                    <li>Mensagens sÃ£o enviadas automaticamente via o canal configurado, usando templates prÃ©-aprovados.</li>
+                    <li>WhatsApp é enviado automaticamente; telefone e e-mail geram lembretes para atendimento manual.</li>
                     <li>Somente doadores com <strong className="text-foreground">opt-in ativo</strong> recebem mensagens.</li>
                     <li>Em caso de falha, o sistema tenta novamente atÃ© o limite de tentativas configurado.</li>
                     <li>Follow-ups manuais continuam funcionando normalmente na aba "Lista".</li>

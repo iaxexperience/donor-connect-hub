@@ -7,7 +7,7 @@ select cron.unschedule('followup-auto-daily') where exists (
   select 1 from cron.job where jobname = 'followup-auto-daily'
 );
 
--- Agenda verificação automática todo dia às 12:00 UTC (09:00 Brasília)
+-- Agenda verificação a cada hora; cada regra respeita seu horário em America/Sao_Paulo
 select cron.schedule(
   'followup-auto-daily',
   '0 * * * *',

@@ -286,6 +286,18 @@ const DonorForm = () => {
                 required
               />
             </div>
+            <label className="md:col-span-2 flex items-start gap-3 rounded-lg border p-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4"
+                checked={formData.whatsapp_opt_in}
+                onChange={(event) => setFormData({ ...formData, whatsapp_opt_in: event.target.checked })}
+              />
+              <span className="text-sm">
+                <strong>Autorização para WhatsApp</strong>
+                <span className="block text-muted-foreground">O doador consentiu em receber mensagens e follow-ups pelo WhatsApp.</span>
+              </span>
+            </label>
           </CardContent>
         </Card>
 
