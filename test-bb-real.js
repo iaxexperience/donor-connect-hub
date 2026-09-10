@@ -1,5 +1,6 @@
 const clientId = 'eyJpZCI6IjkxOTIiLCJjb2RpZ29QdWJsaWNhZG9yIjowLCJjb2RpZ29Tb2Z0d2FyZSI6MTc4NTE5LCJzZXF1ZW5jaWFsSW5zdGFsYWNhbyI6MX0';
-const clientSecret = 'eyJpZCI6IjcxZjA0YzEtM2MzYy00NDkyLWJmMWItMDYyOTQ5MDRhNGMwIiwiY29kaWdvUHVibGljYWRvciI6MCwiY29kaWdvU29mdHdhcmUiOjE3ODUxOSwic2VxdWVuY2lhbEluc3RhbGFjYW8iOjEsInNlcXVlbmNpYWxDcmVkZW5jaWFsIjoxLCJhbWJpZW50ZSI6ImhvbW9sb2dhY2FvIiwiaWF0IjoxNzc2MTgyMTYwOTE0fQ';
+const clientSecret = process.env.BB_CLIENT_SECRET;
+if (!clientSecret) throw new Error('BB_CLIENT_SECRET is required');
 const appKey = '45f2da38f7044302819df079a6d313a3';
 const credentials = btoa(`${clientId}:${clientSecret}`);
 const tokenUrl = 'https://oauth.sandbox.bb.com.br/oauth/token';

@@ -18,6 +18,9 @@ function getPaymentLabel(method: string, tipo?: string): string {
   return methodLabel[method] || method;
 }
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] ?? char));
+}
 function formatCurrency(v: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 }
@@ -55,10 +58,10 @@ serve(async (req) => {
     supabase.from("white_label_settings").select("*").eq("id", 1).maybeSingle(),
   ]);
 
-  const orgName = org?.system_name || "Pulse Doações";
-  const orgCnpj = org?.cnpj || "";
-  const orgAddress = org?.address || "";
-  const orgLogo = org?.logo_url || "";
+  const orgName = escapeHtml(org?.system_name || "Pulse Doações");
+  const orgCnpj = escapeHtml(org?.cnpj || "");
+  const orgAddress = escapeHtml(org?.address || "");
+  const orgLogo = typeof org?.logo_url === "string" && /^https:\/\//i.test(org.logo_url) ? escapeHtml(org.logo_url) : "";
   const primaryColor = org?.primary_color || "#0066CC";
 
   const isValid = rec && (rec.status === "confirmado" || rec.status === "pago");
@@ -75,10 +78,10 @@ serve(async (req) => {
         </div>
       </div>
       <div class="details">
-        <div class="row"><span>Nº do Recibo</span><strong>${rec!.receipt_number}</strong></div>
-        <div class="row"><span>Doador</span><span>${rec!.donor_name}</span></div>
+        <div class="row"><span>Nº do Recibo</span><strong>${escapeHtml(rec!.receipt_number)}</strong></div>
+        <div class="row"><span>Doador</span><span>${escapeHtml(rec!.donor_name)}</span></div>
         <div class="row"><span>Valor</span><strong>${formatCurrency(Number(rec!.amount))}</strong></div>
-        <div class="row"><span>Modalidade</span><span>${getPaymentLabel(rec!.payment_method, rec!.cartao_tipo)}</span></div>
+        <div class="row"><span>Modalidade</span><span>${getPaymentLabel(escapeHtml(rec!.payment_method), escapeHtml(rec!.cartao_tipo))}</span></div>
         <div class="row"><span>Data</span><span>${formatDate(rec!.created_at)}</span></div>
         <div class="row"><span>Status</span><strong style="color:#15803d">✅ Confirmado</strong></div>
       </div>`;

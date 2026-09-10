@@ -39,3 +39,12 @@ verify_jwt = false
 
 [functions.bb-reconcile]
 verify_jwt = false
+
+[functions.debug-messages]
+verify_jwt = true
+
+[functions.send-whatsapp-template]
+verify_jwt = true
+
+[functions.asaas-sync-donors]
+verify_jwt = true

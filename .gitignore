@@ -11,6 +11,16 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
+
+# Credenciais e material criptografico nunca devem ser versionados
+*.key
+*.pem
+*.p12
+*.pfx
+.claude/settings.json
 
 # Editor directories and files
 .vscode/*
@@ -29,3 +39,11 @@ political-compass-ai/
 # Bun lockfiles (incompatibilidade de versão com Cloudflare)
 bun.lockb
 bun.lock
+
+# Local credentials and certificates
+.env
+.env.*
+bb_*.crt
+bb_*.csr
+bb_*.key
+bb_*.pem

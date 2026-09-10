@@ -18,12 +18,12 @@ const corsHeaders = {
 function normalizePhone(phone: string): string {
   if (!phone) return "";
   let cleaned = phone.replace(/\D/g, "");
-  
+
   // Limpa múltiplos prefixos 55 (ex: 555555... -> 55)
   while (cleaned.length > 11 && cleaned.startsWith("5555")) {
     cleaned = cleaned.substring(2);
   }
-  
+
   // Formato DDI(55) + DDD + Numero (12 ou 13 dígitos)
   if (cleaned.startsWith("55") && cleaned.length >= 12) {
     const ddd = cleaned.substring(2, 4);
@@ -31,14 +31,14 @@ function normalizePhone(phone: string): string {
     // SEMPRE retornamos DDI (55) + DDD + 8 dígitos finais
     return `55${ddd}${last8}`;
   }
-  
+
   // Formato DDD + Numero (10 ou 11 dígitos) - Adiciona DDI 55
   if (cleaned.length === 10 || cleaned.length === 11) {
     const ddd = cleaned.substring(0, 2);
     const last8 = cleaned.substring(cleaned.length - 8);
     return `55${ddd}${last8}`;
   }
-  
+
   return cleaned;
 }
 
@@ -47,11 +47,19 @@ serve(async (req) => {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
+  // This proxy calls third-party APIs and writes with the service role.
+  const authHeader = req.headers.get('authorization') ?? '';
+  const accessToken = authHeader.match(/^Bearer\s+(.+)$/i)?.[1];
+  if (!accessToken) return new Response(JSON.stringify({ error: 'Autentica��o necess�ria.' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  const authClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_ANON_KEY') ?? '');
+  const { data: { user }, error: authError } = await authClient.auth.getUser(accessToken);
+  if (authError || !user) return new Response(JSON.stringify({ error: 'Token inv�lido ou expirado.' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
   try {
     const body = await req.json().catch(() => ({}));
     const { service, action, config, payload } = body;
 
-    console.log(`[api-proxy] Service: ${service}, Action: ${action}`);
+    console.log(`[api-proxy] User: ${user.id}, Service: ${service}, Action: ${action}`);
 
     // ── META / WHATSAPP ─────────────────────────────────────────────────────
     if (service === 'meta') {
@@ -64,7 +72,6 @@ serve(async (req) => {
 
         const url = `https://graph.facebook.com/v22.0/${waba_id}/message_templates`;
         console.log(`[api-proxy] POST ${url}`);
-        console.log(`[api-proxy] Payload:`, JSON.stringify(payload));
 
         const res = await fetch(url, {
           method: 'POST',
@@ -76,7 +83,7 @@ serve(async (req) => {
         });
 
         const data = await res.json().catch(() => ({}));
-        console.log(`[api-proxy] Meta Response ${res.status}:`, JSON.stringify(data));
+        console.log(`[api-proxy] Meta Response ${res.status}`);
         // Always return 200 — embed meta_status so frontend can check
         return ok({ ...data, __meta_status: res.status });
       }
@@ -111,7 +118,7 @@ serve(async (req) => {
           body: JSON.stringify(payload),
         });
         const data = await res.json().catch(() => ({}));
-        console.log(`[api-proxy] Meta Response ${res.status}:`, JSON.stringify(data));
+        console.log(`[api-proxy] Meta Response ${res.status}`);
 
         // ─────────────────────────────────────────────────────────────────────
         // Persist sent message to Supabase (required for Chat ao Vivo to work)
@@ -302,7 +309,7 @@ serve(async (req) => {
     // ── ASAAS ───────────────────────────────────────────────────────────────
     if (service === 'asaas') {
       let { api_key, sandbox } = config || {};
-      
+
       // Sanitização de chave (remove espaços e metadados comuns de ferramentas de dump)
       if (api_key) {
         api_key = api_key.trim();
@@ -311,21 +318,21 @@ serve(async (req) => {
           api_key = api_key.split('::')[0].trim();
         }
       }
-      
+
       if (action === 'get_balance') {
         if (!api_key) {
           return ok({ __error: true, error: 'Asaas API Key necessária' });
         }
-        
+
         const baseUrl = sandbox ? 'https://sandbox.asaas.com/api/v3' : 'https://api.asaas.com/v3';
         const res = await fetch(`${baseUrl}/finance/balance`, {
           headers: { 'access_token': api_key }
         });
-        
+
         const data = await res.json().catch(() => ({}));
         return ok({ ...data, __meta_status: res.status });
       }
-      
+
       return ok({ __error: true, error: 'Ação desconhecida.' });
     }
 
