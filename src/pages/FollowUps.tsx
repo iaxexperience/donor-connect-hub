@@ -90,28 +90,28 @@ interface AutomationLog {
 }
 
 const followUps: FollowUp[] = [
-  { id: 1, donorName: "Maria Silva", donorType: "recorrente", phone: "(11) 99888-1234", email: "maria@email.com", lastDonation: "2026-03-25", lastContact: "2026-03-28", dueDate: "2026-04-10", status: "pendente", channel: "whatsapp", campaign: "Natal SolidÃ¡rio", totalDonations: 12, notes: "Doadora fiel, prefere WhatsApp" },
-  { id: 2, donorName: "JoÃ£o Santos", donorType: "unico", phone: "(21) 98777-5678", email: "joao@email.com", lastDonation: "2026-01-15", lastContact: "2026-01-20", dueDate: "2026-04-15", status: "agendado", channel: "telefone", campaign: "EducaÃ§Ã£o para Todos", totalDonations: 1, notes: "Primeira doaÃ§Ã£o, abordar com cuidado" },
-  { id: 3, donorName: "Ana Oliveira", donorType: "esporadico", phone: "(31) 97666-9012", email: "ana@email.com", lastDonation: "2026-02-10", lastContact: "2026-02-15", dueDate: "2026-04-05", status: "atrasado", channel: "email", campaign: "AlimentaÃ§Ã£o Infantil", totalDonations: 3, notes: "PreferÃªncia por e-mail" },
-  { id: 4, donorName: "Carlos Mendes", donorType: "recorrente", phone: "(41) 96555-3456", email: "carlos@email.com", lastDonation: "2026-03-30", lastContact: "2026-04-01", dueDate: "2026-04-12", status: "pendente", channel: "telefone", campaign: "Natal SolidÃ¡rio", totalDonations: 8, notes: "DisponÃ­vel apÃ³s 18h" },
-  { id: 5, donorName: "PatrÃ­cia Lima", donorType: "unico", phone: "(51) 95444-7890", email: "patricia@email.com", lastDonation: "2025-12-20", lastContact: "2025-12-22", dueDate: "2026-03-20", status: "atrasado", channel: "whatsapp", campaign: "EducaÃ§Ã£o para Todos", totalDonations: 1, notes: "Sem resposta anterior" },
-  { id: 6, donorName: "Roberto Alves", donorType: "esporadico", phone: "(61) 94333-2345", email: "roberto@email.com", lastDonation: "2026-03-01", lastContact: "2026-03-05", dueDate: "2026-04-08", status: "enviado", channel: "telefone", campaign: "AlimentaÃ§Ã£o Infantil", totalDonations: 4, notes: "Confirmou interesse em recorrÃªncia" },
-  { id: 7, donorName: "Fernanda Costa", donorType: "recorrente", phone: "(71) 93222-6789", email: "fernanda@email.com", lastDonation: "2026-04-01", lastContact: "2026-04-03", dueDate: "2026-04-15", status: "agendado", channel: "whatsapp", campaign: "Natal SolidÃ¡rio", totalDonations: 15, notes: "Top doadora, tratamento VIP" },
+  { id: 1, donorName: "Maria Silva", donorType: "recorrente", phone: "(11) 99888-1234", email: "maria@email.com", lastDonation: "2026-03-25", lastContact: "2026-03-28", dueDate: "2026-04-10", status: "pendente", channel: "whatsapp", campaign: "Natal Solidário", totalDonations: 12, notes: "Doadora fiel, prefere WhatsApp" },
+  { id: 2, donorName: "João Santos", donorType: "unico", phone: "(21) 98777-5678", email: "joao@email.com", lastDonation: "2026-01-15", lastContact: "2026-01-20", dueDate: "2026-04-15", status: "agendado", channel: "telefone", campaign: "Educação para Todos", totalDonations: 1, notes: "Primeira doação, abordar com cuidado" },
+  { id: 3, donorName: "Ana Oliveira", donorType: "esporadico", phone: "(31) 97666-9012", email: "ana@email.com", lastDonation: "2026-02-10", lastContact: "2026-02-15", dueDate: "2026-04-05", status: "atrasado", channel: "email", campaign: "Alimentação Infantil", totalDonations: 3, notes: "Preferência por e-mail" },
+  { id: 4, donorName: "Carlos Mendes", donorType: "recorrente", phone: "(41) 96555-3456", email: "carlos@email.com", lastDonation: "2026-03-30", lastContact: "2026-04-01", dueDate: "2026-04-12", status: "pendente", channel: "telefone", campaign: "Natal Solidário", totalDonations: 8, notes: "Disponível após 18h" },
+  { id: 5, donorName: "Patrícia Lima", donorType: "unico", phone: "(51) 95444-7890", email: "patricia@email.com", lastDonation: "2025-12-20", lastContact: "2025-12-22", dueDate: "2026-03-20", status: "atrasado", channel: "whatsapp", campaign: "Educação para Todos", totalDonations: 1, notes: "Sem resposta anterior" },
+  { id: 6, donorName: "Roberto Alves", donorType: "esporadico", phone: "(61) 94333-2345", email: "roberto@email.com", lastDonation: "2026-03-01", lastContact: "2026-03-05", dueDate: "2026-04-08", status: "enviado", channel: "telefone", campaign: "Alimentação Infantil", totalDonations: 4, notes: "Confirmou interesse em recorrência" },
+  { id: 7, donorName: "Fernanda Costa", donorType: "recorrente", phone: "(71) 93222-6789", email: "fernanda@email.com", lastDonation: "2026-04-01", lastContact: "2026-04-03", dueDate: "2026-04-15", status: "agendado", channel: "whatsapp", campaign: "Natal Solidário", totalDonations: 15, notes: "Top doadora, tratamento VIP" },
 ];
 
 const initialAutomationRules: AutomationRule[] = [
-  { type: "unico", label: "Ãšnico", rule: "1 doaÃ§Ã£o registrada", followUpDays: 90, enabled: true, channel: "whatsapp", template: "follow_up_primeiro_doador", color: "text-amber-600", bg: "bg-amber-100", icon: UserMinus, maxRetries: 2, sendHour: "10:00" },
-  { type: "esporadico", label: "EsporÃ¡dico", rule: "2+ doaÃ§Ãµes em 6 meses", followUpDays: 60, enabled: true, channel: "whatsapp", template: "follow_up_engajamento", color: "text-blue-600", bg: "bg-blue-100", icon: Users, maxRetries: 3, sendHour: "14:00" },
-  { type: "recorrente", label: "Recorrente", rule: "3+ doaÃ§Ãµes em 3 meses", followUpDays: 30, enabled: true, channel: "whatsapp", template: "follow_up_fidelizacao", color: "text-green-600", bg: "bg-green-100", icon: UserCheck, maxRetries: 1, sendHour: "09:00" },
+  { type: "unico", label: "Único", rule: "1 doação registrada", followUpDays: 90, enabled: true, channel: "whatsapp", template: "follow_up_primeiro_doador", color: "text-amber-600", bg: "bg-amber-100", icon: UserMinus, maxRetries: 2, sendHour: "10:00" },
+  { type: "esporadico", label: "Esporádico", rule: "2+ doações em 6 meses", followUpDays: 60, enabled: true, channel: "whatsapp", template: "follow_up_engajamento", color: "text-blue-600", bg: "bg-blue-100", icon: Users, maxRetries: 3, sendHour: "14:00" },
+  { type: "recorrente", label: "Recorrente", rule: "3+ doações em 3 meses", followUpDays: 30, enabled: true, channel: "whatsapp", template: "follow_up_fidelizacao", color: "text-green-600", bg: "bg-green-100", icon: UserCheck, maxRetries: 1, sendHour: "09:00" },
 ];
 
-const donorTypeLabel: Record<string, string> = { unico: "Ãšnico", esporadico: "EsporÃ¡dico", recorrente: "Recorrente" };
+const donorTypeLabel: Record<string, string> = { unico: "Único", esporadico: "Esporádico", recorrente: "Recorrente" };
 const donorTypeBadge: Record<string, string> = { 
   unico: "bg-blue-100 text-blue-700 border-blue-200", 
   esporadico: "bg-orange-100 text-orange-700 border-orange-200", 
   recorrente: "bg-green-100 text-green-700 border-green-200" 
 };
-const statusLabel: Record<string, string> = { pendente: "Pendente", agendado: "Agendado", enviado: "ConcluÃ­do", atrasado: "Atrasado" };
+const statusLabel: Record<string, string> = { pendente: "Pendente", agendado: "Agendado", enviado: "Concluído", atrasado: "Atrasado" };
 const statusColor: Record<string, string> = { pendente: "bg-amber-100 text-amber-800", agendado: "bg-blue-100 text-blue-800", enviado: "bg-green-100 text-green-800", atrasado: "bg-red-100 text-red-800" };
 const channelIcon: Record<string, any> = { telefone: Phone, whatsapp: MessageSquare, email: Mail };
 const logStatusColor: Record<string, string> = { enviado: "bg-green-100 text-green-800", falha: "bg-red-100 text-red-800", aguardando: "bg-amber-100 text-amber-800" };
@@ -181,7 +181,7 @@ const FollowUps = () => {
 
   const handleCreateFollowUp = async () => {
     if (!newFollowUpDonorId || !newFollowUpDate) {
-      toast({ title: "Preencha os campos obrigatÃ³rios", variant: "destructive", description: "Doador e data sÃ£o obrigatÃ³rios." });
+      toast({ title: "Preencha os campos obrigatórios", variant: "destructive", description: "Doador e data são obrigatórios." });
       return;
     }
     
@@ -193,7 +193,7 @@ const FollowUps = () => {
           : newFollowUpClassification;
         const targets = donors.filter(d => targetClassification === "all" || d.type === targetClassification);
         if (targets.length === 0) {
-          toast({ title: "Nenhum doador encontrado nesta classificaÃ§Ã£o." });
+          toast({ title: "Nenhum doador encontrado nesta classificação." });
           setIsScheduling(false);
           return;
         }
@@ -213,7 +213,7 @@ const FollowUps = () => {
           }
         }
         
-        toast({ title: "Agendamento em Lote ConcluÃ­do!", description: `${successCount} follow-ups foram agendados com sucesso.` });
+        toast({ title: "Agendamento em Lote Concluído!", description: `${successCount} follow-ups foram agendados com sucesso.` });
       } else {
         await createFollowUp({
           donor_id: parseInt(newFollowUpDonorId),
@@ -284,7 +284,7 @@ const FollowUps = () => {
     if (error) {
       toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "ConfiguraÃ§Ãµes salvas", description: "As regras de automaÃ§Ã£o foram atualizadas no servidor." });
+      toast({ title: "Configurações salvas", description: "As regras de automação foram atualizadas no servidor." });
     }
   };
 
@@ -303,14 +303,14 @@ const FollowUps = () => {
       if (res?.sent > 0) {
         toast({ title: "Sucesso!", description: `${res.sent} mensagens enviadas e fila atualizada!` });
       } else if (res?.failed > 0) {
-        toast({ title: "Aviso", description: `0 enviadas, ${res.failed} falhas. Verifique o HistÃ³rico.`, variant: "destructive" });
+        toast({ title: "Aviso", description: `0 enviadas, ${res.failed} falhas. Verifique o Histórico.`, variant: "destructive" });
       } else if (res?.queued > 0) {
         toast({ title: "Contatos adicionados à fila", description: `${res.queued} follow-up(s) aguardam contato manual.` });
       } else {
         toast({ title: "Fila processada", description: res?.skipped > 0 ? `${res.skipped} item(ns) ignorados por regras, opt-in ou limite de tentativas.` : "Não há follow-ups vencidos para hoje." });
       }
     } catch (err: any) {
-      toast({ title: "Erro de ConexÃ£o", description: err.message, variant: "destructive" });
+      toast({ title: "Erro de Conexão", description: err.message, variant: "destructive" });
     } finally {
       setIsProcessingNow(false);
     }
@@ -326,7 +326,7 @@ const FollowUps = () => {
     { label: "Pendentes", value: dbFollowUps.filter(f => effectiveStatus(f) === "pendente").length, icon: Clock, color: "text-amber-600" },
     { label: "Agendados", value: dbFollowUps.filter(f => effectiveStatus(f) === "agendado").length, icon: CalendarClock, color: "text-primary" },
     { label: "Atrasados", value: dbFollowUps.filter(f => effectiveStatus(f) === "atrasado").length, icon: AlertTriangle, color: "text-destructive" },
-    { label: "ConcluÃ­dos", value: dbFollowUps.filter(f => f.status?.toLowerCase() === "enviado").length, icon: CheckCircle2, color: "text-green-600" },
+    { label: "Concluídos", value: dbFollowUps.filter(f => f.status?.toLowerCase() === "enviado").length, icon: CheckCircle2, color: "text-green-600" },
   ];
 
   const followUpList = dbFollowUps.map(f => ({
@@ -345,7 +345,7 @@ const FollowUps = () => {
 
   const filtered = followUpList.filter((f) => {
     const s = f.status?.toLowerCase();
-    if (s === 'enviado') return false; // enviados sÃ³ aparecem no histÃ³rico
+    if (s === 'enviado') return false; // enviados só aparecem no histórico
     if (filterType !== "all" && f.donorType !== filterType) return false;
     if (filterStatus !== "all" && s !== filterStatus) return false;
     return true;
@@ -381,7 +381,7 @@ const FollowUps = () => {
         <div>
           <h1 className="font-heading font-bold text-2xl text-foreground">Follow-ups</h1>
           <p className="text-muted-foreground text-sm">
-            Gerencie o acompanhamento dos doadores com base na classificaÃ§Ã£o automÃ¡tica.
+            Gerencie o acompanhamento dos doadores com base na classificação automática.
           </p>
         </div>
         <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
@@ -394,20 +394,20 @@ const FollowUps = () => {
             <DialogHeader>
               <DialogTitle>Agendar Novo Follow-up</DialogTitle>
               <DialogDescription>
-                Selecione um doador e defina uma data para o prÃ³ximo contato.
+                Selecione um doador e defina uma data para o próximo contato.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Filtrar por ClassificaÃ§Ã£o</Label>
+                <Label>Filtrar por Classificação</Label>
                 <Select value={newFollowUpClassification} onValueChange={setNewFollowUpClassification}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Todas as classificaÃ§Ãµes" />
+                    <SelectValue placeholder="Todas as classificações" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todas as classificaÃ§Ãµes</SelectItem>
-                    <SelectItem value="unico">Doador Ãšnico</SelectItem>
-                    <SelectItem value="esporadico">Doador EsporÃ¡dico</SelectItem>
+                    <SelectItem value="all">Todas as classificações</SelectItem>
+                    <SelectItem value="unico">Doador Único</SelectItem>
+                    <SelectItem value="esporadico">Doador Esporádico</SelectItem>
                     <SelectItem value="recorrente">Doador Recorrente</SelectItem>
                   </SelectContent>
                 </Select>
@@ -423,14 +423,14 @@ const FollowUps = () => {
                       Todos recorrentes ({donors.filter(d => d.type === "recorrente").length} doadores)
                     </SelectItem>
                     <SelectItem value="all:esporadico" className="font-bold text-orange-700">
-                      Todos esporÃ¡dicos ({donors.filter(d => d.type === "esporadico").length} doadores)
+                      Todos esporádicos ({donors.filter(d => d.type === "esporadico").length} doadores)
                     </SelectItem>
                     <SelectItem value="all:unico" className="font-bold text-blue-700">
-                      Todos Ãºnicos ({donors.filter(d => d.type === "unico").length} doadores)
+                      Todos únicos ({donors.filter(d => d.type === "unico").length} doadores)
                     </SelectItem>
                     {newFollowUpClassification !== "all" && (
                       <SelectItem value="all_in_class" className="font-bold text-blue-600">
-                        Todos desta classificaÃ§Ã£o ({donors.filter(d => d.type === newFollowUpClassification).length} doadores)
+                        Todos desta classificação ({donors.filter(d => d.type === newFollowUpClassification).length} doadores)
                       </SelectItem>
                     )}
                     {newFollowUpClassification === "all" && (
@@ -451,7 +451,7 @@ const FollowUps = () => {
                 <Input type="date" value={newFollowUpDate} onChange={(e) => setNewFollowUpDate(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>ObservaÃ§Ã£o prÃ©via</Label>
+                <Label>Observação prévia</Label>
                 <Textarea 
                   placeholder="Motivo ou lembrete para o follow-up..." 
                   value={newFollowUpNote}
@@ -486,11 +486,11 @@ const FollowUps = () => {
         ))}
       </div>
 
-      {/* Taxa de conclusÃ£o */}
+      {/* Taxa de conclusão */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-foreground">Taxa de ConclusÃ£o de Follow-ups</span>
+            <span className="text-sm font-medium text-foreground">Taxa de Conclusão de Follow-ups</span>
             <span className="text-sm font-bold text-primary">{completionRate}%</span>
           </div>
           <Progress value={completionRate} className="h-2" />
@@ -501,12 +501,12 @@ const FollowUps = () => {
         <TabsList>
           <TabsTrigger value="lista">Lista de Follow-ups</TabsTrigger>
           <TabsTrigger value="automacao" className="gap-1.5">
-            <Zap className="w-3.5 h-3.5" /> AutomaÃ§Ã£o
+            <Zap className="w-3.5 h-3.5" /> Automação
           </TabsTrigger>
           <TabsTrigger value="historico" className="gap-1.5">
-            <History className="w-3.5 h-3.5" /> HistÃ³rico de Envios
+            <History className="w-3.5 h-3.5" /> Histórico de Envios
           </TabsTrigger>
-          <TabsTrigger value="regras">Regras de ClassificaÃ§Ã£o</TabsTrigger>
+          <TabsTrigger value="regras">Regras de Classificação</TabsTrigger>
         </TabsList>
 
         {/* Tab Lista */}
@@ -521,8 +521,8 @@ const FollowUps = () => {
                     <SelectTrigger className="w-[160px]"><SelectValue placeholder="Tipo de doador" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos os tipos</SelectItem>
-                      <SelectItem value="unico">Ãšnico</SelectItem>
-                      <SelectItem value="esporadico">EsporÃ¡dico</SelectItem>
+                      <SelectItem value="unico">Único</SelectItem>
+                      <SelectItem value="esporadico">Esporádico</SelectItem>
                       <SelectItem value="recorrente">Recorrente</SelectItem>
                     </SelectContent>
                   </Select>
@@ -543,7 +543,7 @@ const FollowUps = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Doador</TableHead>
-                    <TableHead>ClassificaÃ§Ã£o</TableHead>
+                    <TableHead>Classificação</TableHead>
                     <TableHead>Canal</TableHead>
                     <TableHead>Campanha</TableHead>
                     <TableHead>Vencimento</TableHead>
@@ -599,7 +599,7 @@ const FollowUps = () => {
           </Card>
         </TabsContent>
 
-        {/* Tab AutomaÃ§Ã£o */}
+        {/* Tab Automação */}
         <TabsContent value="automacao" className="space-y-4">
           {/* Status global */}
           <Card>
@@ -612,7 +612,7 @@ const FollowUps = () => {
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-foreground">
-                        AutomaÃ§Ã£o {automationGlobal ? "Ativa" : "Pausada"}
+                        Automação {automationGlobal ? "Ativa" : "Pausada"}
                       </p>
                       <Badge variant="secondary" className="bg-amber-100 text-amber-700 animate-pulse">
                         MODO TESTE: ENVIO DIRETO
@@ -620,8 +620,8 @@ const FollowUps = () => {
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {automationGlobal
-                        ? `${activeRulesCount} regra(s) ativa(s) Â· Mensagens enviadas automaticamente ao atingir o prazo`
-                        : "Nenhuma mensagem serÃ¡ enviada automaticamente"}
+                        ? `${activeRulesCount} regra(s) ativa(s) · Mensagens enviadas automaticamente ao atingir o prazo`
+                        : "Nenhuma mensagem será enviada automaticamente"}
                     </p>
                   </div>
                 </div>
@@ -636,11 +636,11 @@ const FollowUps = () => {
               {isProcessingNow ? "Processando..." : "Processar Agora (Manual)"}
             </Button>
             <Button onClick={handleSaveAutomation}>
-              <Save className="w-4 h-4 mr-2" /> Salvar ConfiguraÃ§Ãµes
+              <Save className="w-4 h-4 mr-2" /> Salvar Configurações
             </Button>
           </div>
 
-          {/* KPIs de automaÃ§Ã£o */}
+          {/* KPIs de automação */}
           <div className="grid gap-4 sm:grid-cols-3">
             <Card>
               <CardContent className="flex items-center gap-4 pt-6">
@@ -671,7 +671,7 @@ const FollowUps = () => {
             </Card>
           </div>
 
-          {/* Regras de automaÃ§Ã£o */}
+          {/* Regras de automação */}
           <div className="grid gap-4 md:grid-cols-3">
             {automationRules.map((rule) => (
               <Card key={rule.type} className={!automationGlobal || !rule.enabled ? "opacity-60" : ""}>
@@ -691,12 +691,12 @@ const FollowUps = () => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Disparo automÃ¡tico apÃ³s</Label>
+                    <Label className="text-xs text-muted-foreground">Disparo automático após</Label>
                     <div className="flex items-center gap-2">
                       <Badge variant={rule.followUpDays <= 30 ? "destructive" : rule.followUpDays <= 60 ? "default" : "secondary"}>
                         {rule.followUpDays} dias
                       </Badge>
-                      <span className="text-xs text-muted-foreground">da Ãºltima doaÃ§Ã£o</span>
+                      <span className="text-xs text-muted-foreground">da última doação</span>
                     </div>
                   </div>
                   <div className="space-y-1.5">
@@ -711,11 +711,11 @@ const FollowUps = () => {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">HorÃ¡rio de envio</Label>
+                    <Label className="text-xs text-muted-foreground">Horário de envio</Label>
                     <Input type="time" value={rule.sendHour} onChange={(e) => updateRuleSendHour(rule.type, e.target.value)} className="h-8 text-xs" disabled={!automationGlobal || !rule.enabled} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Tentativas mÃ¡ximas</Label>
+                    <Label className="text-xs text-muted-foreground">Tentativas máximas</Label>
                     <Select value={String(rule.maxRetries)} onValueChange={(v) => updateRuleRetries(rule.type, Number(v))} disabled={!automationGlobal || !rule.enabled}>
                       <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -741,15 +741,15 @@ const FollowUps = () => {
               <div className="flex items-start gap-3">
                 <Zap className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
                 <div className="text-sm text-muted-foreground space-y-1">
-                  <p className="font-medium text-foreground">Como funciona a automaÃ§Ã£o</p>
+                  <p className="font-medium text-foreground">Como funciona a automação</p>
                   <ul className="list-disc pl-4 space-y-0.5">
                     <li>O sistema verifica diariamente os doadores que atingiram o prazo de follow-up.</li>
                     <li>WhatsApp é enviado automaticamente; telefone e e-mail geram lembretes para atendimento manual.</li>
                     <li>Somente doadores com <strong className="text-foreground">opt-in ativo</strong> recebem mensagens.</li>
-                    <li>Em caso de falha, o sistema tenta novamente atÃ© o limite de tentativas configurado.</li>
+                    <li>Em caso de falha, o sistema tenta novamente até o limite de tentativas configurado.</li>
                     <li>Follow-ups manuais continuam funcionando normalmente na aba "Lista".</li>
                   </ul>
-                  <p className="text-xs mt-2 text-amber-600">âš ï¸ Para ativar o envio real, habilite o Lovable Cloud e configure a API do WhatsApp na pÃ¡gina de IntegraÃ§Ãµes.</p>
+                  <p className="text-xs mt-2 text-amber-600">⚠️ Para ativar o envio real, habilite o Lovable Cloud e configure a API do WhatsApp na página de Integrações.</p>
                 </div>
               </div>
             </CardContent>
@@ -757,11 +757,11 @@ const FollowUps = () => {
 
         </TabsContent>
 
-        {/* Tab HistÃ³rico */}
+        {/* Tab Histórico */}
         <TabsContent value="historico" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">HistÃ³rico de Envios AutomÃ¡ticos</CardTitle>
+              <CardTitle className="text-lg">Histórico de Envios Automáticos</CardTitle>
               <CardDescription>Registro de todas as mensagens disparadas automaticamente pelo sistema.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -769,7 +769,7 @@ const FollowUps = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Doador</TableHead>
-                    <TableHead>ClassificaÃ§Ã£o</TableHead>
+                    <TableHead>Classificação</TableHead>
                     <TableHead>Canal</TableHead>
                     <TableHead>Template</TableHead>
                     <TableHead>Enviado em</TableHead>
@@ -781,7 +781,7 @@ const FollowUps = () => {
                   {dbLogs.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                        Nenhum envio registrado no histÃ³rico.
+                        Nenhum envio registrado no histórico.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -799,7 +799,7 @@ const FollowUps = () => {
                             <span className="text-xs">WhatsApp</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-xs font-mono">{log.template || "PadrÃ£o"}</TableCell>
+                        <TableCell className="text-xs font-mono">{log.template || "Padrão"}</TableCell>
                         <TableCell className="text-sm">
                           {log.sent_at ? new Date(log.sent_at).toLocaleString('pt-BR') : 'Agora'}
                         </TableCell>
@@ -835,13 +835,13 @@ const FollowUps = () => {
                   </div>
                   <div className="border-t pt-3 space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Follow-up automÃ¡tico</span>
+                      <span className="text-muted-foreground">Follow-up automático</span>
                       <span className="font-medium text-foreground">{rule.followUpDays} dias</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Prioridade</span>
                       <Badge variant={rule.followUpDays <= 30 ? "destructive" : rule.followUpDays <= 60 ? "default" : "secondary"}>
-                        {rule.followUpDays <= 30 ? "Alta" : rule.followUpDays <= 60 ? "MÃ©dia" : "Baixa"}
+                        {rule.followUpDays <= 30 ? "Alta" : rule.followUpDays <= 60 ? "Média" : "Baixa"}
                       </Badge>
                     </div>
                   </div>
@@ -851,16 +851,16 @@ const FollowUps = () => {
           </div>
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Como funciona a classificaÃ§Ã£o</CardTitle>
+              <CardTitle className="text-lg">Como funciona a classificação</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <p>O sistema classifica automaticamente os doadores com base no histÃ³rico de doaÃ§Ãµes e agenda follow-ups de acordo com as regras configuradas:</p>
+              <p>O sistema classifica automaticamente os doadores com base no histórico de doações e agenda follow-ups de acordo com as regras configuradas:</p>
               <ul className="list-disc pl-5 space-y-1">
-                <li><strong className="text-foreground">Doador Ãšnico:</strong> Realizou apenas 1 doaÃ§Ã£o. Follow-up em 90 dias para incentivar nova contribuiÃ§Ã£o.</li>
-                <li><strong className="text-foreground">Doador EsporÃ¡dico:</strong> 2 ou mais doaÃ§Ãµes nos Ãºltimos 6 meses. Follow-up em 60 dias para manter engajamento.</li>
-                <li><strong className="text-foreground">Doador Recorrente:</strong> 3 ou mais doaÃ§Ãµes nos Ãºltimos 3 meses. Follow-up em 30 dias para fidelizaÃ§Ã£o e upgrade.</li>
+                <li><strong className="text-foreground">Doador Único:</strong> Realizou apenas 1 doação. Follow-up em 90 dias para incentivar nova contribuição.</li>
+                <li><strong className="text-foreground">Doador Esporádico:</strong> 2 ou mais doações nos últimos 6 meses. Follow-up em 60 dias para manter engajamento.</li>
+                <li><strong className="text-foreground">Doador Recorrente:</strong> 3 ou mais doações nos últimos 3 meses. Follow-up em 30 dias para fidelização e upgrade.</li>
               </ul>
-              <p>Os follow-ups podem ser realizados via <strong className="text-foreground">telefone</strong>, <strong className="text-foreground">WhatsApp</strong> ou <strong className="text-foreground">e-mail</strong>, de acordo com a preferÃªncia do doador.</p>
+              <p>Os follow-ups podem ser realizados via <strong className="text-foreground">telefone</strong>, <strong className="text-foreground">WhatsApp</strong> ou <strong className="text-foreground">e-mail</strong>, de acordo com a preferência do doador.</p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -872,9 +872,9 @@ const FollowUps = () => {
           {selectedFollowUp && (
             <>
               <DialogHeader>
-                <DialogTitle>Follow-up â€” {selectedFollowUp.donorName}</DialogTitle>
+                <DialogTitle>Follow-up — {selectedFollowUp.donorName}</DialogTitle>
                 <DialogDescription>
-                  Doador {donorTypeLabel[selectedFollowUp.donorType]} Â· {selectedFollowUp.totalDonations} doaÃ§Ãµes realizadas
+                  Doador {donorTypeLabel[selectedFollowUp.donorType]} · {selectedFollowUp.totalDonations} doações realizadas
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -888,11 +888,11 @@ const FollowUps = () => {
                     <p className="font-medium">{selectedFollowUp.email}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Ãšltima doaÃ§Ã£o</Label>
+                    <Label className="text-muted-foreground">Última doação</Label>
                     <p className="font-medium">{selectedFollowUp.lastDonation ? new Date(`${selectedFollowUp.lastDonation}T12:00:00`).toLocaleDateString("pt-BR") : "Sem registro"}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Ãšltimo contato</Label>
+                    <Label className="text-muted-foreground">Último contato</Label>
                     <p className="font-medium">{selectedFollowUp.lastContact && selectedFollowUp.lastContact !== "Sem contato" ? new Date(selectedFollowUp.lastContact).toLocaleDateString("pt-BR") : "Sem contato"}</p>
                   </div>
                   <div>
@@ -905,7 +905,7 @@ const FollowUps = () => {
                   </div>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">ObservaÃ§Ãµes</Label>
+                  <Label className="text-muted-foreground">Observações</Label>
                   <p className="text-sm mt-1">{selectedFollowUp.note || "Sem observações"}</p>
                 </div>
                 <div>
@@ -920,13 +920,13 @@ const FollowUps = () => {
                       <SelectContent>
                         <SelectItem value="pendente">Pendente</SelectItem>
                         <SelectItem value="agendado">Agendado</SelectItem>
-                        <SelectItem value="enviado">ConcluÃ­do</SelectItem>
+                        <SelectItem value="enviado">Concluído</SelectItem>
                         <SelectItem value="atrasado">Atrasado</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label>PrÃ³ximo contato</Label>
+                    <Label>Próximo contato</Label>
                     <Input type="date" className="mt-1" value={nextContactDate} onChange={(event) => setNextContactDate(event.target.value)} />
                   </div>
                 </div>
