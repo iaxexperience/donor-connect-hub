@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Doadores from "./pages/Doadores";
 import Campanhas from "./pages/Campanhas";
@@ -78,6 +79,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/redefinir-senha" element={<ResetPassword />} />
                 <Route path="/documentacao" element={<Documentacao />} />
                 <Route path="/cadastro" element={<Register />} />
                 

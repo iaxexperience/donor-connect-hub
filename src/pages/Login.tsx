@@ -13,8 +13,42 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      toast({
+        title: "Informe seu e-mail",
+        description: "Digite seu e-mail no campo acima antes de solicitar a recuperação.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSendingReset(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/redefinir-senha`,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "E-mail de recuperação enviado",
+        description: "Verifique sua caixa de entrada (e o spam) para redefinir sua senha.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Não foi possível enviar o e-mail",
+        description: error.message || "Tente novamente em alguns minutos ou contate o administrador.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingReset(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,9 +193,11 @@ const Login = () => {
                 <label className="text-sm font-medium text-foreground">Senha</label>
                 <button
                   type="button"
-                  className="text-xs text-primary hover:underline"
+                  onClick={handleForgotPassword}
+                  disabled={sendingReset}
+                  className="text-xs text-primary hover:underline disabled:opacity-50"
                 >
-                  Esqueceu a senha?
+                  {sendingReset ? "Enviando..." : "Esqueceu a senha?"}
                 </button>
               </div>
               <div className="relative">
