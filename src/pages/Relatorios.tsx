@@ -318,25 +318,24 @@ const Relatorios = () => {
         />
       </div>
 
-      {/* Exportações rápidas */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Download className="w-4 h-4" /> Exportar Dados (CSV)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-3">
-          <Button variant="outline" size="sm" onClick={() => exportCSV("doacoes")}>
-            <Download className="w-4 h-4 mr-2" /> Doações
+      {/* Central de Relatórios em PDF e Excel com Filtros */}
+      <ReportGenerator />
+
+      {/* Exportações rápidas CSV legado */}
+      <div className="flex items-center justify-between px-1">
+        <span className="text-xs text-muted-foreground">Exportações rápidas de base bruta:</span>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground" onClick={() => exportCSV("doacoes")}>
+            <Download className="w-3.5 h-3.5 mr-1" /> CSV Doações
           </Button>
-          <Button variant="outline" size="sm" onClick={() => exportCSV("doadores")}>
-            <Download className="w-4 h-4 mr-2" /> Doadores
+          <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground" onClick={() => exportCSV("doadores")}>
+            <Download className="w-3.5 h-3.5 mr-1" /> CSV Doadores
           </Button>
-          <Button variant="outline" size="sm" onClick={() => exportCSV("campanhas")}>
-            <Download className="w-4 h-4 mr-2" /> Campanhas
+          <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground" onClick={() => exportCSV("campanhas")}>
+            <Download className="w-3.5 h-3.5 mr-1" /> CSV Campanhas
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <Tabs defaultValue="arrecadacao" className="space-y-4">
         <TabsList className="flex-wrap h-auto gap-1">
