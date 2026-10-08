@@ -24,6 +24,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { gerarReciboFisicoPDF } from "@/lib/reciboService";
+import { setorService, Setor } from "@/services/setorService";
 
 type TipoDoacao =
   | "cabelo" | "fraldas_geriatricas" | "alimentos" | "remedios"
@@ -43,6 +44,8 @@ interface DoacaoFisica {
   observacoes?: string;
   created_at: string;
   recebido_em?: string;
+  setor_id?: string;
+  setor_destino?: string;
 }
 
 interface DonorSuggestion {
@@ -140,6 +143,8 @@ export default function DoacoesFisicas() {
   const [filterStatus, setFilterStatus] = useState<string>("todos");
   const [filterTipo, setFilterTipo] = useState<string>("todos");
   const [searchTerm, setSearchTerm] = useState("");
+  const [setores, setSetores] = useState<Setor[]>([]);
+  const [selectedSetorId, setSelectedSetorId] = useState<string>("none");
 
   // Form
   const [donorName, setDonorName] = useState("");
@@ -186,6 +191,7 @@ export default function DoacoesFisicas() {
   const resetForm = () => {
     setDonorName(""); setDonorId(null); setTipoDoacao("alimentos");
     setSubtipo("cesta_basica"); setDescricao(""); setQuantidade("1 cesta básica"); setObservacoes("");
+    setSelectedSetorId("none");
     setSuggestions([]); setShowSuggestions(false);
   };
 
@@ -205,10 +211,12 @@ export default function DoacoesFisicas() {
   useEffect(() => {
     supabase.from("white_label_settings").select("system_name,logo_url,cnpj,address,phone,email")
       .eq("id", 1).maybeSingle().then(({ data }) => { if (data) setOrgSettings(data); });
+    setorService.getSetores().then(data => setSetores(data));
   }, []);
 
   const handleEmitirReciboFisico = async (d: DoacaoFisica) => {
     setEmittingReceipt(d.id);
+    const parsedSetor = d.setor_destino || (d.observacoes?.match(/\[Destinação:\s*([^\]]+)\]/)?.[1]);
     try {
       await gerarReciboFisicoPDF({
         donor_name: d.donor_name,
@@ -216,6 +224,7 @@ export default function DoacoesFisicas() {
         subtipo: d.subtipo,
         descricao: d.descricao,
         quantidade: d.quantidade,
+        setor_destino: parsedSetor || undefined,
         observacoes: d.observacoes,
         status: d.status,
         created_at: d.created_at,
@@ -243,8 +252,14 @@ export default function DoacoesFisicas() {
       else if (subtipo === "hortifruti") finalSubtipo = "Hortifrúti";
     }
 
+    const chosenSetor = setores.find(s => s.id === selectedSetorId);
+    const setorDestino = chosenSetor 
+      ? `${chosenSetor.nome} (Coord: ${chosenSetor.coordenador_nome})` 
+      : null;
+
     setSaving(true);
-    const { error } = await supabase.from("doacoes_fisicas").insert({
+
+    const basePayload = {
       donor_id: donorId,
       donor_name: donorName.trim(),
       tipo_doacao: tipoDoacao,
@@ -253,12 +268,35 @@ export default function DoacoesFisicas() {
       quantidade: quantidade.trim() || null,
       observacoes: observacoes.trim() || null,
       created_by: user?.id,
+    };
+
+    // Tenta primeiro salvar nas colunas setor_id e setor_destino
+    let { error } = await supabase.from("doacoes_fisicas").insert({
+      ...basePayload,
+      setor_id: chosenSetor ? chosenSetor.id : null,
+      setor_destino: setorDestino || null,
     });
+
+    // Se o banco ainda não tiver as colunas setor_id/setor_destino, faz fallback anexando na observação
+    if (error && (error.code === 'PGRST204' || error.message.includes('column'))) {
+      const obsComSetor = setorDestino
+        ? `[Destinação: ${setorDestino}]${observacoes.trim() ? ` — ${observacoes.trim()}` : ""}`
+        : (observacoes.trim() || null);
+
+      const fallbackRes = await supabase.from("doacoes_fisicas").insert({
+        ...basePayload,
+        observacoes: obsComSetor,
+      });
+      error = fallbackRes.error;
+    }
 
     if (error) {
       toast({ title: "Erro ao registrar", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Doação registrada!", description: `${tipoConfig[tipoDoacao].label} de ${donorName}` });
+      toast({ 
+        title: "Doação registrada!", 
+        description: `${tipoConfig[tipoDoacao].label} de ${donorName}${chosenSetor ? ` → Destinada ao setor ${chosenSetor.nome}` : ""}` 
+      });
       resetForm(); setOpenDialog(false); fetchDoacoes();
     }
     setSaving(false);
@@ -524,6 +562,37 @@ export default function DoacoesFisicas() {
                   </>
                 )}
 
+                {/* Destinação para Setor / Departamento */}
+                <div className="space-y-1.5 p-3 rounded-xl bg-blue-50/70 border border-blue-100">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-blue-900 flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-blue-600" /> Destinação da Doação (Setor / Departamento)
+                    </Label>
+                    <span className="text-[10px] text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full font-medium">Cadastro de Setores</span>
+                  </div>
+                  <Select value={selectedSetorId} onValueChange={setSelectedSetorId}>
+                    <SelectTrigger className="bg-white border-blue-200">
+                      <SelectValue placeholder="Selecione o setor de destino..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum setor específico / Geral</SelectItem>
+                      {setores.map(s => (
+                        <SelectItem key={s.id} value={s.id}>
+                          <span className="font-medium">{s.nome}</span>
+                          {s.coordenador_nome && (
+                            <span className="text-xs text-muted-foreground ml-2">
+                              (Coord: {s.coordenador_nome})
+                            </span>
+                          )}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-blue-700/80">
+                    Vincula a doação física diretamente ao setor e coordenador responsável da instituição.
+                  </p>
+                </div>
+
                 <div className="space-y-1">
                   <Label>Observações (opcional)</Label>
                   <Textarea placeholder="Informações adicionais..." value={observacoes} onChange={e => setObservacoes(e.target.value)} rows={2} className="bg-white" />
@@ -648,11 +717,25 @@ export default function DoacoesFisicas() {
                           {c.icon} {tipoLabel}
                         </span>
                       </TableCell>
-                      <TableCell className="text-sm text-slate-600 max-w-[200px]">
+                      <TableCell className="text-sm text-slate-600 max-w-[220px]">
                         <div>
                           {d.quantidade && <p className="text-xs font-medium">{d.quantidade}</p>}
                           {d.descricao && <p className="text-xs text-slate-400 truncate">{d.descricao}</p>}
-                          {!d.quantidade && !d.descricao && <span className="text-slate-300">—</span>}
+                          {(() => {
+                            const setorDestino = d.setor_destino || (d.observacoes?.match(/\[Destinação:\s*([^\]]+)\]/)?.[1]);
+                            if (setorDestino) {
+                              return (
+                                <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-blue-700 bg-blue-50 border border-blue-100 rounded px-1.5 py-0.5 w-fit">
+                                  <Building2 className="w-3 h-3 text-blue-600 shrink-0" />
+                                  <span className="truncate max-w-[170px]" title={setorDestino}>{setorDestino}</span>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+                          {!d.quantidade && !d.descricao && !d.setor_destino && !d.observacoes?.includes("[Destinação:") && (
+                            <span className="text-slate-300">—</span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
