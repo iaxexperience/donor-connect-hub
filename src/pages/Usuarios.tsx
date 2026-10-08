@@ -34,6 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useProfiles } from "@/hooks/useProfiles";
 
 const roleMapping: Record<string, { label: string, color: string }> = {
+  "coordenador": { label: "Coordenador", color: "secondary" },
   "admin":        { label: "Administrador",           color: "destructive" },
   "gestor":       { label: "Gestor de Campanha",       color: "default" },
   "operador":     { label: "Operador de Telemarketing", color: "secondary" },
@@ -380,6 +381,7 @@ const Usuarios = () => {
                     <SelectItem value="motoboy">
                       🏍️ Motoboy / Cobrador
                     </SelectItem>
+                    <SelectItem value="coordenador">Coordenador (sem Dashboard)</SelectItem>
                     <SelectItem value="visualizador">
                       👁️ Visualizador
                     </SelectItem>
@@ -512,3 +514,4 @@ const Usuarios = () => {
 };
 
 export default Usuarios;
+

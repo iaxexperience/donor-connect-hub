@@ -48,3 +48,6 @@ verify_jwt = true
 
 [functions.asaas-sync-donors]
 verify_jwt = true
+
+[functions.collection-receipts]
+verify_jwt = false

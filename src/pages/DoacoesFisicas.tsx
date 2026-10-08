@@ -1,3 +1,4 @@
+import { medicineDonation } from "@/lib/medicineDonation";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -153,6 +154,9 @@ export default function DoacoesFisicas() {
   const [subtipo, setSubtipo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [quantidade, setQuantidade] = useState("");
+  const [medicineName, setMedicineName] = useState("");
+  const [medicineUnit, setMedicineUnit] = useState("unidade");
+  const [medicineQuantity, setMedicineQuantity] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -189,6 +193,7 @@ export default function DoacoesFisicas() {
   };
 
   const resetForm = () => {
+    setMedicineName(""); setMedicineUnit("unidade"); setMedicineQuantity("");
     setDonorName(""); setDonorId(null); setTipoDoacao("alimentos");
     setSubtipo("cesta_basica"); setDescricao(""); setQuantidade("1 cesta básica"); setObservacoes("");
     setSelectedSetorId("none");
@@ -244,6 +249,11 @@ export default function DoacoesFisicas() {
     const cfg = tipoConfig[tipoDoacao];
     if (cfg.hasSubtipo && !subtipo && tipoDoacao !== "alimentos") { toast({ title: "Selecione o subtipo", variant: "destructive" }); return; }
 
+    let medicine: {descricao:string;quantidade:string} | null = null;
+    if (tipoDoacao === "remedios") {
+      try { medicine = medicineDonation(medicineName, medicineUnit, medicineQuantity); }
+      catch (error) { toast({title: (error as Error).message, variant:"destructive"}); return; }
+    }
     let finalSubtipo = subtipo;
     if (tipoDoacao === "alimentos") {
       if (subtipo === "cesta_basica" || !subtipo) finalSubtipo = "Cesta Básica";
@@ -270,8 +280,8 @@ export default function DoacoesFisicas() {
         donor_name: donorName.trim(),
         tipo_doacao: tipoDoacao,
         subtipo: finalSubtipo || null,
-        descricao: descricao.trim() || null,
-        quantidade: quantidade.trim() || null,
+        descricao: medicine?.descricao ?? (descricao.trim() || null),
+        quantidade: medicine?.quantidade ?? (quantidade.trim() || null),
         observacoes: obsComSetor,
       };
       if (includeCreatedBy && user?.id) payload.created_by = user.id;
@@ -552,8 +562,17 @@ export default function DoacoesFisicas() {
                       </div>
                     )}
 
+                    {tipoDoacao === "remedios" && (
+                      <div className="space-y-3 rounded-xl border border-red-100 bg-red-50/40 p-3">
+                        <div className="space-y-1"><Label htmlFor="medicine-name">Nome do remédio *</Label><Input id="medicine-name" placeholder="Ex: Paracetamol 500 mg" value={medicineName} onChange={e=>setMedicineName(e.target.value)} maxLength={200} /></div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1"><Label htmlFor="medicine-unit">Apresentação *</Label><Select value={medicineUnit} onValueChange={setMedicineUnit}><SelectTrigger id="medicine-unit"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="unidade">Unidade</SelectItem><SelectItem value="caixa">Caixa</SelectItem></SelectContent></Select></div>
+                          <div className="space-y-1"><Label htmlFor="medicine-quantity">Quantidade doada *</Label><Input id="medicine-quantity" type="number" min="1" step="1" placeholder="Ex: 20" value={medicineQuantity} onChange={e=>setMedicineQuantity(e.target.value)} /></div>
+                        </div>
+                      </div>
+                    )}
                     {/* Quantidade para itens */}
-                    {cfg.hasQuantidade && (
+                    {cfg.hasQuantidade && tipoDoacao !== "remedios" && (
                       <div className="space-y-1">
                         <Label>Quantidade / Peso / Volume</Label>
                         <Input placeholder="Ex: 10 kg, 5 caixas, 20 unidades" value={quantidade} onChange={e => setQuantidade(e.target.value)} className="bg-white" />
@@ -796,3 +815,4 @@ export default function DoacoesFisicas() {
     </div>
   );
 }
+

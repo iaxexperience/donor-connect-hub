@@ -1,3 +1,4 @@
+import { publishBranding } from "@/lib/branding";
 import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { 
@@ -224,12 +225,8 @@ const Configuracoes = () => {
     setIsUploadingLogo(true);
     
     // 1. Mostrar prévia localBase64 (feedback imediato)
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      if (ev.target?.result) setLogoUrl(ev.target.result as string);
-    };
-    reader.readAsDataURL(file);
-
+    const preview = await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(new Error('Falha ao ler imagem'));reader.readAsDataURL(file);});
+    setLogoUrl(preview);
     try {
       // 2. Tentar subir para o Supabase Storage se possível
       const fileExt = file.name.split('.').pop();
@@ -307,27 +304,16 @@ const Configuracoes = () => {
       updated_at: new Date().toISOString()
     };
 
-    localStorage.setItem('white_label_settings', JSON.stringify(settings));
-
     try {
-      const { error } = await supabase
-        .from('white_label_settings')
-        .upsert(settings);
-
-      if (error) {
-        toast({ 
-          title: "Salvo no Navegador", 
-          description: "Os dados foram salvos localmente (modo leitura do banco).", 
-        });
-      } else {
-        toast({ title: "Configurações Salvas!", description: "Tudo pronto!" });
-        saveLog('UPDATE_SETTINGS', 'configuracoes', settings);
-      }
-    } catch (err) {
-      toast({ title: "Salvo localmente", description: "Configurações aplicadas ao seu navegador." });
+      const { data, error } = await supabase.from('white_label_settings').upsert(settings).select('*').single();
+      if (error) throw error;
+      publishBranding(data);
+      toast({title:'Configurações salvas',description:'Identidade visual atualizada no sistema e nos próximos relatórios.'});
+      void saveLog('UPDATE_SETTINGS','configuracoes',{system_name:settings.system_name});
+    } catch (error) {
+      toast({title:'Não foi possível salvar no banco',description:(error as Error).message + ' As alterações continuam no formulário. Verifique a permissão de administrador e tente novamente.',variant:'destructive'});
     }
   };
-
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
       <div className="flex flex-col gap-1">
@@ -789,7 +775,7 @@ const Configuracoes = () => {
       </Tabs>
 
       <div className="flex justify-end pt-4">
-        <Button onClick={handleSaveAll} className="h-14 px-12 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold gap-3 shadow-xl transition-all hover:scale-105">
+        <Button onClick={handleSaveAll} disabled={isUploadingLogo} className="h-14 px-12 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold gap-3 shadow-xl transition-all hover:scale-105">
           <Save className="w-5 h-5" /> Salvar Todas as Configurações
         </Button>
       </div>
@@ -798,3 +784,4 @@ const Configuracoes = () => {
 };
 
 export default Configuracoes;
+

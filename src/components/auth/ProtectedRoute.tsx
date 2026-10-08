@@ -1,10 +1,12 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { canAccessPage, homeForRole } from "@/lib/permissions";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 
 export const ProtectedRoute = () => {
-  const { session, loading } = useAuth();
+  const { session, loading, role } = useAuth();
 
+  const location = useLocation();
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -21,5 +23,9 @@ export const ProtectedRoute = () => {
     return <Navigate to="/login" replace />;
   }
 
+  if (!role) return <p role="alert">Perfil sem permissão. Contate o administrador.</p>;
+  if (!canAccessPage(role, location.pathname)) return <Navigate to={homeForRole(role)} replace />;
   return <Outlet />;
 };
+
+

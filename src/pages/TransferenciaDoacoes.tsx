@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { setorService, Setor } from "@/services/setorService";
-import { gerarPDFTransferencia, DoacaoTransferida } from "@/lib/transferenciaService";
+import { gerarPDFTransferencia, DoacaoTransferida, TransferenciaData } from "@/lib/transferenciaService";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -100,6 +100,9 @@ export default function TransferenciaDoacoes() {
   const [setorDestinoId, setSetorDestinoId] = useState("none");
   const [obsTransferencia, setObsTransferencia] = useState("");
   const [transferindo, setTransferindo] = useState(false);
+  const transferRequest = useRef(crypto.randomUUID());
+  const transferLock = useRef(false);
+  const [lastTransfer, setLastTransfer] = useState<TransferenciaData | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
 
   // Carregar dados
@@ -159,54 +162,36 @@ export default function TransferenciaDoacoes() {
       toast({ title: "Selecione ao menos uma doação", variant: "destructive" });
       return;
     }
+    transferRequest.current = crypto.randomUUID();
     setDialogOpen(true);
     setSetorDestinoId("none");
     setObsTransferencia("");
   };
 
   const handleTransferir = async () => {
-    if (setorDestinoId === "none" || !setorEscolhido) {
-      toast({ title: "Selecione o setor de destino", variant: "destructive" });
-      return;
-    }
+    if (!setorEscolhido || transferLock.current || !selectedDoacoes.length) return;
+    transferLock.current = true;
     setTransferindo(true);
-
-    const setorLabel = `${setorEscolhido.nome} (Coord: ${setorEscolhido.coordenador_nome})`;
-    const agora = new Date().toISOString();
-
-    // Atualiza cada doação selecionada
-    for (const d of selectedDoacoes) {
-      const novaObs = `[Transferido para: ${setorLabel}] em ${format(new Date(agora), "dd/MM/yyyy HH:mm", { locale: ptBR })}${obsTransferencia ? ` — ${obsTransferencia}` : ""}${d.observacoes ? ` | ${d.observacoes}` : ""}`;
-
-      const payload: Record<string, unknown> = { observacoes: novaObs };
-
-      // Tenta setor_id/setor_destino/transferido
-      const { error } = await supabase.from("doacoes_fisicas").update({
-        ...payload,
-        setor_id: setorEscolhido.id,
-        setor_destino: setorLabel,
-        transferido: true,
-        transferido_para: setorEscolhido.nome,
-        transferido_em: agora,
-      }).eq("id", d.id);
-
-      if (error && (error.code === "PGRST204" || error.message.includes("column"))) {
-        // Fallback sem colunas extras
-        await supabase.from("doacoes_fisicas").update(payload).eq("id", d.id);
-      }
-    }
-
-    toast({
-      title: `${selectedDoacoes.length} doação(ões) transferida(s)!`,
-      description: `Destino: ${setorEscolhido.nome} — Coord: ${setorEscolhido.coordenador_nome}`,
-    });
-
-    setSelectedIds(new Set());
-    setDialogOpen(false);
-    loadData();
-    setTransferindo(false);
+    // Open synchronously in the click event to avoid popup blockers after the RPC.
+    const printWindow = window.open('about:blank', '_blank');
+    if (printWindow) { printWindow.opener = null; printWindow.document.title = 'Preparando termo de entrega'; printWindow.document.body.textContent = 'Confirmando transferência. Aguarde…'; }
+    let confirmed = false;
+    try {
+      const {data,error} = await supabase.rpc('confirm_collection_transfer', {
+        p_id:transferRequest.current, p_ids:selectedDoacoes.map(d=>d.id),
+        p_sector:setorEscolhido.id, p_notes:obsTransferencia.trim(),
+      });
+      if(error) throw error;
+      confirmed = true;
+      setLastTransfer(data as TransferenciaData);
+      setSelectedIds(new Set()); setDialogOpen(false); void loadData();
+      await gerarPDFTransferencia(data as TransferenciaData, {print:true,printWindow});
+      toast({title:'Transferência confirmada',description:printWindow?'O termo foi aberto para impressão.':'O navegador bloqueou a janela. O PDF foi baixado; abra-o para imprimir.'});
+    } catch(error) {
+      printWindow?.close();
+      toast({title:confirmed?'Transferência salva; impressão não concluída':'Não foi possível confirmar a transferência',description:confirmed?'Use Reimprimir último termo. Não repita a transferência.':(error as Error).message,variant:'destructive'});
+    } finally { transferLock.current=false;setTransferindo(false); }
   };
-
   const handleGerarPDF = async () => {
     if (!setorEscolhido) {
       toast({ title: "Selecione o setor antes de gerar o PDF", variant: "destructive" });
@@ -456,6 +441,7 @@ export default function TransferenciaDoacoes() {
         </CardContent>
       </Card>
 
+      {lastTransfer && <Button variant="outline" onClick={()=>{const w=window.open('about:blank','_blank');if(w)w.opener=null;void gerarPDFTransferencia(lastTransfer,{print:true,printWindow:w});}}>Reimprimir último termo</Button>}
       {/* Dialog de Transferência */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
@@ -565,3 +551,4 @@ export default function TransferenciaDoacoes() {
     </div>
   );
 }
+

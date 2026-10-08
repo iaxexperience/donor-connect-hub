@@ -1,3 +1,4 @@
+import { BRANDING_EVENT, Branding } from "@/lib/branding";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -120,7 +121,10 @@ export const DynamicThemeProvider = ({ children }: { children: React.ReactNode }
       }
     };
 
+    const receive = (event:Event) => {const value=(event as CustomEvent<Branding>).detail;setSettings(value);applyTheme(value);};
+    window.addEventListener(BRANDING_EVENT,receive);
     loadTheme();
+    return ()=>window.removeEventListener(BRANDING_EVENT,receive);
   }, []);
 
   const updateSettings = (newSettings: Partial<ThemeSettings>) => {
@@ -136,3 +140,4 @@ export const DynamicThemeProvider = ({ children }: { children: React.ReactNode }
     </ThemeContext.Provider>
   );
 };
+

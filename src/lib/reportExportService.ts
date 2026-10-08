@@ -1,3 +1,4 @@
+import { loadBranding, logoForPDF } from "@/lib/branding";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
@@ -87,7 +88,10 @@ export function exportReportToExcel(options: ExportReportOptions) {
 /**
  * Gera e baixa um relatório profissional em PDF com tabelas e cabeçalhos
  */
-export function exportReportToPDF(options: ExportReportOptions) {
+export async function exportReportToPDF(options: ExportReportOptions) {
+  const branding = await loadBranding();
+  const logo = await logoForPDF(branding.logo_url);
+  options = {...options, systemName: branding.system_name};
   const {
     filename,
     title,
@@ -109,6 +113,7 @@ export function exportReportToPDF(options: ExportReportOptions) {
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 14;
   let currentY = 16;
+  if (logo) { doc.addImage(logo,"PNG",14,10,40,16); currentY=34; }
 
   // 1. Cabeçalho Superior Institucional
   doc.setFillColor(15, 75, 145); // Azul primário elegante
@@ -227,3 +232,4 @@ export function exportReportToPDF(options: ExportReportOptions) {
   const fullFilename = `${filename}_${format(new Date(), "yyyy-MM-dd_HHmm")}.pdf`;
   doc.save(fullFilename);
 }
+

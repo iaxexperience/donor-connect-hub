@@ -5,7 +5,7 @@ export interface Profile {
   id: string;
   name: string;
   email: string;
-  role: "admin" | "gestor" | "operador" | "visualizador";
+  role: "admin" | "gestor" | "operador" | "visualizador" | "caixa" | "motoboy" | "coordenador";
   cpf?: string;
   phone?: string;
   must_change_password?: boolean;
@@ -74,3 +74,4 @@ export const useProfiles = () => {
     updateProfile: updateProfileMutation.mutateAsync,
   };
 };
+

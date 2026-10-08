@@ -1,3 +1,5 @@
+import { canAccessPage } from "@/lib/permissions";
+import { useTheme } from "@/components/theme/DynamicThemeProvider";
 import {
   LayoutDashboard,
   Users,
@@ -49,6 +51,7 @@ const mainItems = [
   { title: "Relatórios", url: "/dashboard/relatorios", icon: BarChart3 },
   { title: "Caixa", url: "/dashboard/caixa", icon: PiggyBank },
   { title: "Doações Físicas", url: "/dashboard/doacoes-fisicas", icon: Gift },
+  { title: "Rotas de Coleta", url: "/dashboard/rotas", icon: ArrowRightLeft },
   { title: "Transferência", url: "/dashboard/transferencia-doacoes", icon: ArrowRightLeft },
 ];
 
@@ -68,46 +71,7 @@ export function AppSidebar() {
   const { role, signOut } = useAuth();
   const currentPath = location.pathname;
   
-  const [systemName, setSystemName] = useState("Pulse Doações");
-  const [logoUrl, setLogoUrl] = useState("");
-
-  useEffect(() => {
-    const loadBranding = async () => {
-      // 1. Tentar carregar do localStorage (mais rápido)
-      const localData = localStorage.getItem('white_label_settings');
-      if (localData) {
-        const parsed = JSON.parse(localData);
-        if (parsed.system_name) setSystemName(parsed.system_name);
-        if (parsed.logo_url) setLogoUrl(parsed.logo_url);
-      }
-
-      // 2. Tentar carregar do banco de dados (mais confiável)
-      const { data } = await supabase
-        .from('white_label_settings')
-        .select('system_name, logo_url')
-        .eq('id', 1)
-        .maybeSingle();
-
-      if (data) {
-        if (data.system_name) setSystemName(data.system_name);
-        if (data.logo_url) setLogoUrl(data.logo_url);
-      }
-    };
-
-    loadBranding();
-
-    // 3. Listener para atualizar quando as configurações mudarem
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'white_label_settings' && e.newValue) {
-        const parsed = JSON.parse(e.newValue);
-        if (parsed.system_name) setSystemName(parsed.system_name);
-        if (parsed.logo_url) setLogoUrl(parsed.logo_url);
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+  const { settings: { system_name: systemName, logo_url: logoUrl } } = useTheme();
 
   const handleSignOut = async () => {
     await signOut();
@@ -115,36 +79,8 @@ export function AppSidebar() {
   };
 
   // Filtragem baseada em Role
-  const filteredMainItems = mainItems.filter(item => {
-    // Motoboy: acesso restrito — só Dashboard e Caixa
-    if (role === "motoboy") {
-      return item.url === "/dashboard" || item.url === "/dashboard/caixa";
-    }
-    // Caixa: Dashboard, Caixa, Doações Físicas, Transferência, Relatórios
-    if (role === "caixa") {
-      return [
-        "/dashboard",
-        "/dashboard/caixa",
-        "/dashboard/doacoes-fisicas",
-        "/dashboard/transferencia-doacoes",
-        "/dashboard/relatorios",
-      ].includes(item.url);
-    }
-    // Operador de Telemarketing
-    if (role === "operador") {
-      return !["/dashboard/usuarios", "/dashboard/setores"].includes(item.url);
-    }
-    // Admin e Gestor: veem tudo (com restrições abaixo)
-    if (item.title === "Usuários") return role === "admin";
-    if (item.title === "Relatórios") return role === "admin" || role === "gestor";
-    return true;
-  });
-
-  const filteredConfigItems = configItems.filter(item => {
-    if (role === "motoboy" || role === "caixa" || role === "operador" || role === "visualizador") return false;
-    if (item.title === "Configurações") return role === "admin" || role === "gestor";
-    return true;
-  });
+  const filteredMainItems = mainItems.filter(item => canAccessPage(role, item.url));
+  const filteredConfigItems = configItems.filter(item => canAccessPage(role, item.url));
 
   const isActive = (path: string) => currentPath === path;
 
@@ -234,3 +170,5 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+
+

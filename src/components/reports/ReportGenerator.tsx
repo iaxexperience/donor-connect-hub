@@ -585,6 +585,7 @@ export function ReportGenerator() {
         format: (v) => tipoLabels[v] || v,
       },
       { header: "Subtipo / Especificação", dataKey: "subtipo", align: "left", format: (v) => v || "—" },
+      { header: "Descrição / Medicamento", dataKey: "descricao", align: "left", format: (v) => v || "—" },
       { header: "Quantidade", dataKey: "quantidade", align: "center", format: (v) => v || "1 un" },
       {
         header: "Status",
@@ -622,11 +623,11 @@ export function ReportGenerator() {
   // ─────────────────────────────────────────────────────────────
   // Export Handlers
   // ─────────────────────────────────────────────────────────────
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     try {
       setDownloading("pdf");
       const config = getReportConfig();
-      exportReportToPDF(config);
+      await exportReportToPDF(config);
       toast({
         title: "Relatório em PDF gerado!",
         description: `O arquivo ${config.filename}.pdf foi baixado com sucesso.`,
@@ -1151,3 +1152,5 @@ export function ReportGenerator() {
     </Card>
   );
 }
+
+
