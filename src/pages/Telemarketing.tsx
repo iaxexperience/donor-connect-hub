@@ -84,6 +84,7 @@ const Telemarketing = () => {
   const [donationAmount, setDonationAmount] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<string>("Pix");
   const [donationStatus, setDonationStatus] = useState<"pago" | "pendente">("pago");
+  const [donationBank, setDonationBank] = useState<string>("asaas"); // banco que recebeu
 
   const [saving, setSaving] = useState(false);
   const [sendingWpp, setSendingWpp] = useState<number | null>(null);
@@ -109,6 +110,7 @@ const Telemarketing = () => {
     setDonationAmount("");
     setPaymentMethod("Pix");
     setDonationStatus("pago");
+    setDonationBank("asaas");
     
     setDialogOpen(true);
   };
@@ -165,7 +167,8 @@ const Telemarketing = () => {
             campaign_id: selectedCampaignId && selectedCampaignId !== "none" ? selectedCampaignId : null,
             payment_method: paymentMethod || "Pix",
             status: donationStatus,
-            donation_date: new Date().toISOString()
+            donation_date: new Date().toISOString(),
+            notes: donationBank ? `[Banco: ${donationBank === 'asaas' ? 'Asaas' : donationBank === 'banco_brasil' ? 'Banco do Brasil' : donationBank}]` : undefined,
           }]);
 
         if (donError) {
@@ -568,6 +571,41 @@ const Telemarketing = () => {
                         <SelectItem value="Manual">Manual / Outros</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  {/* Banco que recebeu a doação */}
+                  <div className="space-y-1.5 p-3 rounded-xl border border-blue-100 bg-blue-50/60">
+                    <Label className="text-xs text-blue-900 font-semibold flex items-center gap-1.5">
+                      🏦 Banco que recebeu a doação
+                    </Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDonationBank("asaas")}
+                        className={`flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                          donationBank === "asaas"
+                            ? "bg-orange-100 text-orange-800 border-orange-400 ring-2 ring-orange-300"
+                            : "bg-white text-slate-600 border-slate-200 hover:border-orange-200 hover:bg-orange-50"
+                        }`}
+                      >
+                        <span className="text-lg">🟠</span>
+                        <span>Asaas</span>
+                        <span className="text-[10px] font-normal text-slate-400">Gateway digital</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDonationBank("banco_brasil")}
+                        className={`flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                          donationBank === "banco_brasil"
+                            ? "bg-yellow-100 text-yellow-800 border-yellow-400 ring-2 ring-yellow-300"
+                            : "bg-white text-slate-600 border-slate-200 hover:border-yellow-200 hover:bg-yellow-50"
+                        }`}
+                      >
+                        <span className="text-lg">🟡</span>
+                        <span>Banco do Brasil</span>
+                        <span className="text-[10px] font-normal text-slate-400">Agência bancária</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
