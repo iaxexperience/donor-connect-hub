@@ -45,3 +45,7 @@ END $$;
 -- Índices para performance
 CREATE INDEX IF NOT EXISTS idx_setores_status ON setores(status);
 CREATE INDEX IF NOT EXISTS idx_setores_coordenador ON setores(coordenador_id);
+
+-- Vínculo de destinação da doação física com o setor responsável
+ALTER TABLE doacoes_fisicas ADD COLUMN IF NOT EXISTS setor_id uuid;
+ALTER TABLE doacoes_fisicas ADD COLUMN IF NOT EXISTS setor_destino text;
