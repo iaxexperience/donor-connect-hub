@@ -34,10 +34,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useProfiles } from "@/hooks/useProfiles";
 
 const roleMapping: Record<string, { label: string, color: string }> = {
-  "admin": { label: "Administrador", color: "destructive" },
-  "gestor": { label: "Gestor de Campanha", color: "default" },
-  "operador": { label: "Operador de Telemarketing", color: "secondary" },
-  "visualizador": { label: "Visualizador", color: "outline" },
+  "admin":        { label: "Administrador",           color: "destructive" },
+  "gestor":       { label: "Gestor de Campanha",       color: "default" },
+  "operador":     { label: "Operador de Telemarketing", color: "secondary" },
+  "visualizador": { label: "Visualizador",             color: "outline" },
+  "caixa":        { label: "Operador de Caixa",        color: "default" },
+  "motoboy":      { label: "Motoboy / Cobrador",       color: "secondary" },
 };
 
 const formatCPF = (value: string) => {
@@ -363,9 +365,24 @@ const Usuarios = () => {
                     <SelectValue placeholder="Selecione o papel" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="gestor">Gestor de Campanha</SelectItem>
-                    <SelectItem value="operador">Operador de Telemarketing</SelectItem>
+                    <SelectItem value="admin">
+                      🛡️ Administrador
+                    </SelectItem>
+                    <SelectItem value="gestor">
+                      📊 Gestor de Campanha
+                    </SelectItem>
+                    <SelectItem value="operador">
+                      📞 Operador de Telemarketing
+                    </SelectItem>
+                    <SelectItem value="caixa">
+                      🏦 Operador de Caixa
+                    </SelectItem>
+                    <SelectItem value="motoboy">
+                      🏍️ Motoboy / Cobrador
+                    </SelectItem>
+                    <SelectItem value="visualizador">
+                      👁️ Visualizador
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

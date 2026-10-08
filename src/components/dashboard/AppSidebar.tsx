@@ -116,13 +116,32 @@ export function AppSidebar() {
 
   // Filtragem baseada em Role
   const filteredMainItems = mainItems.filter(item => {
+    // Motoboy: acesso restrito — só Dashboard e Caixa
+    if (role === "motoboy") {
+      return item.url === "/dashboard" || item.url === "/dashboard/caixa";
+    }
+    // Caixa: Dashboard, Caixa, Doações Físicas, Transferência, Relatórios
+    if (role === "caixa") {
+      return [
+        "/dashboard",
+        "/dashboard/caixa",
+        "/dashboard/doacoes-fisicas",
+        "/dashboard/transferencia-doacoes",
+        "/dashboard/relatorios",
+      ].includes(item.url);
+    }
+    // Operador de Telemarketing
+    if (role === "operador") {
+      return !["/dashboard/usuarios", "/dashboard/setores"].includes(item.url);
+    }
+    // Admin e Gestor: veem tudo (com restrições abaixo)
     if (item.title === "Usuários") return role === "admin";
     if (item.title === "Relatórios") return role === "admin" || role === "gestor";
     return true;
   });
 
   const filteredConfigItems = configItems.filter(item => {
-    if (role === "operador" || role === "visualizador") return false;
+    if (role === "motoboy" || role === "caixa" || role === "operador" || role === "visualizador") return false;
     if (item.title === "Configurações") return role === "admin" || role === "gestor";
     return true;
   });
