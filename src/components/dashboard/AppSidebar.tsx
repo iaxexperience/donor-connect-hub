@@ -17,6 +17,7 @@ import {
   PiggyBank,
   Gift,
   Building2,
+  ArrowRightLeft,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink } from "@/components/NavLink";
@@ -48,6 +49,7 @@ const mainItems = [
   { title: "Relatórios", url: "/dashboard/relatorios", icon: BarChart3 },
   { title: "Caixa", url: "/dashboard/caixa", icon: PiggyBank },
   { title: "Doações Físicas", url: "/dashboard/doacoes-fisicas", icon: Gift },
+  { title: "Transferência", url: "/dashboard/transferencia-doacoes", icon: ArrowRightLeft },
 ];
 
 const configItems = [

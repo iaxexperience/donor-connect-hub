@@ -27,6 +27,7 @@ import WhatsApp from "./pages/WhatsApp";
 import Caixa from "./pages/Caixa";
 import DoacoesFisicas from "./pages/DoacoesFisicas";
 import Setores from "./pages/Setores";
+import TransferenciaDoacoes from "./pages/TransferenciaDoacoes";
 import ValidateReceipt from "./pages/ValidateReceipt";
 import Documentacao from "./pages/Documentacao";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
@@ -107,6 +108,7 @@ const App = () => (
                     <Route path="api-documentacao" element={<ApiDocumentation />} />
                     <Route path="caixa" element={<Caixa />} />
                     <Route path="doacoes-fisicas" element={<DoacoesFisicas />} />
+                    <Route path="transferencia-doacoes" element={<TransferenciaDoacoes />} />
                   </Route>
                 </Route>
 
