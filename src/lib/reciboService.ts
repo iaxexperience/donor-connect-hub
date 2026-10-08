@@ -151,6 +151,7 @@ export interface ReciboFisicoData {
   subtipo?: string;
   descricao?: string;
   quantidade?: string;
+  setor_destino?: string;
   observacoes?: string;
   status: string;
   created_at: string;
@@ -295,6 +296,7 @@ export async function gerarReciboFisicoPDF(data: ReciboFisicoData): Promise<void
 
   addRow("Tipo de Doação:", tipoCompleto);
   if (data.quantidade) addRow("Quantidade / Volume:", data.quantidade);
+  if (data.setor_destino) addRow("Destinação (Setor):", data.setor_destino);
   if (data.descricao)  addRow("Descrição:", data.descricao);
   if (data.observacoes) addRow("Observações:", data.observacoes);
   addRow("Data do Registro:", format(new Date(data.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }));
