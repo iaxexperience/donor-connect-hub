@@ -69,6 +69,13 @@ const tipoConfig: Record<TipoDoacao, { label: string; icon: React.ReactNode; col
     label: "Alimentos",
     icon: <Package className="w-4 h-4" />,
     color: "bg-green-100 text-green-700 border-green-200",
+    hasSubtipo: true,
+    subtypes: [
+      { value: "cesta_basica", label: "Cesta Básica" },
+      { value: "alimentos_avulsos", label: "Alimentos Avulsos / Não Perecíveis" },
+      { value: "misto", label: "Cestas Básicas + Alimentos Avulsos" },
+      { value: "hortifruti", label: "Hortifrúti / Perecíveis" },
+    ],
     hasQuantidade: true,
   },
   remedios: {
@@ -178,7 +185,7 @@ export default function DoacoesFisicas() {
 
   const resetForm = () => {
     setDonorName(""); setDonorId(null); setTipoDoacao("alimentos");
-    setSubtipo(""); setDescricao(""); setQuantidade(""); setObservacoes("");
+    setSubtipo("cesta_basica"); setDescricao(""); setQuantidade("1 cesta básica"); setObservacoes("");
     setSuggestions([]); setShowSuggestions(false);
   };
 
@@ -226,14 +233,22 @@ export default function DoacoesFisicas() {
     if (!donorName.trim()) { toast({ title: "Informe o nome do doador", variant: "destructive" }); return; }
     if (!tipoDoacao) { toast({ title: "Selecione o tipo de doação", variant: "destructive" }); return; }
     const cfg = tipoConfig[tipoDoacao];
-    if (cfg.hasSubtipo && !subtipo) { toast({ title: "Selecione o subtipo", variant: "destructive" }); return; }
+    if (cfg.hasSubtipo && !subtipo && tipoDoacao !== "alimentos") { toast({ title: "Selecione o subtipo", variant: "destructive" }); return; }
+
+    let finalSubtipo = subtipo;
+    if (tipoDoacao === "alimentos") {
+      if (subtipo === "cesta_basica" || !subtipo) finalSubtipo = "Cesta Básica";
+      else if (subtipo === "alimentos_avulsos") finalSubtipo = "Alimentos Avulsos";
+      else if (subtipo === "misto") finalSubtipo = "Cestas Básicas + Avulsos";
+      else if (subtipo === "hortifruti") finalSubtipo = "Hortifrúti";
+    }
 
     setSaving(true);
     const { error } = await supabase.from("doacoes_fisicas").insert({
       donor_id: donorId,
       donor_name: donorName.trim(),
       tipo_doacao: tipoDoacao,
-      subtipo: subtipo || null,
+      subtipo: finalSubtipo || null,
       descricao: descricao.trim() || null,
       quantidade: quantidade.trim() || null,
       observacoes: observacoes.trim() || null,
@@ -334,7 +349,19 @@ export default function DoacoesFisicas() {
 
                 <div className="space-y-1">
                   <Label>Modalidade</Label>
-                  <Select value={tipoDoacao} onValueChange={v => { setTipoDoacao(v as TipoDoacao); setSubtipo(""); }}>
+                  <Select
+                    value={tipoDoacao}
+                    onValueChange={v => {
+                      setTipoDoacao(v as TipoDoacao);
+                      if (v === "alimentos") {
+                        setSubtipo("cesta_basica");
+                        setQuantidade("1 cesta básica");
+                      } else {
+                        setSubtipo("");
+                        setQuantidade("");
+                      }
+                    }}
+                  >
                     <SelectTrigger className="bg-white">
                       <SelectValue />
                     </SelectTrigger>
@@ -352,35 +379,149 @@ export default function DoacoesFisicas() {
                   </Select>
                 </div>
 
-                {/* Subtipo veículo */}
-                {cfg.hasSubtipo && cfg.subtypes && (
-                  <div className="space-y-1">
-                    <Label>Tipo de Veículo</Label>
-                    <Select value={subtipo} onValueChange={setSubtipo}>
-                      <SelectTrigger className="bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                      <SelectContent>
-                        {cfg.subtypes.map(s => (
-                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+                {/* Se for alimentos: Seção específica de Cesta Básica / Alimentos */}
+                {tipoDoacao === "alimentos" ? (
+                  <div className="space-y-3 pt-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                        <Package className="w-3.5 h-3.5 text-emerald-600" />
+                        Formato / Tipo de Alimento
+                      </Label>
+                      <Select
+                        value={subtipo || "cesta_basica"}
+                        onValueChange={val => {
+                          setSubtipo(val);
+                          if (val === "cesta_basica") setQuantidade("1 cesta básica");
+                          else if (val === "misto") setQuantidade("1 cesta básica");
+                          else setQuantidade("");
+                        }}
+                      >
+                        <SelectTrigger className="bg-white">
+                          <SelectValue placeholder="Selecione o formato" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cesta_basica">🧺 Cesta Básica</SelectItem>
+                          <SelectItem value="alimentos_avulsos">🥫 Alimentos Avulsos / Não Perecíveis</SelectItem>
+                          <SelectItem value="misto">📦 Cestas Básicas + Alimentos Avulsos</SelectItem>
+                          <SelectItem value="hortifruti">🥦 Hortifrúti / Perecíveis</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                {/* Quantidade para itens */}
-                {cfg.hasQuantidade && (
-                  <div className="space-y-1">
-                    <Label>Quantidade / Peso / Volume</Label>
-                    <Input placeholder="Ex: 10 kg, 5 caixas, 20 unidades" value={quantidade} onChange={e => setQuantidade(e.target.value)} className="bg-white" />
-                  </div>
-                )}
+                    {(subtipo === "cesta_basica" || !subtipo) && (
+                      <div className="space-y-2 bg-emerald-50/70 border border-emerald-200/80 p-3.5 rounded-xl">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                            <span>🧺 Quantidade de Cestas Básicas</span>
+                          </Label>
+                          <span className="text-[11px] text-emerald-700 font-medium">Unidades</span>
+                        </div>
+                        <Input
+                          placeholder="Ex: 1 cesta básica, 5 cestas básicas..."
+                          value={quantidade}
+                          onChange={e => setQuantidade(e.target.value)}
+                          className="bg-white font-medium text-emerald-950"
+                        />
+                        <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                          <span className="text-[11px] text-muted-foreground mr-1">Sugestões rápidas:</span>
+                          {["1 cesta básica", "2 cestas básicas", "3 cestas básicas", "5 cestas básicas", "10 cestas básicas"].map(opt => (
+                            <button
+                              key={opt}
+                              type="button"
+                              onClick={() => setQuantidade(opt)}
+                              className={`text-xs px-2.5 py-0.5 rounded-md border transition-all ${
+                                quantidade === opt
+                                  ? "bg-emerald-600 text-white border-emerald-600 font-semibold shadow-xs"
+                                  : "bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-100"
+                              }`}
+                            >
+                              {opt.replace(" básicas", "")}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
-                {/* Descrição para imóveis e veículos */}
-                {(cfg.hasSubtipo || imoveis.includes(tipoDoacao) || tipoDoacao === "outro" || tipoDoacao === "cabelo") && (
-                  <div className="space-y-1">
-                    <Label>Descrição {imoveis.includes(tipoDoacao) ? "(endereço, metragem...)" : tipoDoacao === "veiculo" ? "(modelo, ano, placa...)" : tipoDoacao === "cabelo" ? "(comprimento, cor...)" : ""}</Label>
-                    <Textarea placeholder="Detalhes sobre a doação..." value={descricao} onChange={e => setDescricao(e.target.value)} rows={2} className="bg-white" />
+                    {subtipo === "misto" && (
+                      <div className="space-y-3 bg-emerald-50/70 border border-emerald-200/80 p-3.5 rounded-xl">
+                        <div className="space-y-1">
+                          <Label className="text-xs font-bold text-emerald-900">Quantidade de Cestas Básicas</Label>
+                          <Input
+                            placeholder="Ex: 2 cestas básicas"
+                            value={quantidade}
+                            onChange={e => setQuantidade(e.target.value)}
+                            className="bg-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs font-bold text-emerald-900">Itens / Peso dos Alimentos Avulsos</Label>
+                          <Input
+                            placeholder="Ex: + 10 kg de arroz, 5 pacotes de feijão..."
+                            value={descricao}
+                            onChange={e => setDescricao(e.target.value)}
+                            className="bg-white"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {subtipo === "alimentos_avulsos" && (
+                      <div className="space-y-1">
+                        <Label>Quantidade / Peso / Volume</Label>
+                        <Input
+                          placeholder="Ex: 20 kg de arroz, 10 pacotes de feijão, 5 caixas de leite"
+                          value={quantidade}
+                          onChange={e => setQuantidade(e.target.value)}
+                          className="bg-white"
+                        />
+                      </div>
+                    )}
+
+                    {subtipo === "hortifruti" && (
+                      <div className="space-y-1">
+                        <Label>Quantidade / Caixas / Peso</Label>
+                        <Input
+                          placeholder="Ex: 3 caixas de frutas, 15 kg de legumes"
+                          value={quantidade}
+                          onChange={e => setQuantidade(e.target.value)}
+                          className="bg-white"
+                        />
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  <>
+                    {/* Subtipo veículo */}
+                    {cfg.hasSubtipo && cfg.subtypes && (
+                      <div className="space-y-1">
+                        <Label>Tipo de Veículo</Label>
+                        <Select value={subtipo} onValueChange={setSubtipo}>
+                          <SelectTrigger className="bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                          <SelectContent>
+                            {cfg.subtypes.map(s => (
+                              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {/* Quantidade para itens */}
+                    {cfg.hasQuantidade && (
+                      <div className="space-y-1">
+                        <Label>Quantidade / Peso / Volume</Label>
+                        <Input placeholder="Ex: 10 kg, 5 caixas, 20 unidades" value={quantidade} onChange={e => setQuantidade(e.target.value)} className="bg-white" />
+                      </div>
+                    )}
+
+                    {/* Descrição para imóveis e veículos */}
+                    {(cfg.hasSubtipo || imoveis.includes(tipoDoacao) || tipoDoacao === "outro" || tipoDoacao === "cabelo") && (
+                      <div className="space-y-1">
+                        <Label>Descrição {imoveis.includes(tipoDoacao) ? "(endereço, metragem...)" : tipoDoacao === "veiculo" ? "(modelo, ano, placa...)" : tipoDoacao === "cabelo" ? "(comprimento, cor...)" : ""}</Label>
+                        <Textarea placeholder="Detalhes sobre a doação..." value={descricao} onChange={e => setDescricao(e.target.value)} rows={2} className="bg-white" />
+                      </div>
+                    )}
+                  </>
                 )}
 
                 <div className="space-y-1">
