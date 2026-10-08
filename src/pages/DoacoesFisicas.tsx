@@ -259,35 +259,43 @@ export default function DoacoesFisicas() {
 
     setSaving(true);
 
-    const basePayload = {
-      donor_id: donorId,
-      donor_name: donorName.trim(),
-      tipo_doacao: tipoDoacao,
-      subtipo: finalSubtipo || null,
-      descricao: descricao.trim() || null,
-      quantidade: quantidade.trim() || null,
-      observacoes: observacoes.trim() || null,
-      created_by: user?.id,
+    const obsComSetor = setorDestino
+      ? `[Destinação: ${setorDestino}]${observacoes.trim() ? ` — ${observacoes.trim()}` : ""}`
+      : (observacoes.trim() || null);
+
+    // Tenta inserir com setor_id/setor_destino (colunas adicionadas pela migration)
+    const tryInsert = async (includeCreatedBy: boolean) => {
+      const payload: Record<string, unknown> = {
+        donor_id: donorId,
+        donor_name: donorName.trim(),
+        tipo_doacao: tipoDoacao,
+        subtipo: finalSubtipo || null,
+        descricao: descricao.trim() || null,
+        quantidade: quantidade.trim() || null,
+        observacoes: obsComSetor,
+      };
+      if (includeCreatedBy && user?.id) payload.created_by = user.id;
+
+      // Tenta com colunas setor_id/setor_destino
+      let { error } = await supabase.from("doacoes_fisicas").insert({
+        ...payload,
+        setor_id: chosenSetor?.id ?? null,
+        setor_destino: setorDestino ?? null,
+      });
+
+      // Fallback: banco sem as colunas de setor
+      if (error && (error.code === 'PGRST204' || error.message.includes('column'))) {
+        ({ error } = await supabase.from("doacoes_fisicas").insert(payload));
+      }
+
+      return error;
     };
 
-    // Tenta primeiro salvar nas colunas setor_id e setor_destino
-    let { error } = await supabase.from("doacoes_fisicas").insert({
-      ...basePayload,
-      setor_id: chosenSetor ? chosenSetor.id : null,
-      setor_destino: setorDestino || null,
-    });
+    let error = await tryInsert(true);
 
-    // Se o banco ainda não tiver as colunas setor_id/setor_destino, faz fallback anexando na observação
-    if (error && (error.code === 'PGRST204' || error.message.includes('column'))) {
-      const obsComSetor = setorDestino
-        ? `[Destinação: ${setorDestino}]${observacoes.trim() ? ` — ${observacoes.trim()}` : ""}`
-        : (observacoes.trim() || null);
-
-      const fallbackRes = await supabase.from("doacoes_fisicas").insert({
-        ...basePayload,
-        observacoes: obsComSetor,
-      });
-      error = fallbackRes.error;
+    // Se FK de created_by falhar (perfil não encontrado), tenta sem o campo
+    if (error && (error.code === '23503' || error.message.toLowerCase().includes('created_by'))) {
+      error = await tryInsert(false);
     }
 
     if (error) {
