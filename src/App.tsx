@@ -26,6 +26,7 @@ import DonorForm from "./pages/DonorForm";
 import WhatsApp from "./pages/WhatsApp";
 import Caixa from "./pages/Caixa";
 import DoacoesFisicas from "./pages/DoacoesFisicas";
+import Setores from "./pages/Setores";
 import ValidateReceipt from "./pages/ValidateReceipt";
 import Documentacao from "./pages/Documentacao";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";

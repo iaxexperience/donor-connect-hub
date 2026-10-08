@@ -16,6 +16,7 @@ import {
   Sparkles,
   PiggyBank,
   Gift,
+  Building2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink } from "@/components/NavLink";
@@ -43,6 +44,7 @@ const mainItems = [
   { title: "Telemarketing", url: "/dashboard/telemarketing", icon: Phone },
   { title: "Follow-ups", url: "/dashboard/followups", icon: CalendarClock },
   { title: "Usuários", url: "/dashboard/usuarios", icon: Users },
+  { title: "Setores", url: "/dashboard/setores", icon: Building2 },
   { title: "Relatórios", url: "/dashboard/relatorios", icon: BarChart3 },
   { title: "Caixa", url: "/dashboard/caixa", icon: PiggyBank },
   { title: "Doações Físicas", url: "/dashboard/doacoes-fisicas", icon: Gift },
