@@ -146,6 +146,7 @@ export async function gerarReciboPDF(data: ReciboData): Promise<void> {
 // ─────────────────────────────────────────────────────────────
 
 export interface ReciboFisicoData {
+  id: string;
   donor_name: string;
   tipo_doacao: string;
   subtipo?: string;
@@ -312,8 +313,18 @@ export async function gerarReciboFisicoPDF(data: ReciboFisicoData): Promise<void
   doc.text(`Status: ${statusLabel}`, margin, y);
   y += 16;
 
-  // ── ASSINATURA ─────────────────────────────────────────────
-  y = Math.max(y, 220);
+  // ── QR CODE DE VALIDAÇÃO (acima das assinaturas) ────────────
+  const qrUrl = `${BASE_URL}/validate-receipt/${data.id}`;
+  const qrDataUrl = await QRCode.toDataURL(qrUrl, { width: 150, margin: 1 });
+  const qrSize = 24;
+  const qrY = Math.min(y, 196);
+  doc.addImage(qrDataUrl, "PNG", pageW - margin - qrSize, qrY, qrSize, qrSize);
+  doc.setFontSize(7);
+  doc.setTextColor(150, 150, 150);
+  doc.text("Valide este recibo", pageW - margin - qrSize / 2, qrY + qrSize + 3, { align: "center" });
+
+  // ── ASSINATURAS ──────────────────────────────────────────────
+  y = Math.max(y, 234);
   doc.setDrawColor(100, 120, 160);
   doc.setLineWidth(0.4);
   doc.line(margin, y, margin + 70, y);
@@ -323,7 +334,7 @@ export async function gerarReciboFisicoPDF(data: ReciboFisicoData): Promise<void
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...grayColor);
   doc.text("Assinatura do Doador", margin + 35, y + 5, { align: "center" });
-  doc.text("Responsável pelo Recebimento", pageW - margin - 35, y + 5, { align: "center" });
+  doc.text("Coordenador Responsável pelo Recebimento", pageW - margin - 35, y + 5, { align: "center", maxWidth: 70 });
 
   // ── RODAPÉ ─────────────────────────────────────────────────
   const footerY = 282;

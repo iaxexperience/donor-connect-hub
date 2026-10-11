@@ -224,6 +224,7 @@ export default function DoacoesFisicas() {
     const parsedSetor = d.setor_destino || (d.observacoes?.match(/\[Destinação:\s*([^\]]+)\]/)?.[1]);
     try {
       await gerarReciboFisicoPDF({
+        id: d.id,
         donor_name: d.donor_name,
         tipo_doacao: d.tipo_doacao,
         subtipo: d.subtipo,
@@ -287,35 +288,55 @@ export default function DoacoesFisicas() {
       if (includeCreatedBy && user?.id) payload.created_by = user.id;
 
       // Tenta com colunas setor_id/setor_destino
-      let { error } = await supabase.from("doacoes_fisicas").insert({
+      let { data, error } = await supabase.from("doacoes_fisicas").insert({
         ...payload,
         setor_id: chosenSetor?.id ?? null,
         setor_destino: setorDestino ?? null,
-      });
+      }).select().single();
 
       // Fallback: banco sem as colunas de setor
       if (error && (error.code === 'PGRST204' || error.message.includes('column'))) {
-        ({ error } = await supabase.from("doacoes_fisicas").insert(payload));
+        ({ data, error } = await supabase.from("doacoes_fisicas").insert(payload).select().single());
       }
 
-      return error;
+      return { data, error };
     };
 
-    let error = await tryInsert(true);
+    let { data: created, error } = await tryInsert(true);
 
     // Se FK de created_by falhar (perfil não encontrado), tenta sem o campo
     if (error && (error.code === '23503' || error.message.toLowerCase().includes('created_by'))) {
-      error = await tryInsert(false);
+      ({ data: created, error } = await tryInsert(false));
     }
 
     if (error) {
       toast({ title: "Erro ao registrar", description: error.message, variant: "destructive" });
     } else {
-      toast({ 
-        title: "Doação registrada!", 
-        description: `${tipoConfig[tipoDoacao].label} de ${donorName}${chosenSetor ? ` → Destinada ao setor ${chosenSetor.nome}` : ""}` 
+      toast({
+        title: "Doação registrada!",
+        description: `${tipoConfig[tipoDoacao].label} de ${donorName}${chosenSetor ? ` → Destinada ao setor ${chosenSetor.nome}` : ""}`
       });
       resetForm(); setOpenDialog(false); fetchDoacoes();
+
+      // Emite automaticamente o PDF do recibo (com QR code e campos de assinatura)
+      if (created) {
+        const parsedSetor = created.setor_destino || setorDestino;
+        gerarReciboFisicoPDF({
+          id: created.id,
+          donor_name: created.donor_name,
+          tipo_doacao: created.tipo_doacao,
+          subtipo: created.subtipo,
+          descricao: created.descricao,
+          quantidade: created.quantidade,
+          setor_destino: parsedSetor || undefined,
+          observacoes: created.observacoes,
+          status: created.status,
+          created_at: created.created_at,
+          org: orgSettings,
+        }).catch(() => {
+          toast({ title: "Doação salva, mas houve erro ao gerar o PDF do recibo", variant: "destructive" });
+        });
+      }
     }
     setSaving(false);
   };

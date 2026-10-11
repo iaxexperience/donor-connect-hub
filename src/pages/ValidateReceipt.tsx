@@ -15,6 +15,28 @@ interface ReceiptData {
   created_at: string;
 }
 
+interface PhysicalReceiptData {
+  donor_name: string;
+  tipo_doacao: string;
+  subtipo?: string;
+  quantidade?: string;
+  setor_destino?: string;
+  status: string;
+  created_at: string;
+}
+
+const tipoDoacaoLabel: Record<string, string> = {
+  cabelo: "Doação de Cabelo",
+  fraldas_geriatricas: "Fraldas Geriátricas",
+  alimentos: "Alimentos",
+  remedios: "Remédios",
+  veiculo: "Veículo",
+  terreno: "Terreno",
+  casa: "Casa",
+  predio_comercial: "Prédio Comercial",
+  outro: "Outro",
+};
+
 const methodLabel: Record<string, string> = {
   dinheiro: "Dinheiro",
   pix: "Pix",
@@ -25,6 +47,7 @@ const methodLabel: Record<string, string> = {
 export default function ValidateReceipt() {
   const { hash } = useParams<{ hash: string }>();
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
+  const [physicalReceipt, setPhysicalReceipt] = useState<PhysicalReceiptData | null>(null);
   const [loading, setLoading] = useState(true);
   const [orgSettings, setOrgSettings] = useState<any>(null);
 
@@ -40,6 +63,18 @@ export default function ValidateReceipt() {
       ]);
       setReceipt(rec);
       setOrgSettings(org);
+
+      // Recibos de doações monetárias usam validation_hash; os de doações
+      // físicas (Alimentos, Remédios, etc.) são identificados pelo próprio id.
+      if (!rec) {
+        const { data: phys } = await supabase
+          .from("doacoes_fisicas")
+          .select("donor_name, tipo_doacao, subtipo, quantidade, setor_destino, status, created_at")
+          .eq("id", hash)
+          .maybeSingle();
+        setPhysicalReceipt(phys);
+      }
+
       setLoading(false);
     };
     if (hash) fetch();
