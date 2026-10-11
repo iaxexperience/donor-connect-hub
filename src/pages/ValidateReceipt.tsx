@@ -133,6 +133,25 @@ export default function ValidateReceipt() {
                 <Row label="Status" value="✅ Confirmado" />
               </div>
             </>
+          ) : physicalReceipt ? (
+            <>
+              <div className="flex items-center gap-3 mb-6">
+                <CheckCircle2 className="w-8 h-8 text-green-500 shrink-0" />
+                <div>
+                  <p className="font-bold text-green-700 text-lg">Recibo Válido</p>
+                  <p className="text-xs text-slate-400">Doação física autêntica, registrada por {orgSettings?.system_name || "Pulse Doações"}</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 bg-slate-50 rounded-2xl p-5">
+                <Row label="Doador" value={physicalReceipt.donor_name} bold />
+                <Row label="Tipo" value={tipoDoacaoLabel[physicalReceipt.tipo_doacao] || physicalReceipt.tipo_doacao} />
+                {physicalReceipt.quantidade && <Row label="Quantidade" value={physicalReceipt.quantidade} />}
+                {physicalReceipt.setor_destino && <Row label="Destinação" value={physicalReceipt.setor_destino} />}
+                <Row label="Data" value={format(new Date(physicalReceipt.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} />
+                <Row label="Status" value={physicalReceipt.status === "recebido" ? "✅ Recebido" : physicalReceipt.status === "pendente" ? "⏳ Pendente" : "❌ Cancelado"} />
+              </div>
+            </>
           ) : receipt && receipt.status === "pendente" ? (
             <div className="flex items-center gap-3">
               <XCircle className="w-8 h-8 text-orange-500 shrink-0" />
