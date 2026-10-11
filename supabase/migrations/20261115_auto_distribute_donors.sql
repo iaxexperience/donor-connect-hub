@@ -57,7 +57,7 @@ begin
     limit (v_op_count * p_count_per_operator)
   loop
     update donors set assigned_operator_id = v_op_ids[(v_idx % v_op_count) + 1] where id = v_donor.id;
-    update tmp_distrib set cnt = cnt + 1 where operator_id = v_op_ids[(v_idx % v_op_count) + 1];
+    update tmp_distrib set cnt = cnt + 1 where tmp_distrib.operator_id = v_op_ids[(v_idx % v_op_count) + 1];
     v_idx := v_idx + 1;
   end loop;
 
