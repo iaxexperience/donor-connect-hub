@@ -6,7 +6,8 @@
       "Bash(xargs grep *)",
       "Bash(npx supabase *)",
       "Bash(curl *)",
-      "Bash(npx vitest *)"
+      "Bash(npx vitest *)",
+      "Bash(git fetch *)"
     ]
   }
 }
