@@ -184,12 +184,14 @@ export default function Caixa() {
   // telemarketing etc.) — mescladas ao caixa só para exibição/totais, nunca
   // duplicadas: o Dashboard soma as duas tabelas separadamente em outro
   // lugar, então essas linhas aqui são só uma VIEW, não um registro novo.
+  // Caixa é sempre pessoal: cada usuário só vê o que ele mesmo
+  // registrou/coletou, sem exceção de papel (nem admin vê o de outros).
   const fetchDonationsPagas = async (start: string, end: string): Promise<Transacao[]> => {
+    if (!user?.id) return [];
     let donationIds: string[] | null = null;
 
     if (isMensageiro) {
-      if (!user?.id) return [];
-      // Mensageiro só vê promessas que ele mesmo coletou presencialmente.
+      // Mensageiro vê promessas que ele mesmo coletou presencialmente.
       const { data: routeData } = await supabase
         .from("routes")
         .select("courier_id,route_items(source_kind,source_id,receipts(status,confirmed_at))")
@@ -211,11 +213,16 @@ export default function Caixa() {
 
     let query = supabase
       .from("donations")
-      .select("id,donor_id,amount,payment_method,status,donation_date,confirmed_at,notes,donors(name,phone)")
+      .select("id,donor_id,amount,payment_method,status,donation_date,confirmed_at,notes,captured_by,donors(name,phone)")
       .eq("status", "pago")
       .gte("confirmed_at", start)
       .lte("confirmed_at", end);
-    if (donationIds) query = query.in("id", donationIds);
+    if (donationIds) {
+      query = query.in("id", donationIds);
+    } else {
+      // Demais papéis veem só as doações que eles mesmos captaram/registraram.
+      query = query.eq("captured_by", user.id);
+    }
 
     const { data, error } = await query;
     if (error) {
@@ -256,9 +263,9 @@ export default function Caixa() {
       .order("created_at", { ascending: false });
 
     if (filterMethod !== "todos") query = query.eq("payment_method", filterMethod);
-    // Mensageiro só vê as transações que ele mesmo registrou/coletou — não o
-    // caixa inteiro da organização.
-    if (isMensageiro && user?.id) query = query.eq("created_by", user.id);
+    // Caixa é sempre pessoal: cada usuário só vê as transações que ele mesmo
+    // registrou/coletou, independente do papel (sem visão geral da organização).
+    if (user?.id) query = query.eq("created_by", user.id);
 
     const [{ data, error }, donationsPagas] = await Promise.all([
       query,
@@ -296,13 +303,14 @@ export default function Caixa() {
   };
 
   const fetchCashierStatus = async () => {
-    if (isMensageiro && !user?.id) return;
+    if (!user?.id) return;
     setCashierLoading(true);
-    // Cada mensageiro tem seu próprio caixa diário (operator_id = ele mesmo),
-    // independente do caixa global da organização (operator_id nulo).
-    let query = supabase.from("caixas_dia").select("*").eq("data_movimento", filterDate);
-    query = isMensageiro ? query.eq("operator_id", user!.id) : query.is("operator_id", null);
-    const { data, error } = await query.maybeSingle();
+    // Cada usuário tem seu próprio caixa diário (operator_id = ele mesmo) —
+    // não existe mais um caixa global compartilhado pela organização.
+    const { data, error } = await supabase.from("caixas_dia").select("*")
+      .eq("data_movimento", filterDate)
+      .eq("operator_id", user.id)
+      .maybeSingle();
 
     if (error) {
       console.error("Erro ao buscar status do caixa:", error.message);
@@ -365,7 +373,7 @@ export default function Caixa() {
       data_movimento: filterDate,
       saldo_inicial: parseFloat(saldoInicial.replace(",", ".")) || 0,
       status: "aberto",
-      operator_id: isMensageiro ? user?.id : null,
+      operator_id: user?.id,
     });
 
     if (error) {
