@@ -28,6 +28,8 @@ import Caixa from "./pages/Caixa";
 import DoacoesFisicas from "./pages/DoacoesFisicas";
 import Setores from "./pages/Setores";
 import TransferenciaDoacoes from "./pages/TransferenciaDoacoes";
+import Rotas from "./pages/Rotas";
+import GestaoAtribuicoes from "./pages/GestaoAtribuicoes";
 import ValidateReceipt from "./pages/ValidateReceipt";
 import Documentacao from "./pages/Documentacao";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
@@ -109,6 +111,8 @@ const App = () => (
                     <Route path="caixa" element={<Caixa />} />
                     <Route path="doacoes-fisicas" element={<DoacoesFisicas />} />
                     <Route path="transferencia-doacoes" element={<TransferenciaDoacoes />} />
+                    <Route path="rotas" element={<Rotas />} />
+                    <Route path="atribuicoes" element={<GestaoAtribuicoes />} />
                   </Route>
                 </Route>
 
