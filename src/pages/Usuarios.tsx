@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Search, Shield, User, Mail, UserPlus, Loader2, Key, Smartphone, FileText, Eye, EyeOff, Check, X, Edit2, RotateCcw, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -66,21 +66,59 @@ const PasswordRequirement = ({ met, text }: { met: boolean; text: string }) => (
   </div>
 );
 
+// Rascunho do formulário de "Novo Usuário" salvo no navegador, para não se
+// perder se a página recarregar (atualização acidental, queda de conexão, etc.).
+const NEW_USER_DRAFT_KEY = "usuarios_novo_usuario_draft";
+
+const loadNewUserDraft = () => {
+  try {
+    const raw = localStorage.getItem(NEW_USER_DRAFT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
 const Usuarios = () => {
   const { profiles, isLoading, updateProfile } = useProfiles();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const draft = loadNewUserDraft();
+  const [isDialogOpen, setIsDialogOpen] = useState(!!draft);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingUser, setEditingUser] = useState<any>(null);
   const { toast } = useToast();
 
-  const [newName, setNewName] = useState("");
-  const [newEmail, setNewEmail] = useState("");
-  const [newCPF, setNewCPF] = useState("");
-  const [newPhone, setNewPhone] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [newName, setNewName] = useState(draft?.newName || "");
+  const [newEmail, setNewEmail] = useState(draft?.newEmail || "");
+  const [newCPF, setNewCPF] = useState(draft?.newCPF || "");
+  const [newPhone, setNewPhone] = useState(draft?.newPhone || "");
+  const [newPassword, setNewPassword] = useState(draft?.newPassword || "");
+  const [confirmPassword, setConfirmPassword] = useState(draft?.confirmPassword || "");
   const [showPassword, setShowPassword] = useState(false);
-  const [newRole, setNewRole] = useState<any>("");
+  const [newRole, setNewRole] = useState<any>(draft?.newRole || "");
+
+  useEffect(() => {
+    if (draft) {
+      toast({ title: "Rascunho restaurado", description: "Recuperamos os dados do usuário que você estava cadastrando." });
+    }
+    // Executa só uma vez, ao montar a página.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Salva o rascunho a cada alteração, só enquanto está CRIANDO um usuário novo
+  // (não durante edição de um usuário existente).
+  useEffect(() => {
+    if (editingUser || !isDialogOpen) return;
+    const hasContent = newName || newEmail || newCPF || newPhone || newPassword || newRole;
+    if (!hasContent) {
+      localStorage.removeItem(NEW_USER_DRAFT_KEY);
+      return;
+    }
+    localStorage.setItem(NEW_USER_DRAFT_KEY, JSON.stringify({
+      newName, newEmail, newCPF, newPhone, newPassword, confirmPassword, newRole,
+    }));
+  }, [newName, newEmail, newCPF, newPhone, newPassword, confirmPassword, newRole, editingUser, isDialogOpen]);
+
+  const clearNewUserDraft = () => localStorage.removeItem(NEW_USER_DRAFT_KEY);
 
   const passwordRules = {
     length: newPassword.length >= 8,
@@ -94,6 +132,7 @@ const Usuarios = () => {
 
   const handleOpenDialog = (user?: any) => {
     if (user) {
+      clearNewUserDraft();
       setEditingUser(user);
       setNewName(user.name);
       setNewEmail(user.email);
