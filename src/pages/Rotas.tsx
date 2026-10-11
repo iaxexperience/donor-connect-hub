@@ -142,30 +142,31 @@ export default function Rotas() {
     }
   };
 
-  // update_visit_status e transition_collection_receipt são duas chamadas
-  // separadas (não uma transação única): se a segunda falhar, a visita já
-  // fica marcada "coletado" mas o recibo/baixa financeira ficam pendentes.
-  // Esta função cobre tanto o fluxo normal quanto o retry desse caso preso.
-  const confirmarRecibo = async (item: RouteItem, receipt: Receipt) => {
-    const { error: recError } = await supabase.rpc("transition_collection_receipt", {
-      p_receipt: receipt.id, p_status: "confirmed", p_reason: null,
-    });
-    if (recError) throw recError;
+  // update_visit_status agora confirma o recibo e dá baixa na origem
+  // (doação física/dinheiro/promessa) na MESMA chamada, quando p_status é
+  // "coletado" — eliminando a dependência de uma segunda chamada separada
+  // que podia deixar o sistema num estado inconsistente. Chamar de novo com
+  // "coletado" numa visita já coletada serve como retry caso o recibo ainda
+  // esteja pendente de confirmação por algum motivo.
+  const marcarColetadoEImprimir = async (item: RouteItem, motivo?: string) => {
+    const { error } = await supabase.rpc("update_visit_status", { p_item: item.id, p_status: "coletado", p_reason: motivo || null });
+    if (error) throw error;
 
-    try {
-      await imprimirReciboColeta(item, receipt);
-    } catch (pdfError) {
-      console.error("Erro ao gerar recibo de coleta:", pdfError);
-      toast({ title: "Doação coletada, mas o recibo não pôde ser impresso", variant: "destructive" });
+    const receipt = item.receipts?.[0];
+    if (receipt) {
+      try {
+        await imprimirReciboColeta(item, { ...receipt, status: "confirmed", confirmed_at: receipt.confirmed_at || new Date().toISOString() });
+      } catch (pdfError) {
+        console.error("Erro ao gerar recibo de coleta:", pdfError);
+        toast({ title: "Doação coletada, mas o recibo não pôde ser impresso", variant: "destructive" });
+      }
     }
   };
 
   const handleConfirmarRecibo = async (item: RouteItem) => {
-    const receipt = item.receipts?.[0];
-    if (!receipt) return;
     setUpdating(item.id);
     try {
-      await confirmarRecibo(item, receipt);
+      await marcarColetadoEImprimir(item);
       toast({ title: "Recibo confirmado!" });
       fetchRoutes();
     } catch (error: any) {
@@ -178,13 +179,11 @@ export default function Rotas() {
   const applyStatus = async (item: RouteItem, status: RouteItem["visit_status"], motivo?: string) => {
     setUpdating(item.id);
     try {
-      const { error } = await supabase.rpc("update_visit_status", { p_item: item.id, p_status: status, p_reason: motivo || null });
-      if (error) throw error;
-
-      // Coletar a doação também confirma o recibo (baixa financeira) e
-      // imprime o recibo de coleta assinado pelo doador e pelo mensageiro.
-      if (status === "coletado" && item.receipts?.[0]?.id) {
-        await confirmarRecibo(item, item.receipts[0]);
+      if (status === "coletado") {
+        await marcarColetadoEImprimir(item, motivo);
+      } else {
+        const { error } = await supabase.rpc("update_visit_status", { p_item: item.id, p_status: status, p_reason: motivo || null });
+        if (error) throw error;
       }
 
       toast({ title: "Status atualizado!" });
