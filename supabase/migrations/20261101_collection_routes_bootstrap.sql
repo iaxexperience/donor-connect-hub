@@ -4,8 +4,9 @@
 -- (que nunca chegou a rodar por completo em produção — só
 -- "system_settings" existia) já incluindo o acesso do coordenador
 -- (can_manage_collection) desde o início. Seguro rodar quantas
--- vezes for preciso: tabelas com IF NOT EXISTS, funções com
--- CREATE OR REPLACE, policies com DROP + CREATE.
+-- vezes for preciso: tabelas com IF NOT EXISTS; policies e funções
+-- são removidas (na ordem certa de dependência, sem CASCADE) e
+-- recriadas do zero a cada execução.
 -- ============================================================
 begin;
 
@@ -40,9 +41,26 @@ create table if not exists public.receipt_events (
  actor_id uuid not null, event text not null, reason text, created_at timestamptz not null default now()
 );
 
-drop function if exists public.can_read_collection(uuid) cascade;
-drop function if exists public.can_manage_collection() cascade;
-drop function if exists public.collection_admin() cascade;
+alter table system_settings enable row level security;
+alter table routes enable row level security;
+alter table route_items enable row level security;
+alter table receipts enable row level security;
+alter table receipt_events enable row level security;
+
+-- Remove policies primeiro (elas dependem das funções abaixo).
+drop policy if exists settings_admin on system_settings;
+drop policy if exists routes_read on routes;
+drop policy if exists items_read on route_items;
+drop policy if exists receipts_read on receipts;
+drop policy if exists events_read on receipt_events;
+
+-- Remove funções na ordem inversa de dependência (quem chama, antes de quem é chamado).
+drop function if exists public.transition_collection_receipt(uuid,text,text);
+drop function if exists public.dispatch_collection(uuid,uuid,date,text,jsonb);
+drop function if exists public.collection_candidates();
+drop function if exists public.can_read_collection(uuid);
+drop function if exists public.can_manage_collection();
+drop function if exists public.collection_admin();
 
 create function public.collection_admin() returns boolean language sql stable security definer set search_path=public
 as $$ select exists(select 1 from profiles where id=auth.uid() and role='admin' and status='Ativo') $$;
@@ -52,31 +70,6 @@ as $$ select collection_admin() or exists(select 1 from profiles where id=auth.u
 
 create function public.can_read_collection(p_route uuid) returns boolean language sql stable security definer set search_path=public
 as $$ select can_manage_collection() or exists(select 1 from routes r join profiles p on p.id=r.courier_id where r.id=p_route and p.id=auth.uid() and p.role='motoboy' and p.status='Ativo') $$;
-
-alter table system_settings enable row level security;
-alter table routes enable row level security;
-alter table route_items enable row level security;
-alter table receipts enable row level security;
-alter table receipt_events enable row level security;
-
-drop policy if exists settings_admin on system_settings;
-create policy settings_admin on system_settings for all to authenticated using(collection_admin()) with check(collection_admin());
-drop policy if exists routes_read on routes;
-create policy routes_read on routes for select to authenticated using(can_read_collection(id));
-drop policy if exists items_read on route_items;
-create policy items_read on route_items for select to authenticated using(can_read_collection(route_id));
-drop policy if exists receipts_read on receipts;
-create policy receipts_read on receipts for select to authenticated using(exists(select 1 from route_items i where i.id=route_item_id and can_read_collection(i.route_id)));
-drop policy if exists events_read on receipt_events;
-create policy events_read on receipt_events for select to authenticated using(can_manage_collection());
-
-revoke all on routes,route_items,receipts,receipt_events from anon,authenticated;
-grant select on routes,route_items,receipts,receipt_events to authenticated;
-grant select,update on system_settings to authenticated;
-
-drop function if exists public.collection_candidates() cascade;
-drop function if exists public.dispatch_collection(uuid,uuid,date,text,jsonb) cascade;
-drop function if exists public.transition_collection_receipt(uuid,text,text) cascade;
 
 create function public.collection_candidates() returns table(source_kind text,source_id uuid,snapshot jsonb)
 language sql stable security definer set search_path=public as $$
@@ -142,6 +135,16 @@ begin
  update receipts set status=p_status,confirmed_at=case when p_status='confirmed' then now() else confirmed_at end where id=p_receipt;
  insert into receipt_events(receipt_id,actor_id,event,reason) values(p_receipt,auth.uid(),p_status,p_reason);
 end $$;
+
+create policy settings_admin on system_settings for all to authenticated using(collection_admin()) with check(collection_admin());
+create policy routes_read on routes for select to authenticated using(can_read_collection(id));
+create policy items_read on route_items for select to authenticated using(can_read_collection(route_id));
+create policy receipts_read on receipts for select to authenticated using(exists(select 1 from route_items i where i.id=route_item_id and can_read_collection(i.route_id)));
+create policy events_read on receipt_events for select to authenticated using(can_manage_collection());
+
+revoke all on routes,route_items,receipts,receipt_events from anon,authenticated;
+grant select on routes,route_items,receipts,receipt_events to authenticated;
+grant select,update on system_settings to authenticated;
 
 revoke all on function collection_candidates(),dispatch_collection(uuid,uuid,date,text,jsonb),transition_collection_receipt(uuid,text,text) from public;
 grant execute on function collection_candidates(),dispatch_collection(uuid,uuid,date,text,jsonb),transition_collection_receipt(uuid,text,text) to authenticated;
