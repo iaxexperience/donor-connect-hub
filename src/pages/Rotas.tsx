@@ -99,6 +99,49 @@ export default function Rotas() {
 
   useEffect(() => { fetchRoutes(); }, []);
 
+  const imprimirReciboColeta = async (item: RouteItem, receipt: Receipt) => {
+    const { data: verifyData } = await supabase.functions.invoke("collection-receipts", { body: { action: "routes" } });
+    const verificationUrl = (verifyData || [])
+      .flatMap((r: any) => r.route_items || [])
+      .find((i: any) => i.id === item.id)
+      ?.receipts?.find((r: any) => r.id === receipt.id)?.verification_url;
+
+    await gerarReciboColetaPDF({
+      receipt_number: receipt.number,
+      verification_url: verificationUrl || window.location.origin,
+      donor_name: item.snapshot.donor_name,
+      donor_address: item.snapshot.address,
+      donor_phone: item.snapshot.phone,
+      description: item.snapshot.description,
+      quantity: item.snapshot.quantity,
+      amount: item.snapshot.amount,
+      courier_name: receipt.courier?.name || "—",
+      courier_document: receipt.courier?.document,
+      collected_at: receipt.confirmed_at || new Date().toISOString(),
+      org: {
+        system_name: receipt.organization?.name,
+        logo_url: receipt.organization?.logo_url,
+        cnpj: receipt.organization?.cnpj,
+        address: receipt.organization?.address,
+        phone: receipt.organization?.phone,
+        email: receipt.organization?.email,
+      },
+    });
+  };
+
+  const handleReimprimir = async (item: RouteItem) => {
+    const receipt = item.receipts?.[0];
+    if (!receipt) return;
+    setUpdating(item.id);
+    try {
+      await imprimirReciboColeta(item, receipt);
+    } catch (error: any) {
+      toast({ title: "Erro ao reimprimir recibo", description: error.message, variant: "destructive" });
+    } finally {
+      setUpdating(null);
+    }
+  };
+
   const applyStatus = async (item: RouteItem, status: RouteItem["visit_status"], motivo?: string) => {
     setUpdating(item.id);
     try {
@@ -115,33 +158,7 @@ export default function Rotas() {
         if (recError) throw recError;
 
         try {
-          const { data: verifyData } = await supabase.functions.invoke("collection-receipts", { body: { action: "routes" } });
-          const verificationUrl = (verifyData || [])
-            .flatMap((r: any) => r.route_items || [])
-            .find((i: any) => i.id === item.id)
-            ?.receipts?.find((r: any) => r.id === receipt.id)?.verification_url;
-
-          await gerarReciboColetaPDF({
-            receipt_number: receipt.number,
-            verification_url: verificationUrl || window.location.origin,
-            donor_name: item.snapshot.donor_name,
-            donor_address: item.snapshot.address,
-            donor_phone: item.snapshot.phone,
-            description: item.snapshot.description,
-            quantity: item.snapshot.quantity,
-            amount: item.snapshot.amount,
-            courier_name: receipt.courier?.name || "—",
-            courier_document: receipt.courier?.document,
-            collected_at: new Date().toISOString(),
-            org: {
-              system_name: receipt.organization?.name,
-              logo_url: receipt.organization?.logo_url,
-              cnpj: receipt.organization?.cnpj,
-              address: receipt.organization?.address,
-              phone: receipt.organization?.phone,
-              email: receipt.organization?.email,
-            },
-          });
+          await imprimirReciboColeta(item, receipt);
         } catch (pdfError) {
           console.error("Erro ao gerar recibo de coleta:", pdfError);
           toast({ title: "Doação coletada, mas o recibo não pôde ser impresso", variant: "destructive" });
@@ -275,6 +292,11 @@ export default function Rotas() {
                           {action.label}
                         </Button>
                       ))}
+                      {receipt?.status === "confirmed" && (
+                        <Button size="sm" variant="outline" disabled={updating === item.id} onClick={() => handleReimprimir(item)}>
+                          <FileText className="w-3.5 h-3.5 mr-1" /> Reimprimir recibo
+                        </Button>
+                      )}
                       {!isMensageiro && receipt?.status === "issued" && (
                         <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleCancelReceipt(item)}>
                           <AlertTriangle className="w-3.5 h-3.5 mr-1" /> Cancelar recibo
