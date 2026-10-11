@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Pulse Doações</string>
+    <string name="title_activity_main">Pulse Doações</string>
+    <string name="package_name">br.com.hospitaldafap.pulsedoacoes</string>
+    <string name="custom_url_scheme">br.com.hospitaldafap.pulsedoacoes</string>
+</resources>
