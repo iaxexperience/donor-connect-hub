@@ -91,7 +91,8 @@ const formatCurrency = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
 export default function Caixa() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const isMensageiro = role === "motoboy";
   const { toast } = useToast();
 
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
@@ -187,6 +188,9 @@ export default function Caixa() {
       .order("created_at", { ascending: false });
 
     if (filterMethod !== "todos") query = query.eq("payment_method", filterMethod);
+    // Mensageiro só vê as transações que ele mesmo registrou/coletou — não o
+    // caixa inteiro da organização.
+    if (isMensageiro && user?.id) query = query.eq("created_by", user.id);
 
     const { data, error } = await query;
 
@@ -217,12 +221,13 @@ export default function Caixa() {
   };
 
   const fetchCashierStatus = async () => {
+    if (isMensageiro && !user?.id) return;
     setCashierLoading(true);
-    const { data, error } = await supabase
-      .from("caixas_dia")
-      .select("*")
-      .eq("data_movimento", filterDate)
-      .maybeSingle();
+    // Cada mensageiro tem seu próprio caixa diário (operator_id = ele mesmo),
+    // independente do caixa global da organização (operator_id nulo).
+    let query = supabase.from("caixas_dia").select("*").eq("data_movimento", filterDate);
+    query = isMensageiro ? query.eq("operator_id", user!.id) : query.is("operator_id", null);
+    const { data, error } = await query.maybeSingle();
 
     if (error) {
       console.error("Erro ao buscar status do caixa:", error.message);
@@ -235,7 +240,7 @@ export default function Caixa() {
   useEffect(() => {
     fetchTransacoes();
     fetchCashierStatus();
-  }, [filterDate, filterMethod]);
+  }, [filterDate, filterMethod, user?.id]);
 
   const handleSave = async () => {
     if (cashierData?.status === "fechado") {
