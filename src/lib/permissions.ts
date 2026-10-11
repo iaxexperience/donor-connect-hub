@@ -12,7 +12,8 @@ export function canAccessPage(role: AppRole | null, path: string): boolean {
   if (role === 'operador') return page === '/dashboard/telemarketing';
   if (role === 'motoboy') return ['/dashboard/caixa', '/dashboard/rotas'].includes(page);
   if (page === '/dashboard/usuarios') return role === 'coordenador';
-  if (page === '/dashboard/rotas') return false;
+  if (page === '/dashboard/rotas') return role === 'coordenador';
+  if (page === '/dashboard/atribuicoes') return role === 'coordenador';
   if (page === '/dashboard/relatorios') return role === 'gestor' || role === 'coordenador';
   if (page === '/dashboard/configuracoes') return role === 'gestor';
   if (['/dashboard/whatsapp', '/dashboard/asaas', '/dashboard/bb', '/dashboard/api-aberta', '/dashboard/api-documentacao', '/dashboard/integracoes'].includes(page)) {
