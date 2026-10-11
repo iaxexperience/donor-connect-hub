@@ -1,5 +1,5 @@
 {
-  "geradoEm": "2026-10-11T20:13:52.935Z",
+  "geradoEm": "2026-10-11T20:14:21.534Z",
   "totalLinhasBrutas": 7164,
   "totalDoadoresUnicos": 6936,
   "somaTotal": 266671.35,
@@ -67,8 +67,9 @@
       "sumOk": true
     }
   },
-  "linhasNaoReconhecidas": 1,
+  "linhasNaoReconhecidas": 2,
   "amostraLinhasNaoReconhecidas": [
+    ";;;;08/10/2026 10:52:50",
     ";;     7164            266.671,35                                                                                                                                                                                             ;;"
   ],
   "doadoresComMultiplasDoacoes": 152,
@@ -149,7 +150,7 @@
   ],
   "amostraPrimeirosDoadores": [
     {
-      "nome": "JOSÃ DOS SANTOS",
+      "nome": "JOSÉ DOS SANTOS",
       "qtd": 2
     },
     {
@@ -177,7 +178,7 @@
       "qtd": 1
     },
     {
-      "nome": "JOSE VALENÃA NEVES FILHO",
+      "nome": "JOSE VALENÇA NEVES FILHO",
       "qtd": 1
     },
     {

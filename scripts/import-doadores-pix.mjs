@@ -21,7 +21,7 @@ const REPORT_OUT = path.join(OUT_DIR, "import_report.json");
 
 fs.mkdirSync(OUT_DIR, { recursive: true });
 
-const raw = fs.readFileSync(RAW_PATH, "latin1"); // relatório legado em windows-1252/latin1
+const raw = fs.readFileSync(RAW_PATH, "utf8"); // relatório legado em UTF-8
 const lines = raw.split(/\r?\n/);
 
 // Linha de doação válida: contém "<letra E/A/B/C> <espaços> 14 <espaço>" logo após o nome.
