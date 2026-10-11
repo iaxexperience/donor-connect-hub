@@ -286,6 +286,31 @@ const Usuarios = () => {
     }
   };
 
+  const handleDeactivateUser = async (user: any) => {
+    const aviso = user.role === "operador"
+      ? `A carteira de doadores de ${user.name} será redistribuída automaticamente entre os demais operadores ativos. Deseja desativar?`
+      : `Deseja desativar o usuário ${user.name}?`;
+    if (!window.confirm(aviso)) return;
+    try {
+      await updateProfile({
+        id: user.id,
+        status: 'Inativo'
+      });
+      toast({
+        title: "Usuário Desativado",
+        description: user.role === "operador"
+          ? `${user.name} foi desativado e a carteira dele já foi redistribuída.`
+          : `${user.name} foi desativado.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao desativar",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const filteredUsers = profiles.filter((user) =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
