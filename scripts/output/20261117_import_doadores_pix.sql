@@ -1,6 +1,6 @@
 -- ============================================================
 -- Importação do extrato legado "doadores pix, depositos e presenciais"
--- Gerado automaticamente por scripts/import-doadores-pix.mjs em 2026-10-11T20:14:21.530Z
+-- Gerado automaticamente por scripts/import-doadores-pix.mjs em 2026-10-11T20:17:26.045Z
 --
 -- Resumo:
 --   7164 doações brutas (linhas do relatório legado)
@@ -11,14 +11,14 @@
 --
 -- O que este script faz:
 --   1. Cria uma tabela temporária com as 7164 doações brutas.
---   2. Cria um doador novo (status 'lead', telefone vazio) para cada NOME
---      que ainda NÃO existe na tabela donors (match exato por nome) --
---      evita duplicar quem já está cadastrado.
+--   2. Cria 1 doador NOVO (status 'lead', telefone vazio) para cada NOME
+--      distinto deste arquivo -- não cruza com doadores já cadastrados no
+--      sistema, mesmo que o nome seja idêntico (ver observação abaixo).
 --   3. Insere uma linha em "donations" para CADA doação bruta, ligada ao
---      doador (novo ou já existente) pelo nome. O trigger já existente
---      (tr_on_donation_change) recalcula automaticamente total_donated,
---      donation_count, last_donation_date e o tipo (lead/único/esporádico/
---      recorrente) de cada doador.
+--      doador recém-criado. O trigger já existente (tr_on_donation_change)
+--      recalcula automaticamente total_donated, donation_count,
+--      last_donation_date e o tipo (lead/único/esporádico/recorrente) de
+--      cada doador.
 --
 -- Observações importantes:
 --   - Método de pagamento gravado como 'pix' em todas as linhas.
@@ -30,6 +30,11 @@
 --   - Deduplicação só por nome EXATO (acentuação/maiúsculas já
 --     normalizadas); nomes com pequenas variações de escrita não são
 --     fundidos automaticamente.
+--   - Não cruza com doadores já cadastrados no sistema: se algum dos
+--     6936 nomes já existir, este import cria um perfil novo
+--     (duplicado) em vez de anexar o histórico ao perfil existente --
+--     escolha deliberada para não misturar o histórico de PIX com o de
+--     outra pessoa que só por coincidência tenha o mesmo nome.
 -- ============================================================
 
 begin;
@@ -7234,19 +7239,23 @@ insert into stg_import_doadores_pix (nome, valor, data_doacao) values
   ('VALERIA PEREIRA BARBOSA D', 40.00, '2024-08-09'),
   ('JOANA MARIA', 8.00, '2024-06-27');
 
--- Cria doadores novos (1 por nome distinto), pulando quem já existe
-insert into donors (name, phone, type)
-select s.nome, '', 'lead'::donor_type
-from (select distinct nome from stg_import_doadores_pix) s
-where not exists (select 1 from donors d where d.name = s.nome)
-group by s.nome;
-
--- Lança cada doação bruta no histórico, ligada ao doador pelo nome
+-- Cria 1 doador NOVO para cada nome distinto deste arquivo. Não cruza
+-- com doadores já existentes no sistema, mesmo que o nome seja idêntico --
+-- evita o risco de juntar o histórico desses PIX com o de outra pessoa que
+-- por coincidência tenha o mesmo nome (comum em nomes como "MARIA JOSE DA
+-- SILVA"). Se preferir cruzar com a base já cadastrada depois, dá pra gerar
+-- um relatório de possíveis duplicados (mesmo nome) para revisão manual.
+with novos as (
+  insert into donors (name, phone, type)
+  select distinct nome, '', 'lead'::donor_type from stg_import_doadores_pix
+  returning id, name
+)
+-- Lança cada doação bruta no histórico, ligada ao doador recém-criado
 -- (o trigger tr_on_donation_change recalcula tipo/total/contagem sozinho)
 insert into donations (donor_id, amount, payment_method, status, donation_date)
-select d.id, s.valor, 'pix', 'pago', coalesce(s.data_doacao, current_date)
+select novos.id, s.valor, 'pix', 'pago', coalesce(s.data_doacao, current_date)
 from stg_import_doadores_pix s
-join donors d on d.name = s.nome;
+join novos on novos.name = s.nome;
 
 commit;
 

@@ -144,14 +144,14 @@ let sql = `-- ============================================================
 --
 -- O que este script faz:
 --   1. Cria uma tabela temporária com as ${rows.length} doações brutas.
---   2. Cria um doador novo (status 'lead', telefone vazio) para cada NOME
---      que ainda NÃO existe na tabela donors (match exato por nome) --
---      evita duplicar quem já está cadastrado.
+--   2. Cria 1 doador NOVO (status 'lead', telefone vazio) para cada NOME
+--      distinto deste arquivo -- não cruza com doadores já cadastrados no
+--      sistema, mesmo que o nome seja idêntico (ver observação abaixo).
 --   3. Insere uma linha em "donations" para CADA doação bruta, ligada ao
---      doador (novo ou já existente) pelo nome. O trigger já existente
---      (tr_on_donation_change) recalcula automaticamente total_donated,
---      donation_count, last_donation_date e o tipo (lead/único/esporádico/
---      recorrente) de cada doador.
+--      doador recém-criado. O trigger já existente (tr_on_donation_change)
+--      recalcula automaticamente total_donated, donation_count,
+--      last_donation_date e o tipo (lead/único/esporádico/recorrente) de
+--      cada doador.
 --
 -- Observações importantes:
 --   - Método de pagamento gravado como 'pix' em todas as linhas.
@@ -163,6 +163,11 @@ let sql = `-- ============================================================
 --   - Deduplicação só por nome EXATO (acentuação/maiúsculas já
 --     normalizadas); nomes com pequenas variações de escrita não são
 --     fundidos automaticamente.
+--   - Não cruza com doadores já cadastrados no sistema: se algum dos
+--     ${donors.length} nomes já existir, este import cria um perfil novo
+--     (duplicado) em vez de anexar o histórico ao perfil existente --
+--     escolha deliberada para não misturar o histórico de PIX com o de
+--     outra pessoa que só por coincidência tenha o mesmo nome.
 -- ============================================================
 
 begin;
@@ -187,35 +192,23 @@ for (let i = 0; i < rows.length; i += BATCH) {
   sql += ";\n\n";
 }
 
--- Cria 1 doador NOVO para cada nome distinto deste arquivo. Não cruza com
--- doadores já existentes no sistema (mesmo que o nome seja idêntico) --
+sql += `-- Cria 1 doador NOVO para cada nome distinto deste arquivo. Não cruza
+-- com doadores já existentes no sistema, mesmo que o nome seja idêntico --
 -- evita o risco de juntar o histórico desses PIX com o de outra pessoa que
 -- por coincidência tenha o mesmo nome (comum em nomes como "MARIA JOSE DA
--- SILVA"). Se preferir cruzar com a base já cadastrada, me avise depois --
--- dá pra gerar um relatório de possíveis duplicados para revisão manual.
-sql += `create temporary table stg_novos_doadores (
-  nome text primary key,
-  donor_id integer
-) on commit drop;
-
-insert into stg_novos_doadores (nome)
-select distinct nome from stg_import_doadores_pix;
-
-insert into donors (name, phone, type)
-select nome, '', 'lead'::donor_type from stg_novos_doadores
-returning name, id;
-
-update stg_novos_doadores nd
-set donor_id = d.id
-from donors d
-where d.name = nd.nome;
-
+-- SILVA"). Se preferir cruzar com a base já cadastrada depois, dá pra gerar
+-- um relatório de possíveis duplicados (mesmo nome) para revisão manual.
+with novos as (
+  insert into donors (name, phone, type)
+  select distinct nome, '', 'lead'::donor_type from stg_import_doadores_pix
+  returning id, name
+)
 -- Lança cada doação bruta no histórico, ligada ao doador recém-criado
 -- (o trigger tr_on_donation_change recalcula tipo/total/contagem sozinho)
 insert into donations (donor_id, amount, payment_method, status, donation_date)
-select nd.donor_id, s.valor, 'pix', 'pago', coalesce(s.data_doacao, current_date)
+select novos.id, s.valor, 'pix', 'pago', coalesce(s.data_doacao, current_date)
 from stg_import_doadores_pix s
-join stg_novos_doadores nd on nd.nome = s.nome;
+join novos on novos.name = s.nome;
 
 commit;
 
