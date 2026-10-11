@@ -30,6 +30,8 @@ import Setores from "./pages/Setores";
 import TransferenciaDoacoes from "./pages/TransferenciaDoacoes";
 import Rotas from "./pages/Rotas";
 import GestaoAtribuicoes from "./pages/GestaoAtribuicoes";
+import MinhasCaptacoes from "./pages/MinhasCaptacoes";
+import DoacoesRecebidas from "./pages/DoacoesRecebidas";
 import ValidateReceipt from "./pages/ValidateReceipt";
 import Documentacao from "./pages/Documentacao";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
@@ -113,6 +115,8 @@ const App = () => (
                     <Route path="transferencia-doacoes" element={<TransferenciaDoacoes />} />
                     <Route path="rotas" element={<Rotas />} />
                     <Route path="atribuicoes" element={<GestaoAtribuicoes />} />
+                    <Route path="minhas-captacoes" element={<MinhasCaptacoes />} />
+                    <Route path="doacoes-recebidas" element={<DoacoesRecebidas />} />
                   </Route>
                 </Route>
 

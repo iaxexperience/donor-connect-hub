@@ -42,6 +42,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, addDays } from "date-fns";
 import type { Donor } from "@/lib/donationService";
+import { useAuth } from "@/contexts/AuthContext";
 
 type CallResult = "atendeu" | "nao_atendeu" | "prometeu" | "sem_interesse";
 
@@ -59,6 +60,7 @@ const callResultOptions: { value: CallResult; label: string; icon: React.ReactNo
 
 const Telemarketing = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { queue, stats: dynamicStats, isLoading } = useTelemarketing();
   const { campaigns, isLoading: campaignsLoading } = useCampaigns();
   const { createFollowUp } = useFollowUps();
@@ -168,6 +170,7 @@ const Telemarketing = () => {
             payment_method: paymentMethod || "Pix",
             status: donationStatus,
             donation_date: new Date().toISOString(),
+            captured_by: user?.id,
             notes: donationBank ? `[Banco: ${donationBank === 'asaas' ? 'Asaas' : donationBank === 'banco_brasil' ? 'Banco do Brasil' : donationBank}]` : undefined,
           }]);
 

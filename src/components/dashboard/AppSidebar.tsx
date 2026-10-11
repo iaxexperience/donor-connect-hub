@@ -21,6 +21,8 @@ import {
   Building2,
   ArrowRightLeft,
   ListChecks,
+  HeartHandshake,
+  PackageCheck,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink } from "@/components/NavLink";
@@ -46,6 +48,7 @@ const mainItems = [
   { title: "Kanban", url: "/dashboard/kanbam", icon: GitMerge },
   { title: "Campanhas", url: "/dashboard/campanhas", icon: Megaphone },
   { title: "Telemarketing", url: "/dashboard/telemarketing", icon: Phone },
+  { title: "Minhas Captações", url: "/dashboard/minhas-captacoes", icon: HeartHandshake },
   { title: "Follow-ups", url: "/dashboard/followups", icon: CalendarClock },
   { title: "Usuários", url: "/dashboard/usuarios", icon: Users },
   { title: "Setores", url: "/dashboard/setores", icon: Building2 },
@@ -53,6 +56,7 @@ const mainItems = [
   { title: "Caixa", url: "/dashboard/caixa", icon: PiggyBank },
   { title: "Doações Físicas", url: "/dashboard/doacoes-fisicas", icon: Gift },
   { title: "Rotas de Coleta", url: "/dashboard/rotas", icon: ArrowRightLeft },
+  { title: "Doações Recebidas", url: "/dashboard/doacoes-recebidas", icon: PackageCheck },
   { title: "Gestão de Atribuições", url: "/dashboard/atribuicoes", icon: ListChecks },
   { title: "Transferência", url: "/dashboard/transferencia-doacoes", icon: ArrowRightLeft },
 ];
