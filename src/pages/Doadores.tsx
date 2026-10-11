@@ -204,13 +204,6 @@ const Doadores = () => {
           }
 
           const formattedDonors = data.slice(startIndex).map((row: any) => {
-            const rawType = normalizeString((row[columns.type] || "lead").toString());
-            let finalType: "lead" | "unico" | "esporadico" | "recorrente" = "lead";
-            
-            if (rawType.includes("recorrente")) finalType = "recorrente";
-            else if (rawType.includes("esporadico") || rawType.includes("esporadica")) finalType = "esporadico";
-            else if (rawType.includes("unico") || rawType.includes("unica")) finalType = "unico";
-
             return {
               name: (row[columns.name] || "Doador sem Nome").toString().trim(),
               email: (row[columns.email] && row[columns.email].toString().includes("@"))
@@ -218,7 +211,8 @@ const Doadores = () => {
                 : null,
               phone: (row[columns.phone] || "").toString().replace(/\D/g, ""),
               document_id: row[columns.document_id] || null,
-              type: finalType,
+              // Regra: todo doador importado via CSV entra como recorrente, independente do valor na coluna "tipo" do arquivo
+              type: "recorrente" as const,
               last_donation_date: formatDateToISO(row[columns.last_donation_date]),
               birth_date: formatDateToISO(row[columns.birth_date]),
               zip_code: row[columns.zip_code] || null,
