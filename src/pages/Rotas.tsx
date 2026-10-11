@@ -34,7 +34,9 @@ interface RouteItem {
   priority: "baixa" | "normal" | "alta" | "urgente";
   scheduled_time: string | null;
   visit_status: "aguardando" | "em_deslocamento" | "em_atendimento" | "coletado" | "sem_sucesso" | "reagendada" | "cancelada";
-  receipts: Receipt[];
+  // O Supabase/PostgREST retorna isto como objeto único (não array), já que
+  // receipts.route_item_id tem constraint UNIQUE (relação um-para-um).
+  receipts: Receipt | null;
 }
 
 interface Route {
@@ -130,7 +132,7 @@ export default function Rotas() {
   };
 
   const handleReimprimir = async (item: RouteItem) => {
-    const receipt = item.receipts?.[0];
+    const receipt = item.receipts;
     if (!receipt) return;
     setUpdating(item.id);
     try {
@@ -152,7 +154,7 @@ export default function Rotas() {
     const { error } = await supabase.rpc("update_visit_status", { p_item: item.id, p_status: "coletado", p_reason: motivo || null });
     if (error) throw error;
 
-    const receipt = item.receipts?.[0];
+    const receipt = item.receipts;
     if (receipt) {
       try {
         await imprimirReciboColeta(item, { ...receipt, status: "confirmed", confirmed_at: receipt.confirmed_at || new Date().toISOString() });
@@ -211,7 +213,7 @@ export default function Rotas() {
   };
 
   const handleCancelReceipt = async (item: RouteItem) => {
-    const receipt = item.receipts?.[0];
+    const receipt = item.receipts;
     if (!receipt) return;
     const motivo = window.prompt("Motivo do cancelamento (mín. 5 caracteres):");
     if (!motivo || motivo.trim().length < 5) {
@@ -262,7 +264,7 @@ export default function Rotas() {
             <CardContent className="space-y-3">
               {route.route_items.sort((a, b) => a.position - b.position).map(item => {
                 const meta = visitStatusMeta[item.visit_status];
-                const receipt = item.receipts?.[0];
+                const receipt = item.receipts;
                 return (
                   <div key={item.id} className="border rounded-xl p-4 space-y-2">
                     <div className="flex items-start justify-between gap-3 flex-wrap">
