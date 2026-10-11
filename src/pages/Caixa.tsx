@@ -499,9 +499,11 @@ export default function Caixa() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-heading font-black text-3xl text-slate-900 tracking-tight flex items-center gap-2">
-            <Wallet className="w-8 h-8 text-primary" /> Caixa de Doações
+            <Wallet className="w-8 h-8 text-primary" /> {isMensageiro ? "Meu Caixa" : "Caixa de Doações"}
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Controle de recebimentos e movimentação diária.</p>
+          <p className="text-slate-500 text-sm mt-1">
+            {isMensageiro ? "Seu caixa pessoal — só suas próprias doações coletadas." : "Controle de recebimentos e movimentação diária."}
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="ghost" className="gap-2 rounded-xl" onClick={fetchTransacoes} disabled={loading}>
