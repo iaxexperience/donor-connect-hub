@@ -781,4 +781,6 @@ function loadImage(url: string): Promise<string> {
       resolve(canvas.toDataURL("image/png"));
     };
     img.onerror = reject;
-    img.src = url
+    img.src = url;
+  });
+}
