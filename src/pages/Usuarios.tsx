@@ -156,10 +156,19 @@ const Usuarios = () => {
   };
 
   const handleCreateUser = async () => {
-    if (!newName || !newEmail || !newRole || (!editingUser && !newPassword)) {
+    if (!newName || !newCPF || !newPhone || !newEmail || !newRole || (!editingUser && !newPassword)) {
       toast({
         title: "Campos obrigatórios",
-        description: "Preencha os campos essenciais para cadastrar o usuário.",
+        description: "Nome, CPF, telefone, e-mail, senha e papel são obrigatórios para cadastrar o usuário.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newCPF.replace(/\D/g, "").length !== 11) {
+      toast({
+        title: "CPF inválido",
+        description: "Informe um CPF completo (11 dígitos).",
         variant: "destructive",
       });
       return;
@@ -310,7 +319,7 @@ const Usuarios = () => {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome Completo</Label>
+                <Label htmlFor="name">Nome Completo *</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
@@ -324,7 +333,7 @@ const Usuarios = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="cpf">CPF</Label>
+                  <Label htmlFor="cpf">CPF *</Label>
                   <div className="relative">
                     <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
@@ -337,7 +346,7 @@ const Usuarios = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone</Label>
+                  <Label htmlFor="phone">Telefone *</Label>
                   <div className="relative">
                     <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
@@ -351,7 +360,7 @@ const Usuarios = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
+                <Label htmlFor="email">E-mail *</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
