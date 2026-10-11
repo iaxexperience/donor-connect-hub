@@ -314,6 +314,11 @@ export default function Rotas() {
                           {action.label}
                         </Button>
                       ))}
+                      {item.visit_status === "coletado" && receipt?.status === "issued" && (
+                        <Button size="sm" variant="default" disabled={updating === item.id} onClick={() => handleConfirmarRecibo(item)}>
+                          <AlertTriangle className="w-3.5 h-3.5 mr-1" /> Confirmar recibo pendente
+                        </Button>
+                      )}
                       {receipt?.status === "confirmed" && (
                         <Button size="sm" variant="outline" disabled={updating === item.id} onClick={() => handleReimprimir(item)}>
                           <FileText className="w-3.5 h-3.5 mr-1" /> Reimprimir recibo
