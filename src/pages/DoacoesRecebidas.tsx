@@ -23,7 +23,7 @@ interface Receipt {
 interface RouteItem {
   id: string;
   source_kind: "physical" | "cash" | "pledge";
-  snapshot: { donor_name: string; description?: string; quantity?: string; amount?: number };
+  snapshot: { donor_name: string; description?: string; quantity?: string; amount?: number; neighborhood?: string; city?: string };
   visit_status: string;
   receipts: Receipt[];
 }
@@ -53,6 +53,9 @@ export default function DoacoesRecebidas() {
   const [loading, setLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [donorSearch, setDonorSearch] = useState("");
+  const [bairroFilter, setBairroFilter] = useState("");
+  const [cidadeFilter, setCidadeFilter] = useState("");
 
   const fetchReceived = async () => {
     if (!user?.id) return;
