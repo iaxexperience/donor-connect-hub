@@ -290,6 +290,7 @@ export default function Caixa() {
       data_movimento: filterDate,
       saldo_inicial: parseFloat(saldoInicial.replace(",", ".")) || 0,
       status: "aberto",
+      operator_id: isMensageiro ? user?.id : null,
     });
 
     if (error) {
@@ -312,7 +313,7 @@ export default function Caixa() {
       boleto: confirmadas.filter(t => t.payment_method === "boleto").reduce((s, t) => s + t.amount, 0),
     };
 
-    const { error } = await supabase.from("caixas_dia").update({
+    let fecharQuery = supabase.from("caixas_dia").update({
       status: "fechado",
       total_dinheiro: totals.dinheiro,
       total_pix: totals.pix,
@@ -324,6 +325,8 @@ export default function Caixa() {
       fechado_em: new Date().toISOString(),
       observacoes: closingNotes.trim() || null,
     }).eq("data_movimento", filterDate);
+    fecharQuery = isMensageiro ? fecharQuery.eq("operator_id", user!.id) : fecharQuery.is("operator_id", null);
+    const { error } = await fecharQuery;
 
     if (error) {
       toast({ title: "Erro ao fechar caixa", description: error.message, variant: "destructive" });
@@ -338,11 +341,13 @@ export default function Caixa() {
 
   const handleReabrirCaixa = async () => {
     setSaving(true);
-    const { error } = await supabase.from("caixas_dia").update({
+    let reabrirQuery = supabase.from("caixas_dia").update({
       status: "aberto",
       fechado_por: null,
       fechado_em: null,
     }).eq("data_movimento", filterDate);
+    reabrirQuery = isMensageiro ? reabrirQuery.eq("operator_id", user!.id) : reabrirQuery.is("operator_id", null);
+    const { error } = await reabrirQuery;
 
     if (error) {
       toast({ title: "Erro ao reabrir", description: error.message, variant: "destructive" });
