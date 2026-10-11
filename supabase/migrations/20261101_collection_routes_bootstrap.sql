@@ -40,13 +40,17 @@ create table if not exists public.receipt_events (
  actor_id uuid not null, event text not null, reason text, created_at timestamptz not null default now()
 );
 
-create or replace function public.collection_admin() returns boolean language sql stable security definer set search_path=public
+drop function if exists public.can_read_collection(uuid) cascade;
+drop function if exists public.can_manage_collection() cascade;
+drop function if exists public.collection_admin() cascade;
+
+create function public.collection_admin() returns boolean language sql stable security definer set search_path=public
 as $$ select exists(select 1 from profiles where id=auth.uid() and role='admin' and status='Ativo') $$;
 
-create or replace function public.can_manage_collection() returns boolean language sql stable security definer set search_path=public
+create function public.can_manage_collection() returns boolean language sql stable security definer set search_path=public
 as $$ select collection_admin() or exists(select 1 from profiles where id=auth.uid() and role='coordenador' and status='Ativo') $$;
 
-create or replace function public.can_read_collection(p_route uuid) returns boolean language sql stable security definer set search_path=public
+create function public.can_read_collection(p_route uuid) returns boolean language sql stable security definer set search_path=public
 as $$ select can_manage_collection() or exists(select 1 from routes r join profiles p on p.id=r.courier_id where r.id=p_route and p.id=auth.uid() and p.role='motoboy' and p.status='Ativo') $$;
 
 alter table system_settings enable row level security;
