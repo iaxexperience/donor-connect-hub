@@ -142,6 +142,39 @@ export default function Rotas() {
     }
   };
 
+  // update_visit_status e transition_collection_receipt são duas chamadas
+  // separadas (não uma transação única): se a segunda falhar, a visita já
+  // fica marcada "coletado" mas o recibo/baixa financeira ficam pendentes.
+  // Esta função cobre tanto o fluxo normal quanto o retry desse caso preso.
+  const confirmarRecibo = async (item: RouteItem, receipt: Receipt) => {
+    const { error: recError } = await supabase.rpc("transition_collection_receipt", {
+      p_receipt: receipt.id, p_status: "confirmed", p_reason: null,
+    });
+    if (recError) throw recError;
+
+    try {
+      await imprimirReciboColeta(item, receipt);
+    } catch (pdfError) {
+      console.error("Erro ao gerar recibo de coleta:", pdfError);
+      toast({ title: "Doação coletada, mas o recibo não pôde ser impresso", variant: "destructive" });
+    }
+  };
+
+  const handleConfirmarRecibo = async (item: RouteItem) => {
+    const receipt = item.receipts?.[0];
+    if (!receipt) return;
+    setUpdating(item.id);
+    try {
+      await confirmarRecibo(item, receipt);
+      toast({ title: "Recibo confirmado!" });
+      fetchRoutes();
+    } catch (error: any) {
+      toast({ title: "Erro ao confirmar recibo", description: error.message, variant: "destructive" });
+    } finally {
+      setUpdating(null);
+    }
+  };
+
   const applyStatus = async (item: RouteItem, status: RouteItem["visit_status"], motivo?: string) => {
     setUpdating(item.id);
     try {
@@ -151,18 +184,7 @@ export default function Rotas() {
       // Coletar a doação também confirma o recibo (baixa financeira) e
       // imprime o recibo de coleta assinado pelo doador e pelo mensageiro.
       if (status === "coletado" && item.receipts?.[0]?.id) {
-        const receipt = item.receipts[0];
-        const { error: recError } = await supabase.rpc("transition_collection_receipt", {
-          p_receipt: receipt.id, p_status: "confirmed", p_reason: null,
-        });
-        if (recError) throw recError;
-
-        try {
-          await imprimirReciboColeta(item, receipt);
-        } catch (pdfError) {
-          console.error("Erro ao gerar recibo de coleta:", pdfError);
-          toast({ title: "Doação coletada, mas o recibo não pôde ser impresso", variant: "destructive" });
-        }
+        await confirmarRecibo(item, item.receipts[0]);
       }
 
       toast({ title: "Status atualizado!" });
