@@ -5,9 +5,10 @@
 -- aprovada explicitamente na Fase 1 do plano (altera uma CHECK
 -- constraint em produção já usada por Transferência/Recibos).
 --
--- Convenção adotada: uma doação em `donations` é candidata a coleta
--- presencial quando status='pendente' e payment_method='Manual'
--- (ou seja, não é um link de pagamento online/Pix/boleto Asaas).
+-- Convenção adotada: qualquer doação "prometida" em `donations` com
+-- status='pendente' é candidata a entrar na fila de coleta presencial do
+-- coordenador, independente da forma de pagamento combinada (Pix, Dinheiro,
+-- Cartão, Boleto, Manual) — decisão explícita do cliente.
 -- ============================================================
 begin;
 
@@ -39,7 +40,7 @@ language sql stable security definer set search_path=public as $$
  union all
  select 'pledge',don.id,don.donor_id,dn.name,'Doação combinada por telemarketing',null,don.amount
    from donations don join donors dn on dn.id=don.donor_id
-   where don.status='pendente' and don.payment_method in ('Manual','Dinheiro')
+   where don.status='pendente'
  ) s join donors d on d.id=s.donor_id
  where can_manage_collection() and not exists(select 1 from route_items i where i.source_kind=s.kind and i.source_id=s.id)
 $$;
