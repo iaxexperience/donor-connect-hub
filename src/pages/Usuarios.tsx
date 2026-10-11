@@ -40,7 +40,7 @@ const roleMapping: Record<string, { label: string, color: string }> = {
   "operador":     { label: "Operador de Telemarketing", color: "secondary" },
   "visualizador": { label: "Visualizador",             color: "outline" },
   "caixa":        { label: "Operador de Caixa",        color: "default" },
-  "motoboy":      { label: "Motoboy / Cobrador",       color: "secondary" },
+  "motoboy":      { label: "Mensageiro / Cobrador",    color: "secondary" },
 };
 
 const formatCPF = (value: string) => {
@@ -418,7 +418,7 @@ const Usuarios = () => {
                       🏦 Operador de Caixa
                     </SelectItem>
                     <SelectItem value="motoboy">
-                      🏍️ Motoboy / Cobrador
+                      🏍️ Mensageiro / Cobrador
                     </SelectItem>
                     <SelectItem value="coordenador">Coordenador (sem Dashboard)</SelectItem>
                     <SelectItem value="visualizador">
