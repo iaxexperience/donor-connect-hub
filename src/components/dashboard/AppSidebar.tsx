@@ -53,6 +53,7 @@ const mainItems = [
   { title: "Caixa", url: "/dashboard/caixa", icon: PiggyBank },
   { title: "Doações Físicas", url: "/dashboard/doacoes-fisicas", icon: Gift },
   { title: "Rotas de Coleta", url: "/dashboard/rotas", icon: ArrowRightLeft },
+  { title: "Gestão de Atribuições", url: "/dashboard/atribuicoes", icon: ListChecks },
   { title: "Transferência", url: "/dashboard/transferencia-doacoes", icon: ArrowRightLeft },
 ];
 
