@@ -579,7 +579,7 @@ export async function gerarReciboColetaPDF(data: ReciboColetaData): Promise<void
   );
 
   const nomeArquivo = `recibo-coleta-${data.donor_name.split(" ")[0].toLowerCase()}-${format(new Date(data.collected_at), "ddMMyyyy")}.pdf`;
-  doc.save(nomeArquivo);
+  await savePdf(doc, nomeArquivo);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -766,7 +766,7 @@ export async function gerarFechamentoCaixaPDF(data: FechamentoCaixaData): Promis
   );
 
   const nomeArquivo = `fechamento-caixa-${data.operator_name.split(" ")[0].toLowerCase()}-${data.data_movimento}.pdf`;
-  doc.save(nomeArquivo);
+  await savePdf(doc, nomeArquivo);
 }
 
 function loadImage(url: string): Promise<string> {
