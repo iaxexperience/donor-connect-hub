@@ -67,7 +67,7 @@ const PasswordRequirement = ({ met, text }: { met: boolean; text: string }) => (
 );
 
 const Usuarios = () => {
-  const { profiles, isLoading, createProfile, updateProfile } = useProfiles();
+  const { profiles, isLoading, updateProfile } = useProfiles();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingUser, setEditingUser] = useState<any>(null);
@@ -144,31 +144,30 @@ const Usuarios = () => {
         });
         toast({ title: "Usuário Atualizado!", description: `${newName} foi atualizado com sucesso.` });
       } else {
-        // 1. Create user in Supabase Auth
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: newEmail,
-          password: newPassword,
+        // Cria o usuário no Auth (já confirmado) + o perfil, tudo no servidor
+        // (evita depender do envio de e-mail de confirmação do signUp público).
+        const { data, error } = await supabase.functions.invoke('api-proxy', {
+          body: {
+            service: 'admin',
+            action: 'create_user',
+            payload: {
+              email: newEmail,
+              password: newPassword,
+              name: newName,
+              cpf: newCPF,
+              phone: newPhone,
+              role: newRole,
+            },
+          },
         });
 
-        if (authError) throw authError;
+        if (error) throw error;
+        if (data?.__error) throw new Error(data.error);
 
-        if (authData.user) {
-          // 2. Create profile with the new Auth ID
-          await createProfile({
-            id: authData.user.id,
-            name: newName,
-            email: newEmail,
-            cpf: newCPF,
-            phone: newPhone,
-            role: newRole,
-            must_change_password: true,
-            status: 'Pendente' // All new self-registers or admin-created users start as Pending
-          });
-          toast({ 
-            title: "Usuário Cadastrado!", 
-            description: `O perfil de ${newName} foi criado. Verifique se o e-mail de confirmação foi enviado.`,
-          });
-        }
+        toast({
+          title: "Usuário Cadastrado!",
+          description: `O acesso de ${newName} já está pronto para uso.`,
+        });
       }
 
       setIsDialogOpen(false);

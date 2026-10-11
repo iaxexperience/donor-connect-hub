@@ -50,10 +50,10 @@ serve(async (req) => {
   // This proxy calls third-party APIs and writes with the service role.
   const authHeader = req.headers.get('authorization') ?? '';
   const accessToken = authHeader.match(/^Bearer\s+(.+)$/i)?.[1];
-  if (!accessToken) return new Response(JSON.stringify({ error: 'Autentica��o necess�ria.' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  if (!accessToken) return new Response(JSON.stringify({ error: 'Autenticação necessária.' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   const authClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_ANON_KEY') ?? '');
   const { data: { user }, error: authError } = await authClient.auth.getUser(accessToken);
-  if (authError || !user) return new Response(JSON.stringify({ error: 'Token inv�lido ou expirado.' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  if (authError || !user) return new Response(JSON.stringify({ error: 'Token inválido ou expirado.' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   try {
     const body = await req.json().catch(() => ({}));
@@ -301,6 +301,63 @@ serve(async (req) => {
         ]);
 
         return ok({ phone, waba });
+      }
+
+      return ok({ __error: true, error: 'Ação desconhecida.' });
+    }
+
+    // ── ADMIN (criação de usuários sem depender de envio de e-mail) ───────────
+    if (service === 'admin') {
+      const supabaseAdmin = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+
+      // Só administradores podem cadastrar outros usuários por aqui.
+      const { data: callerProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (callerProfile?.role !== 'admin') {
+        return ok({ __error: true, error: 'Apenas administradores podem cadastrar usuários.' });
+      }
+
+      if (action === 'create_user') {
+        const { email, password, name, cpf, phone, role } = payload || {};
+        if (!email || !password || !name || !role) {
+          return ok({ __error: true, error: 'Nome, e-mail, senha e papel são obrigatórios.' });
+        }
+
+        const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+        });
+
+        if (createError) {
+          return ok({ __error: true, error: createError.message });
+        }
+
+        const { error: profileError } = await supabaseAdmin.from('profiles').insert([{
+          id: created.user.id,
+          name,
+          email,
+          cpf,
+          phone,
+          role,
+          must_change_password: true,
+          status: 'Pendente',
+        }]);
+
+        if (profileError) {
+          // Evita deixar um usuário órfão no Auth sem perfil correspondente.
+          await supabaseAdmin.auth.admin.deleteUser(created.user.id);
+          return ok({ __error: true, error: profileError.message });
+        }
+
+        return ok({ ok: true, user_id: created.user.id });
       }
 
       return ok({ __error: true, error: 'Ação desconhecida.' });
