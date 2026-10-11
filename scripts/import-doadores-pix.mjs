@@ -187,19 +187,35 @@ for (let i = 0; i < rows.length; i += BATCH) {
   sql += ";\n\n";
 }
 
-sql += `-- Cria doadores novos (1 por nome distinto), pulando quem já existe
-insert into donors (name, phone, type)
-select s.nome, '', 'lead'::donor_type
-from (select distinct nome from stg_import_doadores_pix) s
-where not exists (select 1 from donors d where d.name = s.nome)
-group by s.nome;
+-- Cria 1 doador NOVO para cada nome distinto deste arquivo. Não cruza com
+-- doadores já existentes no sistema (mesmo que o nome seja idêntico) --
+-- evita o risco de juntar o histórico desses PIX com o de outra pessoa que
+-- por coincidência tenha o mesmo nome (comum em nomes como "MARIA JOSE DA
+-- SILVA"). Se preferir cruzar com a base já cadastrada, me avise depois --
+-- dá pra gerar um relatório de possíveis duplicados para revisão manual.
+sql += `create temporary table stg_novos_doadores (
+  nome text primary key,
+  donor_id integer
+) on commit drop;
 
--- Lança cada doação bruta no histórico, ligada ao doador pelo nome
+insert into stg_novos_doadores (nome)
+select distinct nome from stg_import_doadores_pix;
+
+insert into donors (name, phone, type)
+select nome, '', 'lead'::donor_type from stg_novos_doadores
+returning name, id;
+
+update stg_novos_doadores nd
+set donor_id = d.id
+from donors d
+where d.name = nd.nome;
+
+-- Lança cada doação bruta no histórico, ligada ao doador recém-criado
 -- (o trigger tr_on_donation_change recalcula tipo/total/contagem sozinho)
 insert into donations (donor_id, amount, payment_method, status, donation_date)
-select d.id, s.valor, 'pix', 'pago', coalesce(s.data_doacao, current_date)
+select nd.donor_id, s.valor, 'pix', 'pago', coalesce(s.data_doacao, current_date)
 from stg_import_doadores_pix s
-join donors d on d.name = s.nome;
+join stg_novos_doadores nd on nd.nome = s.nome;
 
 commit;
 
