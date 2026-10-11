@@ -33,6 +33,7 @@ import GestaoAtribuicoes from "./pages/GestaoAtribuicoes";
 import MinhasCaptacoes from "./pages/MinhasCaptacoes";
 import DoacoesRecebidas from "./pages/DoacoesRecebidas";
 import ValidateReceipt from "./pages/ValidateReceipt";
+import ValidarRecibo from "./pages/ValidarRecibo";
 import Documentacao from "./pages/Documentacao";
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -121,6 +122,7 @@ const App = () => (
                 </Route>
 
                 <Route path="/validate-receipt/:hash" element={<ValidateReceipt />} />
+                <Route path="/validar-recibo" element={<ValidarRecibo />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>

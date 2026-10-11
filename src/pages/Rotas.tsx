@@ -11,6 +11,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { gerarReciboColetaPDF } from "@/lib/reciboService";
 import {
   Truck, MapPin, Phone, Package, Clock, CheckCircle2, XCircle,
   Navigation, Loader2, AlertTriangle, CalendarClock, FileText,
@@ -20,6 +21,9 @@ interface Receipt {
   id: string;
   number: string;
   status: "issued" | "confirmed" | "cancelled" | "disputed";
+  organization?: { name?: string; logo_url?: string; cnpj?: string; address?: string; phone?: string; email?: string };
+  courier?: { name?: string; document?: string };
+  confirmed_at?: string | null;
 }
 
 interface RouteItem {
