@@ -74,7 +74,7 @@ as $$ select can_manage_collection() or exists(select 1 from routes r join profi
 create function public.collection_candidates() returns table(source_kind text,source_id uuid,snapshot jsonb)
 language sql stable security definer set search_path=public as $$
  select s.kind,s.id,jsonb_build_object('donor_name',s.name,'document',d.document_id,'phone',d.phone,
- 'address',concat_ws(', ',nullif(d.address,''),nullif(d.address_number,''),nullif(d.complement,''),nullif(d.neighborhood,''),nullif(d.city,''),nullif(d.state,''),nullif(d.zip_code,'')),
+ 'address',concat_ws(', ',nullif(d.address->>'logradouro',''),nullif(d.address_number,''),nullif(d.complement,''),nullif(d.neighborhood,''),nullif(d.city,''),nullif(d.state,''),nullif(d.zip_code,'')),
  'neighborhood',d.neighborhood,'zip_code',d.zip_code,'description',s.description,'quantity',s.quantity,'amount',s.amount)
  from (
  select 'physical' kind,f.id,f.donor_id,f.donor_name name,coalesce(nullif(f.descricao,''),f.tipo_doacao) description,f.quantidade quantity,null::numeric amount from doacoes_fisicas f where f.status='pendente'
