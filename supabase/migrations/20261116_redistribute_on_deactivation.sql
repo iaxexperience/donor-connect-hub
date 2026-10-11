@@ -32,7 +32,7 @@ begin
 
       if v_total > 0 then
         insert into audit_logs(user_id, action, resource, details)
-        values (new.id, 'AUTO_REDISTRIBUTE_ON_DEACTIVATION', 'donors', jsonb_build_object('from_operator', new.id, 'total_redistributed', v_total));
+        values (auth.uid(), 'AUTO_REDISTRIBUTE_ON_DEACTIVATION', 'donors', jsonb_build_object('from_operator', new.id, 'total_redistributed', v_total));
       end if;
     end if;
   end if;
