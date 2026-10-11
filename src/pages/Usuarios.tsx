@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Shield, User, Mail, UserPlus, Loader2, Key, Smartphone, FileText, Eye, EyeOff, Check, X, Edit2, RotateCcw, UserCheck } from "lucide-react";
+import { Plus, Search, Shield, User, Mail, UserPlus, Loader2, Key, Smartphone, FileText, Eye, EyeOff, Check, X, Edit2, RotateCcw, UserCheck, UserX } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -568,12 +568,36 @@ const Usuarios = () => {
                         </Button>
 
                         {user.status === 'Pendente' && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="h-8 w-8 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 shadow-sm border border-emerald-100 animate-pulse"
                             onClick={() => handleActivateUser(user)}
                             title="Ativar Usuário"
+                          >
+                            <UserCheck className="h-4 w-4" />
+                          </Button>
+                        )}
+
+                        {user.status === 'Ativo' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                            onClick={() => handleDeactivateUser(user)}
+                            title={user.role === "operador" ? "Desativar (redistribui a carteira)" : "Desativar Usuário"}
+                          >
+                            <UserX className="h-4 w-4" />
+                          </Button>
+                        )}
+
+                        {user.status === 'Inativo' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50"
+                            onClick={() => handleActivateUser(user)}
+                            title="Reativar Usuário"
                           >
                             <UserCheck className="h-4 w-4" />
                           </Button>
