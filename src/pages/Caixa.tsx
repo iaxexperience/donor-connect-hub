@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { gerarReciboPDF } from "@/lib/reciboService";
+import { gerarReciboPDF, gerarFechamentoCaixaPDF } from "@/lib/reciboService";
 import { metaService, MetaConfig, getMetaConfig } from "@/services/metaService";
 
 // Link de validação pública — aponta para a rota do frontend

@@ -558,6 +558,193 @@ export async function gerarReciboColetaPDF(data: ReciboColetaData): Promise<void
   doc.save(nomeArquivo);
 }
 
+// ─────────────────────────────────────────────────────────────
+// RELATÓRIO DE FECHAMENTO DE CAIXA (mensageiro prestando contas
+// ao coordenador do que coletou/recebeu no dia)
+// ─────────────────────────────────────────────────────────────
+
+export interface FechamentoCaixaData {
+  operator_name: string;
+  operator_document?: string;
+  data_movimento: string;
+  saldo_inicial: number;
+  totals: { label: string; total: number; count: number }[];
+  total_geral: number;
+  qtd_transacoes: number;
+  transacoes: { hora: string; donor_name: string; amount: number; method_label: string; status: string }[];
+  observacoes?: string;
+  closed_at: string;
+  org: {
+    system_name?: string;
+    logo_url?: string;
+    cnpj?: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+  };
+}
+
+export async function gerarFechamentoCaixaPDF(data: FechamentoCaixaData): Promise<void> {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pageW = 210;
+  const pageH = 297;
+  const margin = 20;
+  const primaryColor: [number, number, number] = [0, 102, 204];
+  const darkColor: [number, number, number] = [15, 25, 75];
+  const grayColor: [number, number, number] = [100, 100, 110];
+
+  const newPageIfNeeded = (needed: number) => {
+    if (y + needed > pageH - 30) {
+      doc.addPage();
+      y = 25;
+    }
+  };
+
+  // ── CABEÇALHO ──────────────────────────────────────────────
+  doc.setFillColor(...primaryColor);
+  doc.rect(0, 0, pageW, 32, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text(data.org.system_name || "Pulse Doações", margin, 16);
+  if (data.org.cnpj) {
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.text(`CNPJ: ${data.org.cnpj}`, margin, 23);
+  }
+
+  let y = 46;
+
+  doc.setTextColor(...darkColor);
+  doc.setFontSize(17);
+  doc.setFont("helvetica", "bold");
+  doc.text("RELATÓRIO DE FECHAMENTO DE CAIXA", pageW / 2, y, { align: "center" });
+  doc.setDrawColor(...primaryColor);
+  doc.setLineWidth(0.6);
+  doc.line(margin, y + 4, pageW - margin, y + 4);
+  y += 16;
+
+  // ── MENSAGEIRO E PERÍODO ────────────────────────────────────
+  doc.setFillColor(245, 247, 252);
+  doc.roundedRect(margin, y - 4, pageW - margin * 2, 24, 3, 3, "F");
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...primaryColor);
+  doc.text("MENSAGEIRO", margin + 4, y + 2);
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...darkColor);
+  doc.text(`${data.operator_name}${data.operator_document ? ` — ${data.operator_document}` : ""}`, margin + 4, y + 9);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...grayColor);
+  doc.text(`Data do movimento: ${format(new Date(data.data_movimento + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}`, margin + 4, y + 16);
+  y += 32;
+
+  // ── RESUMO POR MODALIDADE ───────────────────────────────────
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...darkColor);
+  doc.text("RESUMO DO DIA", margin, y);
+  doc.line(margin, y + 3, pageW - margin, y + 3);
+  y += 10;
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(50, 50, 60);
+  doc.text(`Saldo inicial (troco): ${formatCurrency(data.saldo_inicial)}`, margin, y);
+  y += 7;
+  for (const t of data.totals) {
+    doc.text(`${t.label}: ${formatCurrency(t.total)}  (${t.count} transação${t.count === 1 ? "" : "ões"})`, margin, y);
+    y += 7;
+  }
+  y += 2;
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...primaryColor);
+  doc.text(`TOTAL GERAL: ${formatCurrency(data.total_geral)}`, margin, y);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...grayColor);
+  doc.text(`${data.qtd_transacoes} transação${data.qtd_transacoes === 1 ? "" : "ões"} confirmada${data.qtd_transacoes === 1 ? "" : "s"}`, pageW - margin, y, { align: "right" });
+  y += 14;
+
+  // ── LISTA DE TRANSAÇÕES ──────────────────────────────────────
+  if (data.transacoes.length > 0) {
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...darkColor);
+    doc.text("DETALHAMENTO DAS DOAÇÕES", margin, y);
+    doc.line(margin, y + 3, pageW - margin, y + 3);
+    y += 9;
+
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...grayColor);
+    doc.text("Hora", margin, y);
+    doc.text("Doador", margin + 18, y);
+    doc.text("Forma", margin + 100, y);
+    doc.text("Status", margin + 130, y);
+    doc.text("Valor", pageW - margin, y, { align: "right" });
+    y += 5;
+    doc.setDrawColor(220, 226, 240);
+    doc.line(margin, y, pageW - margin, y);
+    y += 5;
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(50, 50, 60);
+    for (const t of data.transacoes) {
+      newPageIfNeeded(8);
+      doc.setFontSize(8);
+      doc.text(t.hora, margin, y);
+      doc.text(doc.splitTextToSize(t.donor_name, 78)[0], margin + 18, y);
+      doc.text(t.method_label, margin + 100, y);
+      doc.text(t.status, margin + 130, y);
+      doc.text(formatCurrency(t.amount), pageW - margin, y, { align: "right" });
+      y += 6;
+    }
+    y += 6;
+  }
+
+  if (data.observacoes) {
+    newPageIfNeeded(20);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...darkColor);
+    doc.text("OBSERVAÇÕES", margin, y);
+    y += 6;
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...grayColor);
+    const obsLines = doc.splitTextToSize(data.observacoes, pageW - margin * 2);
+    doc.text(obsLines, margin, y);
+    y += obsLines.length * 5 + 8;
+  }
+
+  // ── ASSINATURAS ──────────────────────────────────────────────
+  newPageIfNeeded(40);
+  y = Math.max(y + 20, pageH - 60);
+  doc.setDrawColor(100, 120, 160);
+  doc.setLineWidth(0.4);
+  doc.line(margin, y, margin + 70, y);
+  doc.line(pageW - margin - 70, y, pageW - margin, y);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...grayColor);
+  doc.text("Assinatura do Mensageiro", margin + 35, y + 5, { align: "center" });
+  doc.text("Coordenador Responsável pela Conferência", pageW - margin - 35, y + 5, { align: "center", maxWidth: 70 });
+
+  // ── RODAPÉ ─────────────────────────────────────────────────
+  doc.setFontSize(7);
+  doc.setTextColor(160, 160, 170);
+  doc.text(
+    `Fechado em ${format(new Date(data.closed_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} • ${data.org.system_name || "Pulse Doações"}`,
+    pageW / 2, pageH - 12, { align: "center" }
+  );
+
+  const nomeArquivo = `fechamento-caixa-${data.operator_name.split(" ")[0].toLowerCase()}-${data.data_movimento}.pdf`;
+  doc.save(nomeArquivo);
+}
+
 function loadImage(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
