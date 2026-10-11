@@ -62,7 +62,7 @@ begin
  if jsonb_typeof(p_items) is distinct from 'array' or jsonb_array_length(p_items) not between 1 and 100 then raise exception 'Selecione entre 1 e 100 doações'; end if;
  select jsonb_build_object('name',name,'document',cpf) into courier_data from profiles where id=p_courier and role='motoboy' and status='Ativo' and nullif(cpf,'') is not null for share;
  if courier_data is null then raise exception 'Motoboy ativo com documento obrigatório'; end if;
- select jsonb_build_object('name',coalesce(nullif(s.legal_name,''),w.system_name),'cnpj',w.cnpj,'address',w.address,'logo_url',w.logo_url,'phone',w.phone,'email',w.email,'thank_you',s.thank_you,'bank_details',s.bank_details,'pix_key',s.pix_key,'legal_notice',s.legal_notice) into org from white_label_settings w cross join system_settings s where w.id=1 and s.id=1;
+ select jsonb_build_object('name',coalesce(nullif(s.legal_name,''),w.system_name),'cnpj',w.cnpj,'address',w.address,'logo_url',w.logo_url,'phone',w.phone,'email',w.email,'thank_you',s.thank_you,'bank_details',s.bank_details,'pix_key',s.pix_key,'legal_notice',s.legal_notice) into org from white_label_settings w cross join collection_settings s where w.id=1 and s.id=1;
  if org is null or coalesce(org->>'cnpj','')='' then raise exception 'Configure os dados institucionais e CNPJ'; end if;
  for entry in select value from jsonb_array_elements(p_items) order by value->>'source_kind',value->>'source_id' loop
  if entry->>'source_kind'='physical' then perform 1 from doacoes_fisicas where id=(entry->>'source_id')::uuid for update;
