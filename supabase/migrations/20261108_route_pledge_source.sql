@@ -31,7 +31,7 @@ create or replace function public.collection_candidates() returns table(source_k
 language sql stable security definer set search_path=public as $$
  select s.kind,s.id,jsonb_build_object('donor_name',s.name,'document',d.document_id,'phone',d.phone,
  'address',concat_ws(', ',nullif(d.address->>'logradouro',''),nullif(d.address_number,''),nullif(d.complement,''),nullif(d.neighborhood,''),nullif(d.city,''),nullif(d.state,''),nullif(d.zip_code,'')),
- 'neighborhood',d.neighborhood,'zip_code',d.zip_code,'description',s.description,'quantity',s.quantity,'amount',s.amount)
+ 'neighborhood',d.neighborhood,'city',d.city,'zip_code',d.zip_code,'description',s.description,'quantity',s.quantity,'amount',s.amount)
  from (
  select 'physical' kind,f.id,f.donor_id,f.donor_name name,coalesce(nullif(f.descricao,''),f.tipo_doacao) description,f.quantidade quantity,null::numeric amount from doacoes_fisicas f where f.status='pendente'
  union all
@@ -46,9 +46,13 @@ $$;
 
 -- Ao confirmar um recibo cuja origem é uma doação "prometida",
 -- baixa donations.status para 'pago' (em vez de doacoes_fisicas/caixa_transacoes).
+-- Além disso, toda coleta em dinheiro (origem 'cash' já existente, ou uma
+-- "promessa" do telemarketing paga em espécie na hora) fica vinculada ao
+-- caixa pessoal do mensageiro que coletou (created_by), para que ele possa
+-- prestar contas dela no fechamento do seu caixa.
 create or replace function public.transition_collection_receipt(p_receipt uuid,p_status text,p_reason text default null) returns void
 language plpgsql security definer set search_path=public as $$
-declare rec receipts; item route_items;
+declare rec receipts; item route_items; v_courier uuid; v_donor_id bigint; v_updated boolean;
 begin
  select * into rec from receipts where id=p_receipt for update;
  if not found then raise exception 'Recibo inexistente'; end if;
@@ -58,14 +62,22 @@ begin
  if p_status <> 'confirmed' and (not can_manage_collection() or length(trim(coalesce(p_reason,'')))<5) then raise exception 'Administrador/coordenador e justificativa obrigatórios'; end if;
  if rec.status<>'issued' and not (rec.status='confirmed' and p_status='disputed' and can_manage_collection()) then raise exception 'Baixa repetida ou transição inválida'; end if;
  if p_status='confirmed' then
+ select courier_id into v_courier from routes where id=item.route_id;
  if item.source_kind='physical' then
  update doacoes_fisicas set status='recebido',recebido_em=now() where id=item.source_id and status='pendente';
+ v_updated:=found;
  elsif item.source_kind='cash' then
- update caixa_transacoes set status='confirmado',compensated_at=now() where id=item.source_id and status='pendente' and payment_method='dinheiro';
+ update caixa_transacoes set status='confirmado',compensated_at=now(),created_by=v_courier where id=item.source_id and status='pendente' and payment_method='dinheiro';
+ v_updated:=found;
  else
- update donations set status='pago',confirmed_at=now() where id=item.source_id and status='pendente';
+ update donations set status='pago',confirmed_at=now() where id=item.source_id and status='pendente' returning donor_id into v_donor_id;
+ v_updated:=found;
+ if v_updated then
+ insert into caixa_transacoes(donor_id,donor_name,amount,payment_method,status,notes,created_by,compensated_at)
+ values(v_donor_id,item.snapshot->>'donor_name',coalesce((item.snapshot->>'amount')::numeric,0),'dinheiro','confirmado','Coletado presencialmente pelo mensageiro na visita de telemarketing',v_courier,now());
  end if;
- if not found then raise exception 'Origem já baixada/cancelada. Solicite análise administrativa'; end if;
+ end if;
+ if not v_updated then raise exception 'Origem já baixada/cancelada. Solicite análise administrativa'; end if;
  end if;
  update receipts set status=p_status,confirmed_at=case when p_status='confirmed' then now() else confirmed_at end where id=p_receipt;
  insert into receipt_events(receipt_id,actor_id,event,reason) values(p_receipt,auth.uid(),p_status,p_reason);

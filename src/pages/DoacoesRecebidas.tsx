@@ -91,10 +91,16 @@ export default function DoacoesRecebidas() {
   // data original da rota, já que o doador pode ter reagendado a visita para
   // outro dia e a coleta efetivamente aconteceu depois do previsto.
   const filtered = received.filter(r => {
-    if (!r.receipt.confirmed_at) return !dateFrom && !dateTo;
-    const day = r.receipt.confirmed_at.slice(0, 10);
-    if (dateFrom && day < dateFrom) return false;
-    if (dateTo && day > dateTo) return false;
+    if (!r.receipt.confirmed_at) {
+      if (dateFrom || dateTo) return false;
+    } else {
+      const day = r.receipt.confirmed_at.slice(0, 10);
+      if (dateFrom && day < dateFrom) return false;
+      if (dateTo && day > dateTo) return false;
+    }
+    if (donorSearch && !r.item.snapshot.donor_name?.toLowerCase().includes(donorSearch.toLowerCase())) return false;
+    if (bairroFilter && !r.item.snapshot.neighborhood?.toLowerCase().includes(bairroFilter.toLowerCase())) return false;
+    if (cidadeFilter && !r.item.snapshot.city?.toLowerCase().includes(cidadeFilter.toLowerCase())) return false;
     return true;
   });
 
@@ -120,6 +126,18 @@ export default function DoacoesRecebidas() {
             <Label className="mb-1.5 block">até</Label>
             <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-[160px]" />
           </div>
+          <div>
+            <Label className="mb-1.5 block">Doador</Label>
+            <Input placeholder="Buscar por nome..." value={donorSearch} onChange={e => setDonorSearch(e.target.value)} className="w-[200px]" />
+          </div>
+          <div>
+            <Label className="mb-1.5 block">Bairro</Label>
+            <Input placeholder="Bairro..." value={bairroFilter} onChange={e => setBairroFilter(e.target.value)} className="w-[160px]" />
+          </div>
+          <div>
+            <Label className="mb-1.5 block">Cidade</Label>
+            <Input placeholder="Cidade..." value={cidadeFilter} onChange={e => setCidadeFilter(e.target.value)} className="w-[160px]" />
+          </div>
         </CardContent>
       </Card>
 
@@ -129,6 +147,7 @@ export default function DoacoesRecebidas() {
             <TableHeader>
               <TableRow>
                 <TableHead>Doador</TableHead>
+                <TableHead>Bairro / Cidade</TableHead>
                 <TableHead>Origem</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead>Recibo</TableHead>
@@ -137,12 +156,15 @@ export default function DoacoesRecebidas() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-10"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-10"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-10 text-muted-foreground">Nenhuma doação recebida no período.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-10 text-muted-foreground">Nenhuma doação recebida no período.</TableCell></TableRow>
               ) : filtered.map(({ item, receipt }) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.snapshot.donor_name}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {[item.snapshot.neighborhood, item.snapshot.city].filter(Boolean).join(" — ") || "—"}
+                  </TableCell>
                   <TableCell><Badge variant="outline" className={kindLabel[item.source_kind].color}>{kindLabel[item.source_kind].label}</Badge></TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {item.snapshot.description}
