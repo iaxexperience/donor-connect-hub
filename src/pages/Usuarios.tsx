@@ -209,6 +209,7 @@ const Usuarios = () => {
         });
       }
 
+      clearNewUserDraft();
       setIsDialogOpen(false);
       setNewName("");
       setNewEmail("");
@@ -428,7 +429,7 @@ const Usuarios = () => {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+              <Button variant="outline" onClick={() => { if (!editingUser) clearNewUserDraft(); setIsDialogOpen(false); }}>Cancelar</Button>
               <Button onClick={handleCreateUser}>{editingUser ? "Salvar Alterações" : "Salvar Usuário"}</Button>
             </DialogFooter>
           </DialogContent>
