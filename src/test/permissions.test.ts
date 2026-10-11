@@ -19,6 +19,16 @@ describe('permissões dos menus e páginas', () => {
     expect(canAccessPage('coordenador','/dashboard/relatorios')).toBe(true);
     expect(canAccessPage('coordenador','/dashboard')).toBe(false);
   });
+  it('coordenador gerencia coleta (rotas e atribuições), demais papéis não', () => {
+    expect(canAccessPage('coordenador','/dashboard/rotas')).toBe(true);
+    expect(canAccessPage('coordenador','/dashboard/atribuicoes')).toBe(true);
+    for (const role of ['gestor','operador','visualizador','caixa'] as AppRole[]) {
+      expect(canAccessPage(role,'/dashboard/rotas'),role).toBe(false);
+      expect(canAccessPage(role,'/dashboard/atribuicoes'),role).toBe(false);
+    }
+    expect(canAccessPage('motoboy','/dashboard/rotas')).toBe(true);
+    expect(canAccessPage('motoboy','/dashboard/atribuicoes')).toBe(false);
+  });
   it('administrador mantém todas as áreas', () => {
     for(const page of pages) expect(canAccessPage('admin',page)).toBe(true);
   });
