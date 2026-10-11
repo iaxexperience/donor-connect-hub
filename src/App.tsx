@@ -32,6 +32,7 @@ import Rotas from "./pages/Rotas";
 import GestaoAtribuicoes from "./pages/GestaoAtribuicoes";
 import MinhasCaptacoes from "./pages/MinhasCaptacoes";
 import DoacoesRecebidas from "./pages/DoacoesRecebidas";
+import DistribuicaoCarteiras from "./pages/DistribuicaoCarteiras";
 import ValidateReceipt from "./pages/ValidateReceipt";
 import ValidarRecibo from "./pages/ValidarRecibo";
 import Documentacao from "./pages/Documentacao";
@@ -118,6 +119,7 @@ const App = () => (
                     <Route path="atribuicoes" element={<GestaoAtribuicoes />} />
                     <Route path="minhas-captacoes" element={<MinhasCaptacoes />} />
                     <Route path="doacoes-recebidas" element={<DoacoesRecebidas />} />
+                    <Route path="distribuicao-carteiras" element={<DistribuicaoCarteiras />} />
                   </Route>
                 </Route>
 

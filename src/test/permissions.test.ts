@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { canAccessPage, homeForRole, type AppRole } from '@/lib/permissions';
 
 const roles: AppRole[] = ['admin','gestor','operador','visualizador','caixa','motoboy','coordenador'];
-const pages = ['','doadores','doadores/novo','doadores/editar/123','kanbam','campanhas','telemarketing','followups','usuarios','setores','relatorios','configuracoes','integracoes','whatsapp','asaas','bb','api-aberta','api-documentacao','caixa','doacoes-fisicas','transferencia-doacoes','rotas','minhas-captacoes','doacoes-recebidas'].map(p=>`/dashboard${p?'/'+p:''}`);
+const pages = ['','doadores','doadores/novo','doadores/editar/123','kanbam','campanhas','telemarketing','followups','usuarios','setores','relatorios','configuracoes','integracoes','whatsapp','asaas','bb','api-aberta','api-documentacao','caixa','doacoes-fisicas','transferencia-doacoes','rotas','minhas-captacoes','doacoes-recebidas','distribuicao-carteiras'].map(p=>`/dashboard${p?'/'+p:''}`);
 
 describe('permissões dos menus e páginas', () => {
   it.each(roles)('Dashboard exclusivo do administrador: %s', role => {
@@ -41,6 +41,12 @@ describe('permissões dos menus e páginas', () => {
     expect(canAccessPage('coordenador','/dashboard/doacoes-recebidas')).toBe(true);
     for (const role of ['gestor','operador','visualizador','caixa'] as AppRole[]) {
       expect(canAccessPage(role,'/dashboard/doacoes-recebidas'),role).toBe(false);
+    }
+  });
+  it('só coordenador distribui carteiras de telemarketing', () => {
+    expect(canAccessPage('coordenador','/dashboard/distribuicao-carteiras')).toBe(true);
+    for (const role of ['gestor','operador','visualizador','caixa','motoboy'] as AppRole[]) {
+      expect(canAccessPage(role,'/dashboard/distribuicao-carteiras'),role).toBe(false);
     }
   });
   it('administrador mantém todas as áreas', () => {

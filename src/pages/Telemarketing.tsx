@@ -205,6 +205,7 @@ const Telemarketing = () => {
 
         await supabase.from("telemarketing_calls").insert([{
           donor_id: selectedDonor.id,
+          operator_id: user?.id,
           status: mappedStatus,
           notes: `Telemarketing [${resultLabel}]${donationCreated ? ` | Doação: R$ ${parsedAmount.toFixed(2)} (${donationStatus})` : ""}${campaignName ? ` | Campanha: ${campaignName}` : ""}${callNote ? ` — ${callNote}` : ""}`,
           follow_up_date: scheduleFollowUp ? followUpDate : undefined
@@ -286,7 +287,7 @@ const Telemarketing = () => {
   const stats = [
     { label: "Fila de Ligações",  value: dynamicStats.totalQueue,    icon: Phone,        color: "text-primary" },
     { label: "Leads Novos",       value: dynamicStats.leadsCount,    icon: CheckCircle2, color: "text-green-600" },
-    { label: "Inativos (30d+)",   value: dynamicStats.inactiveCount, icon: PhoneOff,     color: "text-destructive" },
+    { label: "Prontos p/ Contato", value: dynamicStats.inactiveCount, icon: PhoneOff,     color: "text-destructive" },
     { label: "Ligações Hoje",     value: Object.values(callLogs).reduce((a, b) => a + b, 0), icon: Clock, color: "text-amber-600" },
   ];
 

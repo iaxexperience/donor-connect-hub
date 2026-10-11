@@ -23,6 +23,7 @@ import {
   ListChecks,
   HeartHandshake,
   PackageCheck,
+  Shuffle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink } from "@/components/NavLink";
@@ -58,6 +59,7 @@ const mainItems = [
   { title: "Rotas de Coleta", url: "/dashboard/rotas", icon: ArrowRightLeft },
   { title: "Doações Recebidas", url: "/dashboard/doacoes-recebidas", icon: PackageCheck },
   { title: "Gestão de Atribuições", url: "/dashboard/atribuicoes", icon: ListChecks },
+  { title: "Distribuição de Carteiras", url: "/dashboard/distribuicao-carteiras", icon: Shuffle },
   { title: "Transferência", url: "/dashboard/transferencia-doacoes", icon: ArrowRightLeft },
 ];
 

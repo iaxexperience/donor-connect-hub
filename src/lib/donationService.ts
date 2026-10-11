@@ -30,6 +30,7 @@ export interface Donor {
   neighborhood?: string;
   city?: string;
   state?: string;
+  assigned_operator_id?: string | null;
 }
 
 export interface FollowUp {
@@ -226,26 +227,56 @@ export const updateDonor = async (donorId: number, updateData: Partial<Donor>) =
 
 /**
  * Fetches donors who need telemarketing contact.
- * Logic: 
- * - All leads
- * - Non-leads with last donation > 30 days ago
+ *
+ * Regra de prontidão: usa a MESMA configuração por tipo da automação de
+ * follow-up (`follow_up_settings.rules`: recorrente/esporádico/único têm
+ * cadências diferentes), em vez de um número fixo de dias para todos.
+ *
+ * Escopo: quando `operatorId` é informado, a fila é restrita à carteira
+ * desse operador (`donors.assigned_operator_id`) — cada telemarketing só
+ * trabalha os próprios doadores. Doadores já contatados hoje (qualquer
+ * tentativa registrada em `telemarketing_calls`) saem da lista do dia,
+ * o que faz a lista "repor" automaticamente o próximo pronto da carteira
+ * assim que o operador avança.
  */
-export const getTelemarketingQueue = async (): Promise<Donor[]> => {
-  const donors = await getDonors();
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+export const getTelemarketingQueue = async (operatorId?: string | null): Promise<Donor[]> => {
+  let donors = await getDonors();
+  if (operatorId) {
+    donors = donors.filter(d => d.assigned_operator_id === operatorId);
+  }
 
-  return donors.filter(donor => {
-    // Leads are always in the queue
+  const { data: settings } = await supabase
+    .from('follow_up_settings')
+    .select('rules')
+    .eq('id', 1)
+    .maybeSingle();
+  const rules = ((settings?.rules as any[]) || []) as { type: string; followUpDays: number }[];
+  const daysByType: Record<string, number> = {};
+  for (const r of rules) daysByType[r.type] = r.followUpDays;
+
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const { data: callsToday } = await supabase
+    .from('telemarketing_calls')
+    .select('donor_id')
+    .gte('created_at', startOfToday.toISOString());
+  const contactedTodayIds = new Set((callsToday || []).map((c: any) => c.donor_id));
+
+  const ready = donors.filter(donor => {
+    if (contactedTodayIds.has(donor.id)) return false;
     if (donor.type === 'lead') return true;
-    
-    // Inactive donors (last donation > 30 days)
-    if (donor.last_donation_date) {
-      const lastDate = new Date(donor.last_donation_date);
-      return lastDate < thirtyDaysAgo;
-    }
-
-    // No donation yet but not a lead (should not happen normally but just in case)
-    return true;
+    if (!donor.last_donation_date) return true;
+    const limitDays = daysByType[donor.type] ?? 30;
+    const daysSince = (Date.now() - new Date(donor.last_donation_date).getTime()) / 86400000;
+    return daysSince >= limitDays;
   });
+
+  // Mais atrasados (ou nunca contatados) primeiro.
+  ready.sort((a, b) => {
+    const dateA = a.last_donation_date ? new Date(a.last_donation_date).getTime() : 0;
+    const dateB = b.last_donation_date ? new Date(b.last_donation_date).getTime() : 0;
+    return dateA - dateB;
+  });
+
+  return ready;
 };

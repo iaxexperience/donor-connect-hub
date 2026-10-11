@@ -15,6 +15,7 @@ export function canAccessPage(role: AppRole | null, path: string): boolean {
   if (page === '/dashboard/rotas') return role === 'coordenador';
   if (page === '/dashboard/atribuicoes') return role === 'coordenador';
   if (page === '/dashboard/doacoes-recebidas') return role === 'coordenador';
+  if (page === '/dashboard/distribuicao-carteiras') return role === 'coordenador';
   if (page === '/dashboard/relatorios') return role === 'gestor' || role === 'coordenador';
   if (page === '/dashboard/configuracoes') return role === 'gestor' || role === 'coordenador';
   if (['/dashboard/whatsapp', '/dashboard/asaas', '/dashboard/bb', '/dashboard/api-aberta', '/dashboard/api-documentacao', '/dashboard/integracoes'].includes(page)) {
