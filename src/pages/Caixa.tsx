@@ -407,8 +407,7 @@ export default function Caixa() {
       fechado_por: user?.id,
       fechado_em: new Date().toISOString(),
       observacoes: closingNotes.trim() || null,
-    }).eq("data_movimento", filterDate);
-    fecharQuery = isMensageiro ? fecharQuery.eq("operator_id", user!.id) : fecharQuery.is("operator_id", null);
+    }).eq("data_movimento", filterDate).eq("operator_id", user!.id);
     const { error } = await fecharQuery;
 
     if (error) {
@@ -419,13 +418,13 @@ export default function Caixa() {
       setCloseCashierDialog(false);
       fetchCashierStatus();
 
-      // Mensageiro recebe automaticamente o relatório de fechamento para
-      // prestar contas ao coordenador.
-      if (isMensageiro) {
+      // Todo usuário recebe automaticamente o relatório de fechamento do seu
+      // próprio caixa, para prestar contas.
+      {
         try {
           const { data: profile } = await supabase.from("profiles").select("name,cpf").eq("id", user?.id).maybeSingle();
           await gerarFechamentoCaixaPDF({
-            operator_name: profile?.name || "Mensageiro",
+            operator_name: profile?.name || "Usuário",
             operator_document: profile?.cpf || undefined,
             data_movimento: filterDate,
             saldo_inicial: saldoInicialNum,
@@ -465,8 +464,7 @@ export default function Caixa() {
       status: "aberto",
       fechado_por: null,
       fechado_em: null,
-    }).eq("data_movimento", filterDate);
-    reabrirQuery = isMensageiro ? reabrirQuery.eq("operator_id", user!.id) : reabrirQuery.is("operator_id", null);
+    }).eq("data_movimento", filterDate).eq("operator_id", user!.id);
     const { error } = await reabrirQuery;
 
     if (error) {
@@ -619,10 +617,10 @@ export default function Caixa() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-heading font-black text-3xl text-slate-900 tracking-tight flex items-center gap-2">
-            <Wallet className="w-8 h-8 text-primary" /> {isMensageiro ? "Meu Caixa" : "Caixa de Doações"}
+            <Wallet className="w-8 h-8 text-primary" /> Meu Caixa
           </h1>
           <p className="text-slate-500 text-sm mt-1">
-            {isMensageiro ? "Seu caixa pessoal — só suas próprias doações coletadas." : "Controle de recebimentos e movimentação diária."}
+            Seu caixa pessoal — só as doações que você mesmo registrou ou coletou.
           </p>
         </div>
         <div className="flex gap-2">
