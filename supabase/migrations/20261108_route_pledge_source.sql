@@ -46,13 +46,16 @@ $$;
 
 -- Ao confirmar um recibo cuja origem é uma doação "prometida",
 -- baixa donations.status para 'pago' (em vez de doacoes_fisicas/caixa_transacoes).
--- Além disso, toda coleta em dinheiro (origem 'cash' já existente, ou uma
--- "promessa" do telemarketing paga em espécie na hora) fica vinculada ao
--- caixa pessoal do mensageiro que coletou (created_by), para que ele possa
--- prestar contas dela no fechamento do seu caixa.
+-- Toda coleta em dinheiro (origem 'cash') fica vinculada ao caixa pessoal do
+-- mensageiro que coletou (created_by), para que ele possa prestar contas dela
+-- no fechamento do seu caixa. Promessas do telemarketing ('pledge') NÃO geram
+-- uma linha extra em caixa_transacoes — isso duplicaria o valor em qualquer
+-- relatório que já soma donations + caixa_transacoes separadamente (ex.: o
+-- card "Recebidos Hoje" do Dashboard). A tela "Meu Caixa" do mensageiro busca
+-- essas promessas coletadas diretamente de `donations`, sem duplicar o dado.
 create or replace function public.transition_collection_receipt(p_receipt uuid,p_status text,p_reason text default null) returns void
 language plpgsql security definer set search_path=public as $$
-declare rec receipts; item route_items; v_courier uuid; v_donor_id bigint; v_updated boolean;
+declare rec receipts; item route_items; v_courier uuid; v_updated boolean;
 begin
  select * into rec from receipts where id=p_receipt for update;
  if not found then raise exception 'Recibo inexistente'; end if;
@@ -70,12 +73,8 @@ begin
  update caixa_transacoes set status='confirmado',compensated_at=now(),created_by=v_courier where id=item.source_id and status='pendente' and payment_method='dinheiro';
  v_updated:=found;
  else
- update donations set status='pago',confirmed_at=now() where id=item.source_id and status='pendente' returning donor_id into v_donor_id;
+ update donations set status='pago',confirmed_at=now() where id=item.source_id and status='pendente';
  v_updated:=found;
- if v_updated then
- insert into caixa_transacoes(donor_id,donor_name,amount,payment_method,status,notes,created_by,compensated_at)
- values(v_donor_id,item.snapshot->>'donor_name',coalesce((item.snapshot->>'amount')::numeric,0),'dinheiro','confirmado','Coletado presencialmente pelo mensageiro na visita de telemarketing',v_courier,now());
- end if;
  end if;
  if not v_updated then raise exception 'Origem já baixada/cancelada. Solicite análise administrativa'; end if;
  end if;

@@ -36,9 +36,10 @@ describe('permissões dos menus e páginas', () => {
     expect(canAccessPage('motoboy','/dashboard/rotas')).toBe(true);
     expect(canAccessPage('motoboy','/dashboard/atribuicoes')).toBe(false);
   });
-  it('mensageiro vê suas doações recebidas, demais papéis não', () => {
+  it('mensageiro e coordenador vêem doações recebidas, demais papéis não', () => {
     expect(canAccessPage('motoboy','/dashboard/doacoes-recebidas')).toBe(true);
-    for (const role of ['gestor','operador','visualizador','caixa','coordenador'] as AppRole[]) {
+    expect(canAccessPage('coordenador','/dashboard/doacoes-recebidas')).toBe(true);
+    for (const role of ['gestor','operador','visualizador','caixa'] as AppRole[]) {
       expect(canAccessPage(role,'/dashboard/doacoes-recebidas'),role).toBe(false);
     }
   });

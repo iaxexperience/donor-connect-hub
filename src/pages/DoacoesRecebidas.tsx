@@ -32,6 +32,7 @@ interface Route {
   id: string;
   collection_date: string;
   courier_id: string;
+  courier?: { name: string } | null;
   route_items: RouteItem[];
 }
 
@@ -44,10 +45,12 @@ const kindLabel: Record<RouteItem["source_kind"], { label: string; color: string
 interface Received {
   item: RouteItem;
   receipt: Receipt;
+  courierName?: string;
 }
 
 export default function DoacoesRecebidas() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const isMensageiro = role === "motoboy";
   const { toast } = useToast();
   const [received, setReceived] = useState<Received[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,11 +63,13 @@ export default function DoacoesRecebidas() {
   const fetchReceived = async () => {
     if (!user?.id) return;
     setLoading(true);
-    const { data, error } = await supabase
+    // Mensageiro vê só as próprias coletas; coordenador/admin vêem de todos.
+    let query = supabase
       .from("routes")
-      .select("id,collection_date,courier_id,route_items(id,source_kind,snapshot,visit_status,receipts(id,number,status,confirmed_at))")
-      .eq("courier_id", user.id)
+      .select("id,collection_date,courier_id,courier:profiles!courier_id(name),route_items(id,source_kind,snapshot,visit_status,receipts(id,number,status,confirmed_at))")
       .order("collection_date", { ascending: false });
+    if (isMensageiro) query = query.eq("courier_id", user.id);
+    const { data, error } = await query;
     if (error) {
       toast({ title: "Erro ao carregar doações recebidas", description: error.message, variant: "destructive" });
       setLoading(false);
@@ -76,7 +81,7 @@ export default function DoacoesRecebidas() {
       for (const item of route.route_items) {
         const receipt = item.receipts?.[0];
         if (item.visit_status === "coletado" && receipt?.status === "confirmed") {
-          list.push({ item, receipt });
+          list.push({ item, receipt, courierName: route.courier?.name });
         }
       }
     }
@@ -85,7 +90,7 @@ export default function DoacoesRecebidas() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchReceived(); }, [user?.id]);
+  useEffect(() => { fetchReceived(); }, [user?.id, isMensageiro]);
 
   // Filtra pela data real em que a doação foi confirmada/recebida — e não pela
   // data original da rota, já que o doador pode ter reagendado a visita para
@@ -111,8 +116,10 @@ export default function DoacoesRecebidas() {
           <PackageCheck className="w-6 h-6 text-primary" /> Doações Recebidas
         </h1>
         <p className="text-muted-foreground text-sm">
-          Doações que você já coletou e confirmou. O filtro usa a data real do recebimento,
-          já que o doador pode ter reagendado a visita para um dia diferente do planejado.
+          {isMensageiro
+            ? "Doações que você já coletou e confirmou."
+            : "Doações já coletadas e confirmadas por todos os mensageiros."}
+          {" "}O filtro usa a data real do recebimento, já que o doador pode ter reagendado a visita para um dia diferente do planejado.
         </p>
       </div>
 
@@ -148,6 +155,7 @@ export default function DoacoesRecebidas() {
               <TableRow>
                 <TableHead>Doador</TableHead>
                 <TableHead>Bairro / Cidade</TableHead>
+                {!isMensageiro && <TableHead>Mensageiro</TableHead>}
                 <TableHead>Origem</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead>Recibo</TableHead>
@@ -156,15 +164,16 @@ export default function DoacoesRecebidas() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-10"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={isMensageiro ? 6 : 7} className="text-center py-10"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-10 text-muted-foreground">Nenhuma doação recebida no período.</TableCell></TableRow>
-              ) : filtered.map(({ item, receipt }) => (
+                <TableRow><TableCell colSpan={isMensageiro ? 6 : 7} className="text-center py-10 text-muted-foreground">Nenhuma doação recebida no período.</TableCell></TableRow>
+              ) : filtered.map(({ item, receipt, courierName }) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.snapshot.donor_name}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {[item.snapshot.neighborhood, item.snapshot.city].filter(Boolean).join(" — ") || "—"}
                   </TableCell>
+                  {!isMensageiro && <TableCell className="text-sm text-muted-foreground">{courierName || "—"}</TableCell>}
                   <TableCell><Badge variant="outline" className={kindLabel[item.source_kind].color}>{kindLabel[item.source_kind].label}</Badge></TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {item.snapshot.description}
