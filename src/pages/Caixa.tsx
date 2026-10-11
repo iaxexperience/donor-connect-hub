@@ -335,6 +335,43 @@ export default function Caixa() {
       saveLog('CLOSE_CASHIER', 'caixa', { data_movimento: filterDate, total_geral: totalGeral });
       setCloseCashierDialog(false);
       fetchCashierStatus();
+
+      // Mensageiro recebe automaticamente o relatório de fechamento para
+      // prestar contas ao coordenador.
+      if (isMensageiro) {
+        try {
+          const { data: profile } = await supabase.from("profiles").select("name,cpf").eq("id", user?.id).maybeSingle();
+          await gerarFechamentoCaixaPDF({
+            operator_name: profile?.name || "Mensageiro",
+            operator_document: profile?.cpf || undefined,
+            data_movimento: filterDate,
+            saldo_inicial: saldoInicialNum,
+            totals: totalPorMetodo.map(t => ({ label: methodLabelDisplay(t.method), total: t.total, count: t.count })),
+            total_geral: totalGeral,
+            qtd_transacoes: confirmadas.length,
+            transacoes: confirmadas.map(t => ({
+              hora: format(new Date(t.created_at), "HH:mm"),
+              donor_name: t.donor_name,
+              amount: t.amount,
+              method_label: methodLabelDisplay(t.payment_method, t.cartao_tipo),
+              status: t.status,
+            })),
+            observacoes: closingNotes.trim() || undefined,
+            closed_at: new Date().toISOString(),
+            org: {
+              system_name: orgSettings?.system_name,
+              logo_url: orgSettings?.logo_url,
+              cnpj: orgSettings?.cnpj,
+              address: orgSettings?.address,
+              phone: orgSettings?.phone,
+              email: orgSettings?.email,
+            },
+          });
+        } catch (pdfError) {
+          console.error("Erro ao gerar relatório de fechamento:", pdfError);
+          toast({ title: "Caixa fechado, mas o relatório não pôde ser impresso", variant: "destructive" });
+        }
+      }
     }
     setSaving(false);
   };
