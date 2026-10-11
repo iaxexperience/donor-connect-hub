@@ -69,7 +69,10 @@ export default function DoacoesRecebidas() {
         for (const item of route.route_items || []) {
           if (item.source_kind === "pledge") pledgeIdsViaRoute.add(item.source_id);
           if (item.source_kind === "cash") cashIdsViaRoute.add(item.source_id);
-          const receipt = item.receipts?.[0];
+          // route_items.receipts vem como objeto único (não array): a coluna
+          // route_item_id em receipts tem constraint UNIQUE, então o
+          // PostgREST trata a relação como 1-para-1, não 1-para-muitos.
+          const receipt = item.receipts;
           if (item.visit_status === "coletado" && receipt?.status === "confirmed") {
             list.push({
               key: `route-${item.id}`,

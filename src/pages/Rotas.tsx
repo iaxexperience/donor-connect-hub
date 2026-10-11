@@ -106,7 +106,7 @@ export default function Rotas() {
     const verificationUrl = (verifyData || [])
       .flatMap((r: any) => r.route_items || [])
       .find((i: any) => i.id === item.id)
-      ?.receipts?.find((r: any) => r.id === receipt.id)?.verification_url;
+      ?.receipts?.verification_url;
 
     await gerarReciboColetaPDF({
       receipt_number: receipt.number,

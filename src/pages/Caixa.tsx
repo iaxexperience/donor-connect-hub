@@ -197,7 +197,9 @@ export default function Caixa() {
       const ids: string[] = [];
       for (const route of (routeData || []) as any[]) {
         for (const item of route.route_items || []) {
-          const receipt = item.receipts?.[0];
+          // route_items.receipts vem como objeto único (não array): a coluna
+          // route_item_id em receipts tem constraint UNIQUE (relação 1-para-1).
+          const receipt = item.receipts;
           if (item.source_kind === "pledge" && receipt?.status === "confirmed" && receipt.confirmed_at >= start && receipt.confirmed_at <= end) {
             ids.push(item.source_id);
           }

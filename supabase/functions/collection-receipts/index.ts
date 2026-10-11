@@ -28,7 +28,11 @@ Deno.serve(async req => {
  if(error) throw error;
  const origin=Deno.env.get('PUBLIC_APP_URL');
  if(!origin || !origin.startsWith('https://')) throw new Error('Configure PUBLIC_APP_URL HTTPS');
- for(const route of data||[]) for(const item of route.route_items) for(const receipt of item.receipts) {
+ // route_items.receipts vem como objeto único (não array): route_item_id
+ // em receipts tem constraint UNIQUE, então o PostgREST trata como 1-para-1.
+ for(const route of data||[]) for(const item of route.route_items) {
+ const receipt=item.receipts;
+ if(!receipt) continue;
  receipt.verification_url=`${origin.replace(/\/$/,'')}/validar-recibo?hash=${await signReceipt(receipt.id,secret)}`;
  }
  return reply(data);
