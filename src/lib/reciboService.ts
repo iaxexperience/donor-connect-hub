@@ -2,8 +2,32 @@ import jsPDF from "jspdf";
 import QRCode from "qrcode";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
 
 const BASE_URL = window.location.origin;
+
+/**
+ * No navegador, `doc.save()` dispara o download normalmente. Dentro do app
+ * empacotado (WebView nativo via Capacitor) isso não funciona — não existe
+ * um gerenciador de downloads por trás do WebView — então gravamos o PDF no
+ * armazenamento do app e abrimos a folha de compartilhamento nativa, de onde
+ * o usuário pode salvar, abrir ou enviar o arquivo.
+ */
+async function savePdf(doc: jsPDF, fileName: string): Promise<void> {
+  if (!Capacitor.isNativePlatform()) {
+    doc.save(fileName);
+    return;
+  }
+  const base64 = doc.output("datauristring").split(",")[1];
+  const { uri } = await Filesystem.writeFile({
+    path: fileName,
+    data: base64,
+    directory: Directory.Cache,
+  });
+  await Share.share({ title: fileName, url: uri });
+}
 
 export interface ReciboData {
   receipt_number: string;
@@ -138,7 +162,7 @@ export async function gerarReciboPDF(data: ReciboData): Promise<void> {
     return doc.output("blob") as any;
   }
 
-  doc.save(fileName);
+  await savePdf(doc, fileName);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -360,7 +384,7 @@ export async function gerarReciboFisicoPDF(data: ReciboFisicoData): Promise<void
   );
 
   const nomeArquivo = `recibo-fisico-${data.donor_name.split(" ")[0].toLowerCase()}-${format(new Date(data.created_at), "ddMMyyyy")}.pdf`;
-  doc.save(nomeArquivo);
+  await savePdf(doc, nomeArquivo);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -757,6 +781,4 @@ function loadImage(url: string): Promise<string> {
       resolve(canvas.toDataURL("image/png"));
     };
     img.onerror = reject;
-    img.src = url;
-  });
-}
+    img.src = url
