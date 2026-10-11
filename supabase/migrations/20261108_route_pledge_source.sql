@@ -39,7 +39,7 @@ language sql stable security definer set search_path=public as $$
  union all
  select 'pledge',don.id,don.donor_id,dn.name,'Doação combinada por telemarketing',null,don.amount
    from donations don join donors dn on dn.id=don.donor_id
-   where don.status='pendente' and don.payment_method='Manual'
+   where don.status='pendente' and don.payment_method in ('Manual','Dinheiro')
  ) s join donors d on d.id=s.donor_id
  where can_manage_collection() and not exists(select 1 from route_items i where i.source_kind=s.kind and i.source_id=s.id)
 $$;
