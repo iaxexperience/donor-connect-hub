@@ -313,15 +313,15 @@ serve(async (req) => {
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
       );
 
-      // Só administradores podem cadastrar outros usuários por aqui.
+      // Só administradores e coordenadores podem cadastrar outros usuários por aqui.
       const { data: callerProfile } = await supabaseAdmin
         .from('profiles')
         .select('role')
         .eq('id', user.id)
         .maybeSingle();
 
-      if (callerProfile?.role !== 'admin') {
-        return ok({ __error: true, error: 'Apenas administradores podem cadastrar usuários.' });
+      if (callerProfile?.role !== 'admin' && callerProfile?.role !== 'coordenador') {
+        return ok({ __error: true, error: 'Apenas administradores ou coordenadores podem cadastrar usuários.' });
       }
 
       if (action === 'create_user') {
