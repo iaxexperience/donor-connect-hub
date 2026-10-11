@@ -1,0 +1,192 @@
+{
+  "geradoEm": "2026-10-11T20:13:52.935Z",
+  "totalLinhasBrutas": 7164,
+  "totalDoadoresUnicos": 6936,
+  "somaTotal": 266671.35,
+  "somaEsperada": 266671.35,
+  "validacaoOk": true,
+  "validacaoPorOperador": {
+    "13": {
+      "expected": {
+        "count": 715,
+        "sum": 91137.15
+      },
+      "got": {
+        "count": 715,
+        "sum": 91137.15
+      },
+      "countOk": true,
+      "sumOk": true
+    },
+    "14": {
+      "expected": {
+        "count": 1868,
+        "sum": 48476.13
+      },
+      "got": {
+        "count": 1868,
+        "sum": 48476.130000000005
+      },
+      "countOk": true,
+      "sumOk": true
+    },
+    "16": {
+      "expected": {
+        "count": 2048,
+        "sum": 60961.65
+      },
+      "got": {
+        "count": 2048,
+        "sum": 60961.649999999994
+      },
+      "countOk": true,
+      "sumOk": true
+    },
+    "34": {
+      "expected": {
+        "count": 1788,
+        "sum": 49307.66
+      },
+      "got": {
+        "count": 1788,
+        "sum": 49307.659999999996
+      },
+      "countOk": true,
+      "sumOk": true
+    },
+    "36": {
+      "expected": {
+        "count": 745,
+        "sum": 16788.76
+      },
+      "got": {
+        "count": 745,
+        "sum": 16788.76
+      },
+      "countOk": true,
+      "sumOk": true
+    }
+  },
+  "linhasNaoReconhecidas": 1,
+  "amostraLinhasNaoReconhecidas": [
+    ";;     7164            266.671,35                                                                                                                                                                                             ;;"
+  ],
+  "doadoresComMultiplasDoacoes": 152,
+  "top10DoadoresMaisFrequentes": [
+    {
+      "nome": "MARIA DO SOCORRO DA SILVA",
+      "qtdDoacoes": 9,
+      "total": "92.00"
+    },
+    {
+      "nome": "MARIA APARECIDA DA SILVA",
+      "qtdDoacoes": 9,
+      "total": "91.00"
+    },
+    {
+      "nome": "MARIA JOSE DA SILVA",
+      "qtdDoacoes": 8,
+      "total": "240.00"
+    },
+    {
+      "nome": "MARIA DO SOCORRO PEREIRA",
+      "qtdDoacoes": 6,
+      "total": "165.00"
+    },
+    {
+      "nome": "MARIA DE FATIMA DA SILVA",
+      "qtdDoacoes": 5,
+      "total": "57.00"
+    },
+    {
+      "nome": "MARIA JOSE DOS SANTOS",
+      "qtdDoacoes": 5,
+      "total": "65.00"
+    },
+    {
+      "nome": "MARIA JOSE",
+      "qtdDoacoes": 5,
+      "total": "118.00"
+    },
+    {
+      "nome": "MARIA DO SOCORRO BARBOSA",
+      "qtdDoacoes": 5,
+      "total": "96.00"
+    },
+    {
+      "nome": "ROSANGELA MARIA DA SILVA",
+      "qtdDoacoes": 4,
+      "total": "68.00"
+    },
+    {
+      "nome": "JOSE MARIA",
+      "qtdDoacoes": 4,
+      "total": "185.00"
+    }
+  ],
+  "doacoesComDataFaltando": 73,
+  "amostraDoadoresSemData": [
+    "RICARDO DE ARAUJO AGRA",
+    "ANA MODAS - CAMPANHA SEME",
+    "ALINE RAQUEL DE LIMA",
+    "LYEDSON ARAUJO SILVA",
+    "LORENA GONCALVES",
+    "MARIA DAS GRACAS BARBOSA",
+    "EDNALDO GERVASIO",
+    "GLORINEIDE ALMEIDA",
+    "VERA LUCIA RIBEIRO",
+    "GEUNE MACIEL DE LUNA",
+    "ANTONIO VALDIR",
+    "EVANDRO DA COSTA",
+    "JOSE EDMILSON NOGUEIRA",
+    "GESSICA DOS SANTOS",
+    "KLEITON DE MOURA SOUZA",
+    "MARIA CLARA ALVES DE VASC",
+    "GENILSA DIAS DE OLIVEIRA",
+    "EDILENE DA SILVA LIMA",
+    "ADRIANA DOS SANTOS",
+    "CARLA KELLY"
+  ],
+  "amostraPrimeirosDoadores": [
+    {
+      "nome": "JOSÃ DOS SANTOS",
+      "qtd": 2
+    },
+    {
+      "nome": "EDVANIA",
+      "qtd": 1
+    },
+    {
+      "nome": "SILVANA MARIA DA SILVA",
+      "qtd": 1
+    },
+    {
+      "nome": "AFONSO JOSE DA SILVA",
+      "qtd": 1
+    },
+    {
+      "nome": "DENISE MEIRA SOUSA",
+      "qtd": 1
+    },
+    {
+      "nome": "DANIELA BRAZ DA SLVA",
+      "qtd": 1
+    },
+    {
+      "nome": "GUSTAVO SANTOS CIRNE",
+      "qtd": 1
+    },
+    {
+      "nome": "JOSE VALENÃA NEVES FILHO",
+      "qtd": 1
+    },
+    {
+      "nome": "JAYSON CAVALCANTE",
+      "qtd": 1
+    },
+    {
+      "nome": "EVANDRO SOARES",
+      "qtd": 1
+    }
+  ]
+}
