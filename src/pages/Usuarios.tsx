@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useProfiles } from "@/hooks/useProfiles";
+import { useAuth } from "@/contexts/AuthContext";
 
 const roleMapping: Record<string, { label: string, color: string }> = {
   "coordenador": { label: "Coordenador", color: "secondary" },
@@ -81,6 +82,8 @@ const loadNewUserDraft = () => {
 
 const Usuarios = () => {
   const { profiles, isLoading, updateProfile } = useProfiles();
+  const { role: currentRole } = useAuth();
+  const isCoordenador = currentRole === "coordenador";
   const draft = loadNewUserDraft();
   const [isDialogOpen, setIsDialogOpen] = useState(!!draft);
   const [searchTerm, setSearchTerm] = useState("");
@@ -157,6 +160,15 @@ const Usuarios = () => {
       toast({
         title: "Campos obrigatórios",
         description: "Preencha os campos essenciais para cadastrar o usuário.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isCoordenador && newRole === "admin") {
+      toast({
+        title: "Ação não permitida",
+        description: "Coordenadores não podem cadastrar ou promover usuários a Administrador.",
         variant: "destructive",
       });
       return;
@@ -405,9 +417,11 @@ const Usuarios = () => {
                     <SelectValue placeholder="Selecione o papel" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">
-                      🛡️ Administrador
-                    </SelectItem>
+                    {!isCoordenador && (
+                      <SelectItem value="admin">
+                        🛡️ Administrador
+                      </SelectItem>
+                    )}
                     <SelectItem value="gestor">
                       📊 Gestor de Campanha
                     </SelectItem>
@@ -508,16 +522,17 @@ const Usuarios = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30"
                           onClick={() => handleOpenDialog(user)}
-                          title="Editar Usuário"
+                          disabled={isCoordenador && user.role === "admin"}
+                          title={isCoordenador && user.role === "admin" ? "Coordenadores não podem editar administradores" : "Editar Usuário"}
                         >
                           <Edit2 className="h-4 w-4" />
                         </Button>
-                        
+
                         {user.status === 'Pendente' && (
                           <Button 
                             variant="ghost" 

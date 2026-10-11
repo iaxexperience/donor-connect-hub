@@ -330,6 +330,10 @@ serve(async (req) => {
           return ok({ __error: true, error: 'Nome, e-mail, senha e papel são obrigatórios.' });
         }
 
+        if (callerProfile?.role === 'coordenador' && role === 'admin') {
+          return ok({ __error: true, error: 'Coordenadores não podem cadastrar usuários com papel de Administrador.' });
+        }
+
         const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
           email,
           password,
