@@ -2,7 +2,7 @@
 -- Bootstrap idempotente do módulo de coleta (rotas/itinerários).
 -- Reaplica com segurança o conteúdo de 20261008_collection_routes.sql
 -- (que nunca chegou a rodar por completo em produção — só
--- "system_settings" existia) já incluindo o acesso do coordenador
+-- "collection_settings" existia) já incluindo o acesso do coordenador
 -- (can_manage_collection) desde o início. Seguro rodar quantas
 -- vezes for preciso: tabelas com IF NOT EXISTS; policies e funções
 -- são removidas (na ordem certa de dependência, sem CASCADE) e
@@ -10,12 +10,12 @@
 -- ============================================================
 begin;
 
-create table if not exists public.system_settings (
+create table if not exists public.collection_settings (
  id integer primary key default 1 check (id=1),
  legal_name text not null default '', thank_you text not null default 'Obrigado por transformar vidas!',
  bank_details text not null default '', pix_key text not null default '', legal_notice text not null default ''
 );
-insert into public.system_settings(id) values(1) on conflict (id) do nothing;
+insert into public.collection_settings(id) values(1) on conflict (id) do nothing;
 
 create table if not exists public.routes (
  id uuid primary key default gen_random_uuid(), request_id uuid not null unique,
@@ -41,14 +41,14 @@ create table if not exists public.receipt_events (
  actor_id uuid not null, event text not null, reason text, created_at timestamptz not null default now()
 );
 
-alter table system_settings enable row level security;
+alter table collection_settings enable row level security;
 alter table routes enable row level security;
 alter table route_items enable row level security;
 alter table receipts enable row level security;
 alter table receipt_events enable row level security;
 
 -- Remove policies primeiro (elas dependem das funções abaixo).
-drop policy if exists settings_admin on system_settings;
+drop policy if exists settings_admin on collection_settings;
 drop policy if exists routes_read on routes;
 drop policy if exists items_read on route_items;
 drop policy if exists receipts_read on receipts;
@@ -96,7 +96,7 @@ begin
  if jsonb_typeof(p_items) is distinct from 'array' or jsonb_array_length(p_items) not between 1 and 100 then raise exception 'Selecione entre 1 e 100 doações'; end if;
  select jsonb_build_object('name',name,'document',cpf) into courier_data from profiles where id=p_courier and role='motoboy' and status='Ativo' and nullif(cpf,'') is not null for share;
  if courier_data is null then raise exception 'Motoboy ativo com documento obrigatório'; end if;
- select jsonb_build_object('name',coalesce(nullif(s.legal_name,''),w.system_name),'cnpj',w.cnpj,'address',w.address,'logo_url',w.logo_url,'phone',w.phone,'email',w.email,'thank_you',s.thank_you,'bank_details',s.bank_details,'pix_key',s.pix_key,'legal_notice',s.legal_notice) into org from white_label_settings w cross join system_settings s where w.id=1 and s.id=1;
+ select jsonb_build_object('name',coalesce(nullif(s.legal_name,''),w.system_name),'cnpj',w.cnpj,'address',w.address,'logo_url',w.logo_url,'phone',w.phone,'email',w.email,'thank_you',s.thank_you,'bank_details',s.bank_details,'pix_key',s.pix_key,'legal_notice',s.legal_notice) into org from white_label_settings w cross join collection_settings s where w.id=1 and s.id=1;
  if org is null or coalesce(org->>'cnpj','')='' then raise exception 'Configure os dados institucionais e CNPJ'; end if;
  for entry in select value from jsonb_array_elements(p_items) order by value->>'source_kind',value->>'source_id' loop
  if entry->>'source_kind'='physical' then perform 1 from doacoes_fisicas where id=(entry->>'source_id')::uuid for update;
@@ -136,7 +136,7 @@ begin
  insert into receipt_events(receipt_id,actor_id,event,reason) values(p_receipt,auth.uid(),p_status,p_reason);
 end $$;
 
-create policy settings_admin on system_settings for all to authenticated using(collection_admin()) with check(collection_admin());
+create policy settings_admin on collection_settings for all to authenticated using(collection_admin()) with check(collection_admin());
 create policy routes_read on routes for select to authenticated using(can_read_collection(id));
 create policy items_read on route_items for select to authenticated using(can_read_collection(route_id));
 create policy receipts_read on receipts for select to authenticated using(exists(select 1 from route_items i where i.id=route_item_id and can_read_collection(i.route_id)));
@@ -144,7 +144,7 @@ create policy events_read on receipt_events for select to authenticated using(ca
 
 revoke all on routes,route_items,receipts,receipt_events from anon,authenticated;
 grant select on routes,route_items,receipts,receipt_events to authenticated;
-grant select,update on system_settings to authenticated;
+grant select,update on collection_settings to authenticated;
 
 revoke all on function collection_candidates(),dispatch_collection(uuid,uuid,date,text,jsonb),transition_collection_receipt(uuid,text,text) from public;
 grant execute on function collection_candidates(),dispatch_collection(uuid,uuid,date,text,jsonb),transition_collection_receipt(uuid,text,text) to authenticated;
