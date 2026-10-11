@@ -87,7 +87,7 @@ export default function Rotas() {
     setLoading(true);
     const { data, error } = await supabase
       .from("routes")
-      .select("id,collection_date,shift,courier_id,courier:profiles!courier_id(name),route_items(id,source_kind,position,snapshot,priority,scheduled_time,visit_status,receipts(id,number,status))")
+      .select("id,collection_date,shift,courier_id,courier:profiles!courier_id(name),route_items(id,source_kind,position,snapshot,priority,scheduled_time,visit_status,receipts(id,number,status,organization,courier,confirmed_at))")
       .order("collection_date", { ascending: false });
     if (error) {
       toast({ title: "Erro ao carregar rotas", description: error.message, variant: "destructive" });
@@ -105,12 +105,47 @@ export default function Rotas() {
       const { error } = await supabase.rpc("update_visit_status", { p_item: item.id, p_status: status, p_reason: motivo || null });
       if (error) throw error;
 
-      // Coletar a doação também confirma o recibo (baixa financeira).
+      // Coletar a doação também confirma o recibo (baixa financeira) e
+      // imprime o recibo de coleta assinado pelo doador e pelo mensageiro.
       if (status === "coletado" && item.receipts?.[0]?.id) {
+        const receipt = item.receipts[0];
         const { error: recError } = await supabase.rpc("transition_collection_receipt", {
-          p_receipt: item.receipts[0].id, p_status: "confirmed", p_reason: null,
+          p_receipt: receipt.id, p_status: "confirmed", p_reason: null,
         });
         if (recError) throw recError;
+
+        try {
+          const { data: verifyData } = await supabase.functions.invoke("collection-receipts", { body: { action: "routes" } });
+          const verificationUrl = (verifyData || [])
+            .flatMap((r: any) => r.route_items || [])
+            .find((i: any) => i.id === item.id)
+            ?.receipts?.find((r: any) => r.id === receipt.id)?.verification_url;
+
+          await gerarReciboColetaPDF({
+            receipt_number: receipt.number,
+            verification_url: verificationUrl || window.location.origin,
+            donor_name: item.snapshot.donor_name,
+            donor_address: item.snapshot.address,
+            donor_phone: item.snapshot.phone,
+            description: item.snapshot.description,
+            quantity: item.snapshot.quantity,
+            amount: item.snapshot.amount,
+            courier_name: receipt.courier?.name || "—",
+            courier_document: receipt.courier?.document,
+            collected_at: new Date().toISOString(),
+            org: {
+              system_name: receipt.organization?.name,
+              logo_url: receipt.organization?.logo_url,
+              cnpj: receipt.organization?.cnpj,
+              address: receipt.organization?.address,
+              phone: receipt.organization?.phone,
+              email: receipt.organization?.email,
+            },
+          });
+        } catch (pdfError) {
+          console.error("Erro ao gerar recibo de coleta:", pdfError);
+          toast({ title: "Doação coletada, mas o recibo não pôde ser impresso", variant: "destructive" });
+        }
       }
 
       toast({ title: "Status atualizado!" });
