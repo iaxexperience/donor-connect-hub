@@ -144,6 +144,23 @@ export const useDonors = () => {
     return updateTypeMutation.mutate({ donorId, newType });
   };
 
+  const mergeDuplicatesMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc('merge_duplicate_donors');
+      if (error) throw error;
+      return data as { groups_merged: number; donors_removed: number; details: any[] };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['donors'] });
+    },
+  });
+
+  const getDuplicateDonorsSummary = async () => {
+    const { data, error } = await supabase.rpc('get_duplicate_donors_summary');
+    if (error) throw error;
+    return (data || []) as { name: string; donor_count: number; donor_ids: number[] }[];
+  };
+
   const findDonorByEmailOrPhone = (query: string) => {
     const cleanQuery = query.toLowerCase().replace(/\D/g, "");
     return donors.find(d => 
@@ -172,7 +189,10 @@ export const useDonors = () => {
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['donors'] });
       return { data, inserted: (data as any)?.inserted ?? donorsList.length, skipped: 0 };
-    }
+    },
+    getDuplicateDonorsSummary,
+    mergeDuplicates: mergeDuplicatesMutation.mutateAsync,
+    isMergingDuplicates: mergeDuplicatesMutation.isPending,
   };
 };
 
