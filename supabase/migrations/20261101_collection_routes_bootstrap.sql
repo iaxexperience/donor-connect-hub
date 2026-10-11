@@ -74,7 +74,11 @@ revoke all on routes,route_items,receipts,receipt_events from anon,authenticated
 grant select on routes,route_items,receipts,receipt_events to authenticated;
 grant select,update on system_settings to authenticated;
 
-create or replace function public.collection_candidates() returns table(source_kind text,source_id uuid,snapshot jsonb)
+drop function if exists public.collection_candidates() cascade;
+drop function if exists public.dispatch_collection(uuid,uuid,date,text,jsonb) cascade;
+drop function if exists public.transition_collection_receipt(uuid,text,text) cascade;
+
+create function public.collection_candidates() returns table(source_kind text,source_id uuid,snapshot jsonb)
 language sql stable security definer set search_path=public as $$
  select s.kind,s.id,jsonb_build_object('donor_name',s.name,'document',d.document_id,'phone',d.phone,
  'address',concat_ws(', ',nullif(d.address,''),nullif(d.address_number,''),nullif(d.complement,''),nullif(d.neighborhood,''),nullif(d.city,''),nullif(d.state,''),nullif(d.zip_code,'')),
@@ -87,7 +91,7 @@ language sql stable security definer set search_path=public as $$
  where can_manage_collection() and not exists(select 1 from route_items i where i.source_kind=s.kind and i.source_id=s.id)
 $$;
 
-create or replace function public.dispatch_collection(p_request uuid,p_courier uuid,p_date date,p_shift text,p_items jsonb) returns uuid
+create function public.dispatch_collection(p_request uuid,p_courier uuid,p_date date,p_shift text,p_items jsonb) returns uuid
 language plpgsql security definer set search_path=public as $$
 declare rid uuid; entry jsonb; snap jsonb; item_id uuid; rec_id uuid; org jsonb; courier_data jsonb; idx integer:=0;
 begin
@@ -118,7 +122,7 @@ begin
  return rid;
 end $$;
 
-create or replace function public.transition_collection_receipt(p_receipt uuid,p_status text,p_reason text default null) returns void
+create function public.transition_collection_receipt(p_receipt uuid,p_status text,p_reason text default null) returns void
 language plpgsql security definer set search_path=public as $$
 declare rec receipts; item route_items;
 begin
