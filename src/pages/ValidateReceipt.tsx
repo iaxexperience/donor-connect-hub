@@ -68,7 +68,7 @@ export default function ValidateReceipt() {
       // físicas (Alimentos, Remédios, etc.) são identificados pelo próprio id.
       if (!rec) {
         const { data: phys } = await supabase
-          .from("doacoes_fisicas")
+          .from("public_doacoes_fisicas_receipt")
           .select("donor_name, tipo_doacao, subtipo, quantidade, setor_destino, status, created_at")
           .eq("id", hash)
           .maybeSingle();
