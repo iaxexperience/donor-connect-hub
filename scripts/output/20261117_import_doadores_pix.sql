@@ -1,6 +1,6 @@
 -- ============================================================
 -- Importação do extrato legado "doadores pix, depositos e presenciais"
--- Gerado automaticamente por scripts/import-doadores-pix.mjs em 2026-10-11T20:17:26.045Z
+-- Gerado automaticamente por scripts/import-doadores-pix.mjs em 2026-10-11T21:44:11.830Z
 --
 -- Resumo:
 --   7164 doações brutas (linhas do relatório legado)
