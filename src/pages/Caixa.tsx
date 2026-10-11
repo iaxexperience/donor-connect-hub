@@ -59,7 +59,19 @@ interface Transacao {
     address?: any;
     phone?: string;
   };
+  // Doações pagas vindas da tabela `donations` (Asaas, telemarketing, etc.),
+  // mescladas aqui só para exibição/totais — não são linhas reais de
+  // caixa_transacoes, então não têm recibo/ações de caixa.
+  source?: "caixa" | "donation";
 }
+
+const mapDonationMethod = (pm?: string): PaymentMethod => {
+  const v = (pm || "").toLowerCase();
+  if (v.includes("dinheiro") || v.includes("manual")) return "dinheiro";
+  if (v.includes("cart")) return "cartao";
+  if (v.includes("boleto")) return "boleto";
+  return "pix";
+};
 
 interface DonorSuggestion {
   id: number;
@@ -168,6 +180,60 @@ export default function Caixa() {
     setSuggestions([]); setShowSuggestions(false);
   };
 
+  // Doações já pagas/confirmadas na tabela `donations` (Asaas, Pix direto,
+  // telemarketing etc.) — mescladas ao caixa só para exibição/totais, nunca
+  // duplicadas: o Dashboard soma as duas tabelas separadamente em outro
+  // lugar, então essas linhas aqui são só uma VIEW, não um registro novo.
+  const fetchDonationsPagas = async (start: string, end: string): Promise<Transacao[]> => {
+    let donationIds: string[] | null = null;
+
+    if (isMensageiro) {
+      if (!user?.id) return [];
+      // Mensageiro só vê promessas que ele mesmo coletou presencialmente.
+      const { data: routeData } = await supabase
+        .from("routes")
+        .select("courier_id,route_items(source_kind,source_id,receipts(status,confirmed_at))")
+        .eq("courier_id", user.id);
+      const ids: string[] = [];
+      for (const route of (routeData || []) as any[]) {
+        for (const item of route.route_items || []) {
+          const receipt = item.receipts?.[0];
+          if (item.source_kind === "pledge" && receipt?.status === "confirmed" && receipt.confirmed_at >= start && receipt.confirmed_at <= end) {
+            ids.push(item.source_id);
+          }
+        }
+      }
+      if (ids.length === 0) return [];
+      donationIds = ids;
+    }
+
+    let query = supabase
+      .from("donations")
+      .select("id,donor_id,amount,payment_method,status,donation_date,confirmed_at,notes,donors(name,phone)")
+      .eq("status", "pago")
+      .gte("confirmed_at", start)
+      .lte("confirmed_at", end);
+    if (donationIds) query = query.in("id", donationIds);
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("Erro ao buscar doações pagas:", error.message);
+      return [];
+    }
+    return (data || []).map((d: any) => ({
+      id: `donation-${d.id}`,
+      donor_id: d.donor_id,
+      donor_name: d.donors?.name || "Doador",
+      amount: Number(d.amount || 0),
+      payment_method: mapDonationMethod(d.payment_method),
+      status: "confirmado" as Status,
+      notes: d.notes,
+      created_at: d.confirmed_at || d.donation_date,
+      donors: d.donors,
+      source: "donation" as const,
+    }));
+  };
+
   const fetchTransacoes = async () => {
     setLoading(true);
 
@@ -192,13 +258,20 @@ export default function Caixa() {
     // caixa inteiro da organização.
     if (isMensageiro && user?.id) query = query.eq("created_by", user.id);
 
-    const { data, error } = await query;
+    const [{ data, error }, donationsPagas] = await Promise.all([
+      query,
+      fetchDonationsPagas(start, end),
+    ]);
 
     if (error) {
       console.error("Erro ao buscar transações:", error.message);
       toast({ title: "Erro ao carregar transações", description: error.message, variant: "destructive" });
+      setTransacoes(donationsPagas.filter(t => filterMethod === "todos" || t.payment_method === filterMethod));
     } else {
-      setTransacoes((data || []) as Transacao[]);
+      const caixaRows = ((data || []) as Transacao[]).map(t => ({ ...t, source: "caixa" as const }));
+      const merged = [...caixaRows, ...donationsPagas.filter(t => filterMethod === "todos" || t.payment_method === filterMethod)]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setTransacoes(merged);
     }
     setLoading(false);
   };
@@ -911,36 +984,40 @@ export default function Caixa() {
                       {t.status === "cancelado" && <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100 gap-1"><XCircle className="w-3 h-3" />Cancelado</Badge>}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
-                        {t.status === "pendente" && (
-                          <Button size="sm" variant="outline" className="text-xs rounded-lg h-7" onClick={() => handleConfirmarBoleto(t.id)}>
-                            Compensar
-                          </Button>
-                        )}
-                        {t.status === "confirmado" && (
-                          <>
-                            <Button size="sm" variant="outline" className="text-xs rounded-lg h-7 gap-1" disabled={emittingId === t.id} onClick={() => emitirRecibo(t)}>
-                              <Receipt className="w-3 h-3" />{emittingId === t.id ? "..." : "Recibo"}
+                      {t.source === "donation" ? (
+                        <span className="text-xs text-slate-400 italic">Doação online/telemarketing</span>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          {t.status === "pendente" && (
+                            <Button size="sm" variant="outline" className="text-xs rounded-lg h-7" onClick={() => handleConfirmarBoleto(t.id)}>
+                              Compensar
                             </Button>
-                            <Button size="sm" variant="ghost" className="text-xs rounded-lg h-7 px-2" onClick={() => copiarLink(t)} title="Copiar link de validação">
-                              <Link2 className="w-3 h-3" />
+                          )}
+                          {t.status === "confirmado" && (
+                            <>
+                              <Button size="sm" variant="outline" className="text-xs rounded-lg h-7 gap-1" disabled={emittingId === t.id} onClick={() => emitirRecibo(t)}>
+                                <Receipt className="w-3 h-3" />{emittingId === t.id ? "..." : "Recibo"}
+                              </Button>
+                              <Button size="sm" variant="ghost" className="text-xs rounded-lg h-7 px-2" onClick={() => copiarLink(t)} title="Copiar link de validação">
+                                <Link2 className="w-3 h-3" />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="text-xs rounded-lg h-7 px-2 text-green-600" onClick={() => compartilharWhatsApp(t)} title="Enviar via WhatsApp">
+                                <MessageCircle className="w-3 h-3" />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="text-xs text-red-500 hover:text-red-600 rounded-lg h-7 px-2" onClick={() => handleCancelar(t.id)}>
+                                <XCircle className="w-3 h-3" />
+                              </Button>
+                            </>
+                          )}
+                          {t.status === "cancelado" && (
+                            <Button size="sm" variant="outline" className="text-xs rounded-lg h-7 gap-1 text-orange-600 border-orange-200 hover:bg-orange-50"
+                              onClick={() => handleDesfazerCancelamento(t)}
+                              title="Desfazer cancelamento">
+                              <RotateCcw className="w-3 h-3" /> Desfazer
                             </Button>
-                            <Button size="sm" variant="ghost" className="text-xs rounded-lg h-7 px-2 text-green-600" onClick={() => compartilharWhatsApp(t)} title="Enviar via WhatsApp">
-                              <MessageCircle className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="ghost" className="text-xs text-red-500 hover:text-red-600 rounded-lg h-7 px-2" onClick={() => handleCancelar(t.id)}>
-                              <XCircle className="w-3 h-3" />
-                            </Button>
-                          </>
-                        )}
-                        {t.status === "cancelado" && (
-                          <Button size="sm" variant="outline" className="text-xs rounded-lg h-7 gap-1 text-orange-600 border-orange-200 hover:bg-orange-50"
-                            onClick={() => handleDesfazerCancelamento(t)}
-                            title="Desfazer cancelamento">
-                            <RotateCcw className="w-3 h-3" /> Desfazer
-                          </Button>
-                        )}
-                      </div>
+                          )}
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
