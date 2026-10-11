@@ -416,167 +416,139 @@ export interface ReciboColetaData {
 export async function gerarReciboColetaPDF(data: ReciboColetaData): Promise<void> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageW = 210;
-  const margin = 20;
+  const pageH = 297;
+  const margin = 14;
   const primaryColor: [number, number, number] = [0, 102, 204];
   const darkColor: [number, number, number] = [15, 25, 75];
-  const grayColor: [number, number, number] = [100, 100, 110];
+  const grayColor: [number, number, number] = [110, 110, 120];
 
-  // ── CABEÇALHO ──────────────────────────────────────────────
-  doc.setFillColor(...primaryColor);
-  doc.rect(0, 0, pageW, 38, "F");
-
-  let logoEndX = margin;
+  let logoImg: string | null = null;
   if (data.org.logo_url) {
-    try {
-      const img = await loadImage(data.org.logo_url);
-      doc.addImage(img, "PNG", margin, 7, 22, 22);
-      logoEndX = margin + 28;
-    } catch { /* sem logo */ }
+    try { logoImg = await loadImage(data.org.logo_url); } catch { /* sem logo */ }
   }
+  const qrDataUrl = await QRCode.toDataURL(data.verification_url, { width: 120, margin: 1 });
+  const dataColetaFmt = format(new Date(data.collected_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(15);
-  doc.setFont("helvetica", "bold");
-  doc.text(data.org.system_name || "Pulse Doações", logoEndX, 18);
+  // Recibo compacto em duas vias (doador e instituição) na mesma folha,
+  // separadas por uma linha de corte tracejada ao centro.
+  const drawVia = (top: number, height: number, viaLabel: string) => {
+    let y = top;
 
-  if (data.org.cnpj) {
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.text(`CNPJ: ${data.org.cnpj}`, logoEndX, 25);
-  }
-  if (data.org.address) {
+    // ── Cabeçalho (sem bloco de cor — só uma linha fina) ──────
+    let textX = margin;
+    if (logoImg) {
+      doc.addImage(logoImg, "PNG", margin, y, 11, 11);
+      textX = margin + 14;
+    }
+    doc.setTextColor(...darkColor);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text(data.org.system_name || "Pulse Doações", textX, y + 4.5);
     doc.setFontSize(7);
-    doc.text(data.org.address, logoEndX, 31);
-  }
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...grayColor);
+    const orgLine = [data.org.cnpj ? `CNPJ ${data.org.cnpj}` : null, data.org.address].filter(Boolean).join("  •  ");
+    if (orgLine) doc.text(orgLine, textX, y + 9);
 
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.text(`Nº ${data.receipt_number}`, pageW - margin, 14, { align: "right" });
-  doc.setFont("helvetica", "normal");
-  doc.text(format(new Date(data.collected_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }), pageW - margin, 20, { align: "right" });
-
-  let y = 52;
-
-  // ── TÍTULO ─────────────────────────────────────────────────
-  doc.setTextColor(...darkColor);
-  doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
-  doc.text("RECIBO DE COLETA", pageW / 2, y, { align: "center" });
-
-  doc.setDrawColor(...primaryColor);
-  doc.setLineWidth(0.6);
-  doc.line(margin, y + 4, pageW - margin, y + 4);
-  y += 16;
-
-  // ── MENSAGEM ─────────────────────────────────────────────────
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...grayColor);
-  const msg = `${data.org.system_name || "Nossa instituição"} agradece a sua generosa doação, coletada pessoalmente em sua residência. Guarde este recibo como comprovante.`;
-  const msgLines = doc.splitTextToSize(msg, pageW - margin * 2);
-  doc.text(msgLines, margin, y);
-  y += msgLines.length * 5 + 14;
-
-  // ── DADOS DO DOADOR ─────────────────────────────────────────
-  doc.setFillColor(245, 247, 252);
-  doc.roundedRect(margin, y - 4, pageW - margin * 2, 18, 3, 3, "F");
-  doc.setDrawColor(220, 226, 240);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(margin, y - 4, pageW - margin * 2, 18, 3, 3, "S");
-
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...primaryColor);
-  doc.text("DOADOR", margin + 4, y + 2);
-
-  doc.setFontSize(13);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...darkColor);
-  doc.text(data.donor_name, margin + 4, y + 10);
-  y += 26;
-
-  // ── DETALHES DA COLETA ──────────────────────────────────────
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...darkColor);
-  doc.text("DETALHES DA COLETA", margin, y);
-  doc.setLineWidth(0.3);
-  doc.setDrawColor(200, 210, 230);
-  doc.line(margin, y + 3, pageW - margin, y + 3);
-  y += 12;
-
-  const addRow = (label: string, value?: string) => {
-    if (!value) return;
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...primaryColor);
-    doc.text(label.toUpperCase(), margin, y);
-
+    doc.text("RECIBO DE COLETA", pageW - margin, y + 4, { align: "right" });
+    doc.setFontSize(7.5);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(50, 50, 60);
-    doc.setFontSize(11);
-    const valueLines = doc.splitTextToSize(value, pageW - margin * 2 - 60);
-    doc.text(valueLines, margin + 65, y - 2);
-    doc.setDrawColor(235, 238, 245);
-    doc.setLineWidth(0.2);
-    doc.line(margin, y + (valueLines.length * 4) + 2, pageW - margin, y + (valueLines.length * 4) + 2);
-    y += valueLines.length * 4 + 10;
+    doc.setTextColor(...grayColor);
+    doc.text(`Nº ${data.receipt_number}  •  ${dataColetaFmt}`, pageW - margin, y + 9, { align: "right" });
+
+    y += 13;
+    doc.setDrawColor(...primaryColor);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, pageW - margin, y);
+    y += 5;
+
+    // ── Doador ─────────────────────────────────────────────────
+    doc.setFontSize(10.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...darkColor);
+    doc.text(data.donor_name, margin, y);
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...grayColor);
+    const contactLine = [data.donor_address, data.donor_phone].filter(Boolean).join("   •   ");
+    if (contactLine) {
+      const contactLines = doc.splitTextToSize(contactLine, pageW - margin * 2);
+      doc.text(contactLines, margin, y + 4.5);
+      y += 4.5 + contactLines.length * 3.6;
+    } else {
+      y += 4.5;
+    }
+    y += 4;
+
+    // ── Detalhes em grade compacta de 2 colunas ────────────────
+    const colW = (pageW - margin * 2 - 6) / 2;
+    const col2X = margin + colW + 6;
+    const field = (x: number, label: string, value?: string) => {
+      if (!value) return;
+      doc.setFontSize(6.5);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...primaryColor);
+      doc.text(label.toUpperCase(), x, y);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(40, 40, 50);
+      const lines = doc.splitTextToSize(value, colW);
+      doc.text(lines, x, y + 4);
+      return lines.length;
+    };
+
+    const descLines = field(margin, "Descrição", data.description) || 1;
+    field(col2X, "Valor", data.amount ? formatCurrency(data.amount) : data.quantity);
+    y += Math.max(descLines, 1) * 4 + 7;
+
+    field(margin, "Mensageiro responsável", `${data.courier_name}${data.courier_document ? ` — ${data.courier_document}` : ""}`);
+    field(col2X, "Data da coleta", dataColetaFmt);
+    y += 11;
+
+    // ── QR + assinaturas ───────────────────────────────────────
+    const qrSize = 16;
+    doc.addImage(qrDataUrl, "PNG", margin, y, qrSize, qrSize);
+    doc.setFontSize(6);
+    doc.setTextColor(150, 150, 160);
+    doc.text("Valide este recibo", margin + qrSize / 2, y + qrSize + 2.5, { align: "center" });
+
+    const sigY = y + qrSize / 2 + 3;
+    const sigW = 62;
+    doc.setDrawColor(150, 160, 180);
+    doc.setLineWidth(0.3);
+    doc.line(margin + qrSize + 8, sigY, margin + qrSize + 8 + sigW, sigY);
+    doc.line(pageW - margin - sigW, sigY, pageW - margin, sigY);
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...grayColor);
+    doc.text("Assinatura do Doador", margin + qrSize + 8 + sigW / 2, sigY + 3.5, { align: "center" });
+    doc.text("Assinatura do Mensageiro", pageW - margin - sigW / 2, sigY + 3.5, { align: "center" });
+
+    // ── Etiqueta da via ──────────────────────────────────────────
+    doc.setFontSize(6);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(170, 170, 180);
+    doc.text(viaLabel, pageW / 2, top + height - 3, { align: "center" });
   };
 
-  addRow("Endereço:", data.donor_address);
-  addRow("Telefone:", data.donor_phone);
-  addRow("Descrição:", data.description);
-  if (data.quantity) addRow("Quantidade:", data.quantity);
-  if (data.amount) addRow("Valor:", formatCurrency(data.amount));
-  addRow("Mensageiro responsável:", `${data.courier_name}${data.courier_document ? ` — ${data.courier_document}` : ""}`);
-  addRow("Data da coleta:", format(new Date(data.collected_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }));
+  const viaHeight = (pageH - margin * 2 - 8) / 2;
+  drawVia(margin, viaHeight, "1ª VIA — DOADOR");
 
-  y += 6;
+  // Linha de corte tracejada entre as duas vias.
+  const cutY = margin + viaHeight + 4;
+  doc.setDrawColor(190, 190, 200);
+  doc.setLineWidth(0.3);
+  doc.setLineDashPattern([2, 2], 0);
+  doc.line(margin, cutY, pageW - margin, cutY);
+  doc.setLineDashPattern([], 0);
+  doc.setFontSize(6);
+  doc.setTextColor(170, 170, 180);
+  doc.text("✂", pageW - margin + 2, cutY + 1);
 
-  // ── QR CODE DE VALIDAÇÃO ─────────────────────────────────────
-  const qrDataUrl = await QRCode.toDataURL(data.verification_url, { width: 150, margin: 1 });
-  const qrSize = 24;
-  const qrY = Math.min(y, 196);
-  doc.addImage(qrDataUrl, "PNG", pageW - margin - qrSize, qrY, qrSize, qrSize);
-  doc.setFontSize(7);
-  doc.setTextColor(150, 150, 150);
-  doc.text("Valide este recibo", pageW - margin - qrSize / 2, qrY + qrSize + 3, { align: "center" });
-
-  // ── ASSINATURAS ──────────────────────────────────────────────
-  y = Math.max(y, 234);
-  doc.setDrawColor(100, 120, 160);
-  doc.setLineWidth(0.4);
-  doc.line(margin, y, margin + 70, y);
-  doc.line(pageW - margin - 70, y, pageW - margin, y);
-
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...grayColor);
-  doc.text("Assinatura do Doador", margin + 35, y + 5, { align: "center" });
-  doc.text("Assinatura do Mensageiro", pageW - margin - 35, y + 5, { align: "center" });
-
-  // ── RODAPÉ ─────────────────────────────────────────────────
-  const footerY = 282;
-  doc.setFillColor(245, 247, 252);
-  doc.rect(0, footerY - 4, pageW, 20, "F");
-
-  doc.setDrawColor(...primaryColor);
-  doc.setLineWidth(0.4);
-  doc.line(margin, footerY - 4, pageW - margin, footerY - 4);
-
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...grayColor);
-
-  const contacts = [data.org.phone, data.org.email].filter(Boolean).join("   |   ");
-  if (contacts) doc.text(contacts, pageW / 2, footerY + 2, { align: "center" });
-
-  doc.setFontSize(7);
-  doc.setTextColor(160, 160, 170);
-  doc.text(
-    `Documento gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} • ${data.org.system_name || "Pulse Doações"}`,
-    pageW / 2, footerY + 8, { align: "center" }
-  );
+  drawVia(cutY + 4, viaHeight, "2ª VIA — INSTITUIÇÃO");
 
   const nomeArquivo = `recibo-coleta-${data.donor_name.split(" ")[0].toLowerCase()}-${format(new Date(data.collected_at), "ddMMyyyy")}.pdf`;
   await savePdf(doc, nomeArquivo);
