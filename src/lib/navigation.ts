@@ -28,6 +28,13 @@ export const NAV_SECTIONS: NavSection[] = [
     railIcon: LayoutDashboard,
     items: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: "Inteligência",
+    accent: "#6366f1",
+    railIcon: BarChart3,
+    items: [
       { to: "/dashboard/relatorios", label: "Relatórios", icon: BarChart3 },
       { to: "/dashboard/metas", label: "Metas", icon: Target },
     ],
