@@ -9,6 +9,9 @@
       "Bash(npx vitest *)",
       "Bash(git fetch *)",
       "Bash(curl -s \"https://hospitaldafap.com.br/\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\IAX\\Documents\\Codex\\2026-11-22\\cr\\outputs"
     ]
   }
 }

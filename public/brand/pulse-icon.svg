@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="22 22 296 296" role="img" aria-label="Pulse Doações">
+<!-- Símbolo "P" recortado de pulse-doacoes-logo.svg (sem o texto), para uso em tamanho pequeno. -->
+<defs>
+ <linearGradient id="blue" x1=".08" y1=".05" x2=".8" y2="1"><stop stop-color="#168ff0"/><stop offset=".42" stop-color="#087ee3"/><stop offset="1" stop-color="#075caf"/></linearGradient>
+ <linearGradient id="cyan" x1=".04" y1=".95" x2=".95" y2=".1"><stop stop-color="#078bcf"/><stop offset=".5" stop-color="#08bcae"/><stop offset="1" stop-color="#27d3a0"/></linearGradient>
+ <linearGradient id="darkEdge" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#0754a2"/><stop offset="1" stop-color="#032b60"/></linearGradient>
+ <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".48"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#001c45" stop-opacity=".14"/></linearGradient>
+ <path id="pShape" fill-rule="evenodd" d="M24 292V53C24 21 45 3 78 3h96c71 0 111 34 111 94 0 61-40 96-111 96H82v99c0 25-12 39-30 39-17 0-28-14-28-39zm58-153h88c34 0 51-14 51-42 0-27-17-41-51-41H82z"/>
+ <clipPath id="pClip"><use href="#pShape"/></clipPath>
+</defs>
+<g transform="translate(40 29) scale(.82)">
+ <use href="#pShape" transform="translate(7 9)" fill="url(#darkEdge)"/>
+ <use href="#pShape" fill="url(#blue)"/>
+ <g clip-path="url(#pClip)">
+  <path d="M24 169C48 123 91 95 153 95h105v30H157c-51 0-89 20-117 62z" fill="url(#cyan)"/>
+  <path d="M29 173c29-40 71-61 126-61h91" fill="none" stroke="#65e7c5" stroke-opacity=".45" stroke-width="3" stroke-linecap="round"/>
+  <path d="M24 185c31-45 77-68 134-68h53" fill="none" stroke="#064b94" stroke-opacity=".32" stroke-width="7"/>
+  <rect x="18" y="0" width="250" height="310" fill="url(#gloss)" opacity=".55"/>
+ </g>
+ <path d="M78 7h92c49 0 82 16 99 47-22-23-51-34-91-34H80c-23 0-39 8-49 24C35 20 51 7 78 7z" fill="#b7e8ff" opacity=".32"/>
+</g>
+</svg>

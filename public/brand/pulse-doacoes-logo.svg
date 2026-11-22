@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="400" viewBox="0 0 1400 400" role="img" aria-labelledby="title desc">
+<title id="title">Pulse Doações</title>
+<desc id="desc">Logomarca tridimensional com um P azul e traço turquesa de pulso que forma um coração.</desc>
+<defs>
+ <linearGradient id="pFace" x1=".05" y1="0" x2=".8" y2="1"><stop stop-color="#1789e5"/><stop offset=".28" stop-color="#0871d2"/><stop offset=".72" stop-color="#075fbd"/><stop offset="1" stop-color="#064b9d"/></linearGradient>
+ <linearGradient id="pSide" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#07539f"/><stop offset="1" stop-color="#032c64"/></linearGradient>
+ <linearGradient id="pulseFace" x1="0" y1="0" x2="1" y2=".8"><stop stop-color="#23d9d0"/><stop offset=".48" stop-color="#09c7c6"/><stop offset="1" stop-color="#05a9c5"/></linearGradient>
+ <linearGradient id="pulseSide" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#078da9"/><stop offset="1" stop-color="#056681"/></linearGradient>
+ <linearGradient id="navyText" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#0d2a50"/><stop offset="1" stop-color="#061a35"/></linearGradient>
+ <linearGradient id="blueText" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#0878d7"/><stop offset="1" stop-color="#05a5ce"/></linearGradient>
+ <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".58"/><stop offset=".32" stop-color="#fff" stop-opacity=".2"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#001b46" stop-opacity=".16"/></linearGradient>
+ <filter id="shadow" x="-25%" y="-30%" width="160%" height="190%"><feGaussianBlur stdDeviation="7"/></filter>
+ <path id="P" fill-rule="evenodd" d="M32 324V72C32 31 58 8 101 8h105c88 0 132 43 132 118 0 77-46 121-136 121h-82v77c0 32-16 49-44 49-27 0-44-18-44-49zm88-142h75c34 0 52-19 52-55 0-34-18-52-52-52h-75z"/>
+ <clipPath id="pClip"><use href="#P"/></clipPath>
+ <path id="pulseLine" d="M-53 220H76c28 0 37-10 46-35l25-67c4-11 12-12 16 0l47 155c4 12 12 12 16 0l27-82c6-19 16-28 37-28h8c-18-13-29-29-29-47 0-25 20-44 45-44 20 0 35 12 46 28 11-16 26-28 46-28 25 0 45 19 45 44 0 40-50 74-90 102-14 10-28 20-42 31-10 8-16 13-25 13"/>
+</defs>
+<!-- soft floating shadow -->
+<ellipse cx="185" cy="356" rx="146" ry="12" fill="#07254c" opacity=".18" filter="url(#shadow)"/>
+<!-- dimensional P monogram -->
+<g transform="translate(38 20) scale(.88)">
+ <use href="#P" transform="translate(8 11)" fill="url(#pSide)"/>
+ <use href="#P" fill="url(#pFace)"/>
+ <g clip-path="url(#pClip)">
+  <path d="M48 31h155c54 0 91 19 112 56-26-27-59-39-105-39H96c-24 0-42 9-55 28 0-26 0-45 7-45z" fill="url(#gloss)" opacity=".85"/>
+  <path d="M40 269c23 25 48 36 77 36v18c0 31-15 47-42 47-21 0-35-12-41-34z" fill="#002f69" opacity=".16"/>
+ </g>
+ <!-- pulse-heart ribbon, with darker extruded edge and bright glass highlight -->
+ <use href="#pulseLine" transform="translate(2 8)" fill="none" stroke="url(#pulseSide)" stroke-width="39" stroke-linecap="round" stroke-linejoin="round"/>
+ <use href="#pulseLine" fill="none" stroke="url(#pulseFace)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+ <use href="#pulseLine" transform="translate(0 -3)" fill="none" stroke="#a5fff3" stroke-opacity=".42" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<!-- clean horizontal wordmark, navy + vivid blue like the reference -->
+<text x="390" y="197" font-family="Arial, Helvetica, sans-serif" font-size="140" font-weight="700" letter-spacing="-6" fill="#041a38" opacity=".28" transform="translate(1 4)">pulse</text>
+<text x="390" y="193" font-family="Arial, Helvetica, sans-serif" font-size="140" font-weight="700" letter-spacing="-6" fill="url(#navyText)">pulse</text>
+<text x="737" y="197" font-family="Arial, Helvetica, sans-serif" font-size="140" font-weight="700" letter-spacing="-7" fill="#064b91" opacity=".4" transform="translate(1 4)">doações</text>
+<text x="737" y="193" font-family="Arial, Helvetica, sans-serif" font-size="140" font-weight="700" letter-spacing="-7" fill="url(#blueText)">doações</text>
+<text x="398" y="252" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="600" letter-spacing="8.5" fill="#0a315d">DOAÇÕES  •  IMPACTO  •  TRANSPARÊNCIA</text>
+<text x="398" y="302" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="500" letter-spacing="4.5" fill="#34506f">SOLIDARIEDADE QUE FLUI</text>
+</svg>

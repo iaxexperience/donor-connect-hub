@@ -99,16 +99,8 @@ export function AppSidebar({ mobileOpen, onMobileClose }: Props) {
       >
         {/* ── Barra de ícones ─────────────────────────────── */}
         <div className="w-16 h-full bg-[#050B14] flex flex-col items-center py-3 gap-1 shrink-0">
-          <button type="button" onClick={() => setSearchOpen(true)} title="Buscar menu" className="mb-3 shrink-0">
-            <div className="h-9 w-9 rounded-xl bg-white overflow-hidden grid place-items-center">
-              {logoUrl ? (
-                <img src={logoUrl} alt="Logo" className="h-full w-full object-contain p-1" />
-              ) : (
-                <div className="h-full w-full bg-orange-500 grid place-items-center">
-                  <Heart className="h-5 w-5 text-white" fill="currentColor" />
-                </div>
-              )}
-            </div>
+          <button type="button" onClick={() => setSearchOpen(true)} title="Pulse Doações — buscar menu" className="mb-3 shrink-0">
+            <img src="/brand/pulse-icon.svg" alt="Pulse Doações" className="h-9 w-9 object-contain" />
           </button>
           <div className="w-8 border-t border-white/10 mb-2" />
 
@@ -151,9 +143,18 @@ export function AppSidebar({ mobileOpen, onMobileClose }: Props) {
           }`}
         >
           <div className="p-4 border-b border-[#152538]">
-            <div className="rounded-md bg-white/5 px-3 py-2">
-              <p className="font-semibold truncate">{systemName}</p>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-white/40">Fundação Assistencial</p>
+            <div className="rounded-md bg-white/5 px-3 py-2 flex items-center gap-2.5 min-w-0">
+              <div className="h-8 w-8 rounded-lg bg-white overflow-hidden grid place-items-center shrink-0">
+                {logoUrl ? (
+                  <img src={logoUrl} alt="" className="h-full w-full object-contain p-0.5" />
+                ) : (
+                  <Heart className="h-4 w-4 text-orange-500" fill="currentColor" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold truncate leading-tight">{systemName}</p>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-white/40 truncate">Fundação Assistencial</p>
+              </div>
             </div>
           </div>
 
