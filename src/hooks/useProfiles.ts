@@ -11,6 +11,7 @@ export interface Profile {
   must_change_password?: boolean;
   status: string;
   last_access?: string;
+  signature_path?: string | null;
 }
 
 export const useProfiles = () => {

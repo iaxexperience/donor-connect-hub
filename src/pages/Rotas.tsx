@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { gerarReciboColetaPDF } from "@/lib/reciboService";
+import { getUserSignatureDataUrl } from "@/lib/signatureService";
 import {
   Truck, MapPin, Phone, Package, Clock, CheckCircle2, XCircle,
   Navigation, Loader2, AlertTriangle, CalendarClock, FileText,
@@ -120,6 +121,9 @@ export default function Rotas() {
       courier_name: receipt.courier?.name || "—",
       courier_document: receipt.courier?.document,
       collected_at: receipt.confirmed_at || new Date().toISOString(),
+      courier_signature: await getUserSignatureDataUrl(
+        routes.find((r) => (r as any).route_items?.some((i: any) => i.id === item.id))?.courier_id
+      ),
       org: {
         system_name: receipt.organization?.name,
         logo_url: receipt.organization?.logo_url,

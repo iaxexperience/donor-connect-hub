@@ -33,6 +33,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useAuth } from "@/contexts/AuthContext";
+import { SignatureField } from "@/components/users/SignatureField";
 
 const roleMapping: Record<string, { label: string, color: string }> = {
   "coordenador": { label: "Coordenador", color: "secondary" },
@@ -475,6 +476,20 @@ const Usuarios = () => {
                   </SelectContent>
                 </Select>
               </div>
+              {editingUser ? (
+                <SignatureField
+                  userId={editingUser.id}
+                  signaturePath={editingUser.signature_path}
+                  onSaved={async (path) => {
+                    await updateProfile({ id: editingUser.id, signature_path: path } as any);
+                    setEditingUser((u: any) => (u ? { ...u, signature_path: path } : u));
+                  }}
+                />
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  A assinatura para os recibos pode ser enviada depois que o usuário for criado, em “Editar Usuário”.
+                </p>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => { if (!editingUser) clearNewUserDraft(); setIsDialogOpen(false); }}>Cancelar</Button>

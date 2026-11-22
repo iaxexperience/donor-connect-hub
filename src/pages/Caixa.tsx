@@ -26,6 +26,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { gerarReciboPDF, gerarFechamentoCaixaPDF } from "@/lib/reciboService";
+import { getUserSignatureDataUrl } from "@/lib/signatureService";
 import { metaService, MetaConfig, getMetaConfig } from "@/services/metaService";
 
 // Link de validação pública — aponta para a rota do frontend
@@ -440,6 +441,7 @@ export default function Caixa() {
             })),
             observacoes: closingNotes.trim() || undefined,
             closed_at: new Date().toISOString(),
+            operator_signature: await getUserSignatureDataUrl(user?.id),
             org: {
               system_name: orgSettings?.system_name,
               logo_url: orgSettings?.logo_url,
@@ -528,6 +530,7 @@ export default function Caixa() {
         donor_name: t.donor_name,
         donor_address: end || undefined,
         received_by: t.profiles?.name,
+        issuer_signature: await getUserSignatureDataUrl((t as any).created_by),
         amount: t.amount,
         payment_method: t.payment_method,
         cartao_tipo: t.cartao_tipo,

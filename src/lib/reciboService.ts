@@ -5,6 +5,7 @@ import { ptBR } from "date-fns/locale";
 import { Capacitor } from "@capacitor/core";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
+import { drawSignatureOnPdf } from "@/lib/signatureService";
 
 const BASE_URL = window.location.origin;
 
@@ -41,6 +42,8 @@ export interface ReciboData {
   cartao_tipo?: string;
   notes?: string;
   created_at: string;
+  /** Assinatura (data URL) de quem recebeu/emitiu o recibo. */
+  issuer_signature?: string | null;
   org: {
     system_name?: string;
     logo_url?: string;
@@ -149,6 +152,20 @@ export async function gerarReciboPDF(data: ReciboData): Promise<void> {
   doc.setTextColor(150, 150, 150);
   doc.text("Valide este recibo", qrX + qrSize/2, qrY + qrSize + 3, { align: "center" });
 
+  // ── ASSINATURA DE QUEM RECEBEU (canto inferior esquerdo) ──────
+  const sigW = 75;
+  const sigLineY = qrY + qrSize - 4;
+  drawSignatureOnPdf(doc, data.issuer_signature, margin + sigW / 2, sigLineY, sigW - 10, 18);
+  doc.setDrawColor(100, 120, 160);
+  doc.setLineWidth(0.4);
+  doc.line(margin, sigLineY, margin + sigW, sigLineY);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 100, 110);
+  doc.text(data.received_by || "Responsável pelo recebimento", margin + sigW / 2, sigLineY + 4.5, { align: "center", maxWidth: sigW });
+  doc.setFontSize(7);
+  doc.text("Assinatura de quem recebeu a doação", margin + sigW / 2, sigLineY + 8.5, { align: "center" });
+
   // ── RODAPÉ ─────────────────────────────────────────────────────
   doc.setFontSize(8);
   doc.setTextColor(180, 180, 180);
@@ -181,6 +198,9 @@ export interface ReciboFisicoData {
   status: string;
   created_at: string;
   recebido_em?: string;
+  /** Assinatura (data URL) do coordenador que emitiu o recibo. */
+  issuer_signature?: string | null;
+  issuer_name?: string;
   org: {
     system_name?: string;
     logo_url?: string;
@@ -349,6 +369,7 @@ export async function gerarReciboFisicoPDF(data: ReciboFisicoData): Promise<void
 
   // ── ASSINATURAS ──────────────────────────────────────────────
   y = Math.max(y, 234);
+  drawSignatureOnPdf(doc, data.issuer_signature, pageW - margin - 35, y, 60, 18);
   doc.setDrawColor(100, 120, 160);
   doc.setLineWidth(0.4);
   doc.line(margin, y, margin + 70, y);
@@ -358,7 +379,10 @@ export async function gerarReciboFisicoPDF(data: ReciboFisicoData): Promise<void
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...grayColor);
   doc.text("Assinatura do Doador", margin + 35, y + 5, { align: "center" });
-  doc.text("Coordenador Responsável pelo Recebimento", pageW - margin - 35, y + 5, { align: "center", maxWidth: 70 });
+  doc.text(
+    data.issuer_name ? `${data.issuer_name} — Responsável pelo Recebimento` : "Coordenador Responsável pelo Recebimento",
+    pageW - margin - 35, y + 5, { align: "center", maxWidth: 70 }
+  );
 
   // ── RODAPÉ ─────────────────────────────────────────────────
   const footerY = 282;
@@ -403,6 +427,8 @@ export interface ReciboColetaData {
   courier_name: string;
   courier_document?: string;
   collected_at: string;
+  /** Assinatura (data URL) do mensageiro. */
+  courier_signature?: string | null;
   org: {
     system_name?: string;
     logo_url?: string;
@@ -517,6 +543,7 @@ export async function gerarReciboColetaPDF(data: ReciboColetaData): Promise<void
 
     const sigY = y + qrSize / 2 + 3;
     const sigW = 62;
+    drawSignatureOnPdf(doc, data.courier_signature, pageW - margin - sigW / 2, sigY, sigW - 12, 10);
     doc.setDrawColor(150, 160, 180);
     doc.setLineWidth(0.3);
     doc.line(margin + qrSize + 8, sigY, margin + qrSize + 8 + sigW, sigY);
@@ -570,6 +597,8 @@ export interface FechamentoCaixaData {
   transacoes: { hora: string; donor_name: string; amount: number; method_label: string; status: string }[];
   observacoes?: string;
   closed_at: string;
+  /** Assinatura (data URL) de quem fechou o caixa. */
+  operator_signature?: string | null;
   org: {
     system_name?: string;
     logo_url?: string;
@@ -719,6 +748,7 @@ export async function gerarFechamentoCaixaPDF(data: FechamentoCaixaData): Promis
   // ── ASSINATURAS ──────────────────────────────────────────────
   newPageIfNeeded(40);
   y = Math.max(y + 20, pageH - 60);
+  drawSignatureOnPdf(doc, data.operator_signature, margin + 35, y, 60, 18);
   doc.setDrawColor(100, 120, 160);
   doc.setLineWidth(0.4);
   doc.line(margin, y, margin + 70, y);

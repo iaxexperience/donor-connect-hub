@@ -25,6 +25,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { gerarReciboFisicoPDF } from "@/lib/reciboService";
+import { getUserSignatureDataUrl } from "@/lib/signatureService";
 import { setorService, Setor } from "@/services/setorService";
 
 type TipoDoacao =
@@ -219,6 +220,16 @@ export default function DoacoesFisicas() {
     setorService.getSetores().then(data => setSetores(data));
   }, []);
 
+  // Assinatura e nome de quem está emitindo o recibo (usuário logado).
+  const issuerSignature = async () => {
+    if (!user?.id) return {};
+    const [{ data: p }, sig] = await Promise.all([
+      supabase.from("profiles").select("name").eq("id", user.id).maybeSingle(),
+      getUserSignatureDataUrl(user.id),
+    ]);
+    return { issuer_signature: sig, issuer_name: (p as any)?.name || undefined };
+  };
+
   const handleEmitirReciboFisico = async (d: DoacaoFisica) => {
     setEmittingReceipt(d.id);
     const parsedSetor = d.setor_destino || (d.observacoes?.match(/\[Destinação:\s*([^\]]+)\]/)?.[1]);
@@ -236,6 +247,7 @@ export default function DoacoesFisicas() {
         created_at: d.created_at,
         recebido_em: d.recebido_em,
         org: orgSettings,
+        ...(await issuerSignature()),
       });
     } catch {
       toast({ title: "Erro ao gerar recibo", variant: "destructive" });
@@ -321,7 +333,9 @@ export default function DoacoesFisicas() {
       // Emite automaticamente o PDF do recibo (com QR code e campos de assinatura)
       if (created) {
         const parsedSetor = created.setor_destino || setorDestino;
+        const signature = await issuerSignature();
         gerarReciboFisicoPDF({
+          ...signature,
           id: created.id,
           donor_name: created.donor_name,
           tipo_doacao: created.tipo_doacao,
