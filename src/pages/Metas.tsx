@@ -328,6 +328,14 @@ function TeamPanel() {
 
 // ─────────────────────────────────────────────────────────────
 // Atribuir metas (coordenador / admin)
+// Modelos padrão da coordenação (iguais aos do SQL), usados enquanto o banco não tem os seus.
+const COORD_FALLBACK_TEMPLATES: GoalTemplate[] = [
+  { id: "local-coord-recebido", code: null, name: "Valor recebido pela equipe no mês", description: null, role: "coordenador", period: "mensal", metric: "coord_valor_recebido", target: 50000, active: true },
+  { id: "local-coord-doacoes", code: null, name: "Doações captadas pela equipe", description: null, role: "coordenador", period: "mensal", metric: "coord_doacoes_qtd", target: 800, active: true },
+  { id: "local-coord-ligacoes", code: null, name: "Ligações da equipe no mês", description: null, role: "coordenador", period: "mensal", metric: "coord_ligacoes", target: 6000, active: true },
+  { id: "local-coord-coletado", code: null, name: "Valor coletado pelos mensageiros", description: null, role: "coordenador", period: "mensal", metric: "coord_valor_coletado", target: 20000, active: true },
+];
+
 // ─────────────────────────────────────────────────────────────
 type Draft = { metric: string; period: GoalPeriod; target: string; template_id: string | null; role: GoalRole };
 
@@ -357,10 +365,15 @@ function AssignGoals({ onDone }: { onDone: () => void }) {
 
   const addTemplate = (t: GoalTemplate) => {
     if (drafts.some((d) => d.metric === t.metric && d.period === t.period)) return;
-    setDrafts((d) => [...d, { metric: t.metric, period: t.period, target: String(t.target), template_id: t.id, role: t.role }]);
+    setDrafts((d) => [...d, {
+      metric: t.metric, period: t.period, target: String(t.target),
+      template_id: t.id.startsWith("local-") ? null : t.id, role: t.role,
+    }]);
   };
-  const addAllTemplates = (role: GoalRole) =>
-    templates.filter((t) => t.active && t.role === role).forEach(addTemplate);
+  const addAllTemplates = (role: GoalRole) => {
+    const list = templates.filter((t) => t.active && t.role === role);
+    (list.length === 0 && role === "coordenador" ? COORD_FALLBACK_TEMPLATES : list).forEach(addTemplate);
+  };
 
   const addCustom = () => {
     const m = metricByKey(custom.metric);
@@ -377,9 +390,32 @@ function AssignGoals({ onDone }: { onDone: () => void }) {
 
   const save = async () => {
     const people = team.filter((t) => selectedUsers.includes(t.id));
-    if (people.length === 0 || drafts.length === 0) {
-      toast({ title: "Escolha ao menos uma pessoa e uma meta", variant: "destructive" });
+    if (people.length === 0) {
+      toast({ title: "Escolha ao menos uma pessoa", description: "Marque quem vai receber a meta na coluna 1.", variant: "destructive" });
       return;
+    }
+    if (drafts.length === 0) {
+      toast({
+        title: "Adicione ao menos uma meta",
+        description: "Clique num modelo (botões com +) ou preencha a meta personalizada e clique em Adicionar.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // Metas da coordenação exigem o SQL 20261122_goals_coordenador.sql; sem ele,
+    // gravar quebraria o painel de metas de todo mundo.
+    if (drafts.some((d) => d.metric.startsWith("coord_"))) {
+      const { error: chk } = await db.rpc("goal_metric_value", {
+        p_user: user?.id, p_metric: "coord_ligacoes", p_start: today(), p_end: today(),
+      });
+      if (chk) {
+        toast({
+          title: "Metas de coordenador ainda não ativadas no banco",
+          description: "Rode o arquivo supabase/migrations/20261122_goals_coordenador.sql no SQL Editor do Supabase e tente de novo.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     // Cada meta só vai para quem tem a função compatível com o indicador.
     const rows = people.flatMap((p) =>
@@ -460,7 +496,9 @@ function AssignGoals({ onDone }: { onDone: () => void }) {
           </CardHeader>
           <CardContent className="space-y-4">
             {(["operador", "coordenador", "motoboy"] as GoalRole[]).map((role) => {
-              const list = templates.filter((t) => t.active && t.role === role);
+              let list = templates.filter((t) => t.active && t.role === role);
+              // Modelos da coordenação ainda não criados no banco: usa os padrões.
+              if (list.length === 0 && role === "coordenador") list = COORD_FALLBACK_TEMPLATES;
               if (list.length === 0) return null;
               const dim = selectedRoles.size > 0 && !selectedRoles.has(role);
               return (
