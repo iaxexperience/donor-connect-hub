@@ -34,7 +34,8 @@
       "Bash(grep -oE '.{0,600}Acessos monitorados.{0,900}')",
       "PowerShell(npx supabase functions list --project-ref zljlhlfbtnzbmeaglkll 2>&1)",
       "PowerShell(Get-Content -Raw -Encoding UTF8 \"supabase/functions/public-donation/index.ts\" | Set-Clipboard; $c = Get-Clipboard -Raw; \"$\\($c.Length\\) chars, $\\(\\($c -split \"`n\"\\).Count\\) lines\"; \\($c -split \"`n\"\\)[0..1]; Select-String -Path \"supabase/functions/public-donation/index.ts\" -Pattern \"^import\")",
-      "PowerShell(npx -y deno@2 check supabase/functions/public-donation/index.ts 2>&1 | Select-Object -Last 5; Get-Content -Raw -Encoding UTF8 \"supabase/functions/public-donation/index.ts\" | Set-Clipboard; \"clipboard: $\\(\\(Get-Clipboard -Raw\\).Length\\) chars\")"
+      "PowerShell(npx -y deno@2 check supabase/functions/public-donation/index.ts 2>&1 | Select-Object -Last 5; Get-Content -Raw -Encoding UTF8 \"supabase/functions/public-donation/index.ts\" | Set-Clipboard; \"clipboard: $\\(\\(Get-Clipboard -Raw\\).Length\\) chars\")",
+      "PowerShell(npm run build 2>&1 | Select-String \"error|built in\"; Get-Content -Raw -Encoding UTF8 \"supabase/migrations/20261122_telemarketing_queue.sql\" | Set-Clipboard; \"clipboard: $\\(\\(Get-Clipboard -Raw\\).Length\\) chars\")"
     ]
   }
 }

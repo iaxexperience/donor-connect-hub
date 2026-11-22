@@ -267,44 +267,88 @@ export const updateDonor = async (donorId: number, updateData: Partial<Donor>) =
  * o que faz a lista "repor" automaticamente o próximo pronto da carteira
  * assim que o operador avança.
  */
+// Prazo para o doador voltar à fila, contado da última doação.
+export const CONTACT_INTERVAL_DAYS: Record<string, number> = {
+  recorrente: 30,
+  esporadico: 60,
+  unico: 90,
+};
+
+const normalizeDonor = (d: any): Donor => ({
+  ...d,
+  name: d.name || "Doador sem Nome",
+  email: d.email || "sem@email.com",
+  total_donated: d.total_donated || 0,
+  donation_count: d.donation_count || 0,
+});
+
+/**
+ * Fila do telemarketing (por carteira). Regra em
+ * supabase/migrations/20261122_telemarketing_queue.sql:
+ *  - recorrente volta 30 dias após a última doação, esporádico 60, único 90;
+ *    leads e quem nunca doou aparecem sempre; desativados nunca;
+ *  - quem já recebeu ligação hoje sai da fila do dia;
+ *  - quem foi contatado no ciclo e não doou vai para o final da fila.
+ */
 export const getTelemarketingQueue = async (operatorId?: string | null): Promise<Donor[]> => {
+  const { data, error } = await (supabase as any).rpc('telemarketing_queue', { p_operator: operatorId ?? null });
+  if (!error) return ((data || []) as any[]).map(normalizeDonor);
+
+  // A função do banco ainda não existe (SQL não rodado): mesma regra no navegador.
+  console.warn('[telemarketing] usando fila local:', error.message);
+  return getTelemarketingQueueLocal(operatorId);
+};
+
+const spDay = (value: string | Date) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(value));
+
+const getTelemarketingQueueLocal = async (operatorId?: string | null): Promise<Donor[]> => {
   let donors = await getDonors();
-  if (operatorId) {
-    donors = donors.filter(d => d.assigned_operator_id === operatorId);
+  if (operatorId) donors = donors.filter(d => d.assigned_operator_id === operatorId);
+
+  // Última ligação de cada doador (paginado: o Supabase devolve até 1000 por vez).
+  const lastCall = new Map<number, string>();
+  for (let from = 0; ; from += 1000) {
+    const { data } = await supabase
+      .from('telemarketing_calls')
+      .select('donor_id, created_at')
+      .order('created_at', { ascending: false })
+      .range(from, from + 999);
+    for (const c of (data || []) as any[]) {
+      if (!lastCall.has(c.donor_id)) lastCall.set(c.donor_id, c.created_at);
+    }
+    if (!data || data.length < 1000) break;
   }
 
-  const { data: settings } = await supabase
-    .from('follow_up_settings')
-    .select('rules')
-    .eq('id', 1)
-    .maybeSingle();
-  const rules = ((settings?.rules as any[]) || []) as { type: string; followUpDays: number }[];
-  const daysByType: Record<string, number> = {};
-  for (const r of rules) daysByType[r.type] = r.followUpDays;
+  const today = spDay(new Date());
+  const rows = donors
+    .filter(d => d.type !== 'desativado')
+    .map(d => {
+      let dueDay: string | null = null;
+      if (d.type !== 'lead' && d.last_donation_date) {
+        const due = new Date(String(d.last_donation_date).slice(0, 10) + "T12:00:00");
+        due.setDate(due.getDate() + (CONTACT_INTERVAL_DAYS[d.type] ?? 0));
+        dueDay = due.toISOString().slice(0, 10);
+      }
+      const call = lastCall.get(d.id) ?? null;
+      const callDay = call ? spDay(call) : null;
+      const calledInCycle = call && (!dueDay || callDay! >= dueDay) ? call : null;
+      return { d, dueDay, callDay, calledInCycle };
+    })
+    .filter(r => (!r.dueDay || r.dueDay <= today) && (!r.callDay || r.callDay < today));
 
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  const { data: callsToday } = await supabase
-    .from('telemarketing_calls')
-    .select('donor_id')
-    .gte('created_at', startOfToday.toISOString());
-  const contactedTodayIds = new Set((callsToday || []).map((c: any) => c.donor_id));
-
-  const ready = donors.filter(donor => {
-    if (contactedTodayIds.has(donor.id)) return false;
-    if (donor.type === 'lead') return true;
-    if (!donor.last_donation_date) return true;
-    const limitDays = daysByType[donor.type] ?? 30;
-    const daysSince = (Date.now() - new Date(donor.last_donation_date).getTime()) / 86400000;
-    return daysSince >= limitDays;
+  rows.sort((a, b) => {
+    if (!a.calledInCycle !== !b.calledInCycle) return a.calledInCycle ? 1 : -1; // contatados vão para o fim
+    if (a.calledInCycle && b.calledInCycle && a.calledInCycle !== b.calledInCycle) {
+      return a.calledInCycle < b.calledInCycle ? -1 : 1;
+    }
+    if (a.dueDay !== b.dueDay) {
+      if (!a.dueDay) return 1;
+      if (!b.dueDay) return -1;
+      return a.dueDay < b.dueDay ? -1 : 1;
+    }
+    return a.d.id - b.d.id;
   });
 
-  // Mais atrasados (ou nunca contatados) primeiro.
-  ready.sort((a, b) => {
-    const dateA = a.last_donation_date ? new Date(a.last_donation_date).getTime() : 0;
-    const dateB = b.last_donation_date ? new Date(b.last_donation_date).getTime() : 0;
-    return dateA - dateB;
-  });
-
-  return ready;
+  return rows.map(r => r.d);
 };
