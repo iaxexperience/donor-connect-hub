@@ -260,7 +260,7 @@ export default function Index() {
               <motion.div
                 animate={reduceMotion ? undefined : { y: [6, -6, 6] }}
                 transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -right-3 -top-6 hidden rounded-2xl border border-white/30 bg-[#0b4a7a]/90 p-4 text-white shadow-2xl backdrop-blur-xl sm:block sm:-right-8"
+                className="absolute -right-3 -top-14 hidden rounded-2xl border border-white/30 bg-[#0b4a7a]/90 p-4 text-white shadow-2xl backdrop-blur-xl sm:block sm:-right-8"
               >
                 <div className="flex items-center gap-3">
                   <div className="rounded-xl bg-cyan-300/20 p-2"><Heart className="h-5 w-5 text-cyan-200" /></div>
