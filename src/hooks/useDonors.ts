@@ -12,6 +12,10 @@ export const useDonors = () => {
   const { data: donors = [], isLoading, error } = useQuery({
     queryKey: ['donors'],
     queryFn: getDonors,
+    // Lista grande (milhares de doadores): reaproveita por 2 min ao trocar de tela
+    // em vez de baixar tudo de novo. Cadastros e edições invalidam na hora.
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   // Mutation to add a donation

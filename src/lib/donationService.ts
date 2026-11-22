@@ -64,25 +64,53 @@ export const typeBadgeStyle = (type: string) => {
  * Fetches all donors from Supabase using pagination to bypass the 1000-row default limit.
  */
 export const getDonors = async (): Promise<Donor[]> => {
+  // O Supabase devolve no máximo 1000 linhas por vez. Em vez de buscar as páginas
+  // uma depois da outra, conta o total e busca todas as páginas ao mesmo tempo.
   const PAGE_SIZE = 1000;
+  const { count, error: countError } = await supabase
+    .from('donors')
+    .select('id', { count: 'exact', head: true });
+  if (countError) {
+    console.error('Error counting donors:', countError);
+    throw countError;
+  }
+
+  const pages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
+  const results = await Promise.all(
+    Array.from({ length: pages }, (_, i) =>
+      supabase
+        .from('donors')
+        .select('*')
+        .order('name', { ascending: true })
+        .order('id', { ascending: true }) // desempate estável entre páginas
+        .range(i * PAGE_SIZE, i * PAGE_SIZE + PAGE_SIZE - 1),
+    ),
+  );
+
   const all: any[] = [];
-  let from = 0;
-
-  while (true) {
-    const { data, error } = await supabase
-      .from('donors')
-      .select('*')
-      .order('name', { ascending: true })
-      .range(from, from + PAGE_SIZE - 1);
-
+  for (const { data, error } of results) {
     if (error) {
       console.error('Error fetching donors:', error);
       throw error;
     }
-
     all.push(...(data ?? []));
-    if (!data || data.length < PAGE_SIZE) break;
-    from += PAGE_SIZE;
+  }
+
+  // Se alguém cadastrou doadores entre a contagem e a busca, pega o restante.
+  if (all.length === pages * PAGE_SIZE) {
+    let from = all.length;
+    while (true) {
+      const { data, error } = await supabase
+        .from('donors')
+        .select('*')
+        .order('name', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw error;
+      all.push(...(data ?? []));
+      if (!data || data.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
   }
 
   return all.map(d => ({

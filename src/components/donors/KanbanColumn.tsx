@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react";
 import { Donor, DonorType } from "@/lib/donationService";
 import { KanbanCard } from "./KanbanCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface KanbanColumnProps {
   title: string;
@@ -10,7 +12,20 @@ interface KanbanColumnProps {
   onMove?: (donorId: number, nextType: DonorType) => void;
 }
 
+// Desenhar milhares de cartões de uma vez trava o navegador. Mostra os primeiros
+// e carrega mais sob demanda (use a busca para achar alguém específico).
+const PAGE = 40;
+
 export const KanbanColumn = ({ title, type, donors, onMove }: KanbanColumnProps) => {
+  const [visible, setVisible] = useState(PAGE);
+
+  // Nova busca/filtro: volta para o começo da coluna.
+  const signature = `${donors.length}:${donors[0]?.id ?? ""}`;
+  useEffect(() => setVisible(PAGE), [signature]);
+
+  const shown = donors.slice(0, visible);
+  const remaining = donors.length - shown.length;
+
   return (
     <div className="flex flex-col h-full min-w-[300px] max-w-[350px] bg-muted/30 rounded-xl border border-muted/40 overflow-hidden">
       <div className="p-4 flex items-center justify-between bg-background/50 backdrop-blur-sm border-b border-muted/20">
@@ -28,7 +43,7 @@ export const KanbanColumn = ({ title, type, donors, onMove }: KanbanColumnProps)
           'bg-gray-500'
         } shadow-[0_0_8px_rgba(0,0,0,0.1)]`} />
       </div>
-      
+
       <ScrollArea className="flex-1 p-3">
         <div className="space-y-3 pb-4">
           {donors.length === 0 ? (
@@ -36,9 +51,20 @@ export const KanbanColumn = ({ title, type, donors, onMove }: KanbanColumnProps)
               <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Coluna Vazia</p>
             </div>
           ) : (
-            donors.map((donor) => (
-              <KanbanCard key={donor.id} donor={donor} onMove={onMove} />
-            ))
+            <>
+              {shown.map((donor) => (
+                <KanbanCard key={donor.id} donor={donor} onMove={onMove} />
+              ))}
+              {remaining > 0 && (
+                <Button
+                  variant="outline"
+                  className="w-full text-xs"
+                  onClick={() => setVisible((v) => v + PAGE * 2)}
+                >
+                  Mostrar mais ({remaining.toLocaleString("pt-BR")} restantes)
+                </Button>
+              )}
+            </>
           )}
         </div>
       </ScrollArea>

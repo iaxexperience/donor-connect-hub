@@ -22,14 +22,23 @@ const Pipeline = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
 
-  const filteredDonors = donors.filter(d => {
-    const donorName = d.name || "";
-    const donorEmail = d.email || "";
-    const matchesSearch = donorName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         donorEmail.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === "all" || d.type === filterType;
-    return matchesSearch && matchesType;
-  });
+  // A digitação fica fluida: o filtro sobre milhares de doadores roda em segundo plano.
+  const deferredSearch = useDeferredValue(searchTerm);
+  const filteredDonors = useMemo(() => {
+    const term = deferredSearch.trim().toLowerCase();
+    return donors.filter(d => {
+      const matchesType = filterType === "all" || d.type === filterType;
+      if (!matchesType) return false;
+      if (!term) return true;
+      return (d.name || "").toLowerCase().includes(term) || (d.email || "").toLowerCase().includes(term);
+    });
+  }, [donors, deferredSearch, filterType]);
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const d of donors) c[d.type] = (c[d.type] ?? 0) + 1;
+    return c;
+  }, [donors]);
 
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">

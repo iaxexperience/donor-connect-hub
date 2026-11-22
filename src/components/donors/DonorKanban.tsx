@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Donor, DonorType, typeLabel } from "@/lib/donationService";
 import { KanbanColumn } from "./KanbanColumn";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,7 +22,14 @@ export const DonorKanban = ({ donors, onMove }: DonorKanbanProps) => {
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<string>("lead");
 
-  const getDonorsByType = (type: DonorType) => donors.filter((d) => d.type === type);
+  // Agrupa uma vez só (antes filtrava a lista inteira várias vezes a cada desenho).
+  const byType = useMemo(() => {
+    const groups: Record<string, Donor[]> = {};
+    for (const col of columns) groups[col.type] = [];
+    for (const d of donors) groups[d.type]?.push(d);
+    return groups;
+  }, [donors]);
+  const getDonorsByType = (type: DonorType) => byType[type] ?? [];
 
   if (isMobile) {
     return (
