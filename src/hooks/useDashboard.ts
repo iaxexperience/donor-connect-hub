@@ -98,10 +98,11 @@ export const useDashboard = () => {
 
       if (error) {
         console.error("[useDashboard] Error fetching caixa transactions:", error);
-        return [];
+        return [] as any[];
       }
-      return data;
+      return data as any[];
     },
+    refetchInterval: DASHBOARD_REFRESH,
   });
 
   // Helper — 'pago' é o valor correto do enum donation_status no banco
