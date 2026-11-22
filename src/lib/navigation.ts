@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, BarChart3, Target, Heart, GitMerge, Megaphone, Shuffle, Phone, HeartHandshake,
   CalendarClock, MessageSquare, PiggyBank, PackageCheck, Gift, ArrowRightLeft, Route, ListChecks,
-  Users, Building2, Wallet, Landmark, Globe, Settings, Plug, ShieldCheck, type LucideIcon,
+  Users, Building2, Wallet, Landmark, Globe, Settings, Plug, ShieldCheck, TrendingUp, type LucideIcon,
 } from "lucide-react";
 import { canAccessPage, type AppRole } from "@/lib/permissions";
 
