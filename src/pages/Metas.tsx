@@ -735,6 +735,167 @@ function Templates() {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Meta mensal (coordenador / admin): uma linha por pessoa, uma
+// coluna por indicador principal da função. Digita e salva.
+// ─────────────────────────────────────────────────────────────
+const ROLE_ORDER: GoalRole[] = ["operador", "coordenador", "motoboy"];
+const ROLE_SECTION: Record<GoalRole, string> = {
+  operador: "Operadores de telemarketing",
+  coordenador: "Coordenadores",
+  motoboy: "Mensageiros",
+};
+
+function MonthlyGoals() {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const { data: team = [], isLoading: teamLoading } = useTeam();
+  const allKeys = useMemo(() => Object.values(MONTHLY_KEY_METRICS).flat(), []);
+
+  const { data: current = [], isLoading: goalsLoading } = useQuery({
+    queryKey: ["goals-monthly-current"],
+    queryFn: async () => {
+      const { data, error } = await db.from("goals")
+        .select("id, user_id, metric, target, valid_until")
+        .eq("active", true).eq("period", "mensal").in("metric", allKeys);
+      if (error) throw error;
+      const t = today();
+      return ((data || []) as { id: string; user_id: string; metric: string; target: number; valid_until: string | null }[])
+        .filter((g) => !g.valid_until || g.valid_until >= t);
+    },
+  });
+
+  const saved = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const g of current) m[`${g.user_id}|${g.metric}`] = String(Number(g.target));
+    return m;
+  }, [current]);
+
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const valueOf = (k: string) => (k in values ? values[k] : saved[k] ?? "");
+  const changed = Object.keys(values).filter((k) => (values[k] || "") !== (saved[k] || ""));
+
+  const save = async () => {
+    if (changed.length === 0) return;
+    const bad = changed.find((k) => values[k] !== "" && !(Number(values[k].replace(",", ".")) > 0));
+    if (bad) {
+      toast({ title: "Valor inválido", description: "Use números maiores que zero (ou deixe em branco para sem meta).", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    const monthStart = format(new Date(), "yyyy-MM-01");
+    try {
+      const inserts: any[] = [];
+      for (const k of changed) {
+        const [userId, metric] = k.split("|");
+        // Encerra a meta mensal atual deste indicador (se houver)...
+        const { error } = await db.from("goals")
+          .update({ active: false, updated_at: new Date().toISOString() })
+          .eq("user_id", userId).eq("metric", metric).eq("period", "mensal").eq("active", true);
+        if (error) throw error;
+        // ...e grava a nova, valendo desde o início do mês atual.
+        const target = Number(values[k].replace(",", "."));
+        if (target > 0) {
+          inserts.push({
+            user_id: userId, metric, period: "mensal", target,
+            valid_from: monthStart, valid_until: null, created_by: user?.id, active: true,
+          });
+        }
+      }
+      if (inserts.length) {
+        const { error } = await db.from("goals").insert(inserts);
+        if (error) throw error;
+      }
+      toast({ title: "Metas mensais salvas", description: `${changed.length} alteração(ões).` });
+      setValues({});
+      qc.invalidateQueries({ queryKey: ["goals-monthly-current"] });
+      qc.invalidateQueries({ queryKey: ["goals-progress"] });
+    } catch (e: any) {
+      toast({ title: "Erro ao salvar", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (teamLoading || goalsLoading) {
+    return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground max-w-2xl">
+          Digite a meta do mês de cada pessoa e clique em <strong>Salvar</strong>. Vale a partir deste mês e se
+          repete nos próximos até ser alterada. Deixe em branco para não ter meta naquele indicador.
+        </p>
+        <Button onClick={save} disabled={saving || changed.length === 0}>
+          {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          Salvar {changed.length > 0 ? `(${changed.length})` : ""}
+        </Button>
+      </div>
+
+      {ROLE_ORDER.map((role) => {
+        const people = team.filter((t) => t.role === role);
+        const metrics = MONTHLY_KEY_METRICS[role].map((k) => metricByKey(k)!).filter(Boolean);
+        return (
+          <Card key={role}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">{ROLE_SECTION[role]}</CardTitle>
+              <CardDescription className="text-xs">
+                {role === "coordenador"
+                  ? "A meta do coordenador é medida pelo resultado da equipe inteira."
+                  : `${people.length} pessoa(s) ativa(s)`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              {people.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">Ninguém ativo com esta função (cadastre em Usuários).</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[180px]">Nome</TableHead>
+                      {metrics.map((m) => (
+                        <TableHead key={m.key} className="min-w-[160px]" title={m.howMeasured}>
+                          {m.label}{m.unit === "currency" ? " (R$)" : m.unit === "percent" ? " (%)" : ""}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {people.map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell className="font-medium">{p.name}</TableCell>
+                        {metrics.map((m) => {
+                          const k = `${p.id}|${m.key}`;
+                          const dirty = (values[k] ?? saved[k] ?? "") !== (saved[k] ?? "");
+                          return (
+                            <TableCell key={m.key}>
+                              <Input
+                                inputMode="decimal"
+                                placeholder="Sem meta"
+                                value={valueOf(k)}
+                                onChange={(e) => setValues((v) => ({ ...v, [k]: e.target.value.replace(/[^\d.,]/g, "") }))}
+                                className={`h-9 ${dirty ? "border-amber-400 bg-amber-50 dark:bg-amber-950/30" : ""}`}
+                              />
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
 // Página
 // ─────────────────────────────────────────────────────────────
 export default function Metas() {
