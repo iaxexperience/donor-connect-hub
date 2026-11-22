@@ -6,7 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/components/theme/DynamicThemeProvider";
-import { sendGuardianEvent } from "@/lib/guardianService";
+import { sendGuardianEvent, guardianLoginDecision } from "@/lib/guardianService";
 import { supabase } from "@/integrations/supabase/client";
 import PulseLogo from "@/components/common/PulseLogo";
 import GuardianBadge from "@/components/common/GuardianBadge";
@@ -60,6 +60,18 @@ const Login = () => {
     setLoading(true);
 
     try {
+      // IAX Guardian decide antes da senha ser conferida (IP/e-mail bloqueados).
+      const decision = await guardianLoginDecision(email.trim().toLowerCase());
+      if (!decision.allow) {
+        toast({
+          title: "Acesso bloqueado",
+          description: decision.message || "Acesso temporariamente bloqueado por segurança.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,

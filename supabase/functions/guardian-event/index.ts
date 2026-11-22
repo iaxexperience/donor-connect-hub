@@ -11,6 +11,8 @@
 //      logado com papel admin ou coordenador; o autor vem do token, não do
 //      corpo da requisição.
 //  action "test": só admin; envia "connection_test" e devolve o status.
+//  action "decision": antes do login, pergunta ao Guardian se o IP/e-mail
+//    pode entrar (/api/public/decision). Falha aberta: na dúvida, libera.
 //
 // Se o envio estiver desligado ou sem chave, responde { skipped: true } e
 // nada quebra.
@@ -30,6 +32,7 @@ const ANON_EVENTS = new Set(["login_failed"]);
 const STAFF_EVENTS = new Set(["role_changed", "user_deactivated", "user_activated"]);
 const MAX_ANON_PER_WINDOW = 20;
 const WINDOW_MINUTES = 10;
+const MAX_DECISIONS_PER_WINDOW = 60;
 
 async function sha256(text: string) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
@@ -78,6 +81,51 @@ serve(async (req) => {
 
   const ip = (req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "").split(",")[0].trim();
   const userAgent = (req.headers.get("user-agent") || "").slice(0, 200);
+
+  // ── Decisão antes do login ("posso deixar este IP/e-mail entrar?") ──
+  // Falha aberta: Guardian desligado, sem chave, fora do ar, lento (>1,5 s) ou
+  // respondendo erro → libera. O Guardian nunca derruba o login do Pulse.
+  if (body?.action === "decision") {
+    const email = String(body.email || "").trim().toLowerCase().slice(0, 200);
+    if (!cfg?.enabled || !cfg?.api_key || !cfg?.ingest_url) return json({ allow: true, skipped: true });
+
+    // Limite por IP para ninguém usar esta rota para martelar o Guardian.
+    const ipHash = await sha256(`decision|${ip}|${url}`);
+    const since = new Date(Date.now() - WINDOW_MINUTES * 60000).toISOString();
+    const { count } = await admin
+      .from("guardian_event_attempts")
+      .select("id", { count: "exact", head: true })
+      .eq("ip_hash", ipHash)
+      .gte("created_at", since);
+    if ((count ?? 0) >= MAX_DECISIONS_PER_WINDOW) return json({ allow: true, skipped: true, reason: "rate_limited" });
+    await admin.from("guardian_event_attempts").insert({ ip_hash: ipHash });
+
+    let decisionUrl: string;
+    try {
+      decisionUrl = new URL("/api/public/decision", cfg.ingest_url).toString();
+    } catch {
+      return json({ allow: true, skipped: true });
+    }
+    try {
+      const res = await fetch(decisionUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-api-key": cfg.api_key },
+        body: JSON.stringify({ ip, email, action: "login" }),
+        signal: AbortSignal.timeout(1500),
+      });
+      if (!res.ok) return json({ allow: true, skipped: true, reason: `http_${res.status}` });
+      const d = await res.json().catch(() => ({}));
+      if (d?.would_block && d?.allow) console.info("[guardian] teria bloqueado", ip, email);
+      const allow = d?.allow !== false;
+      return json({
+        allow,
+        // Mensagem neutra: não conta ao atacante por que foi barrado.
+        message: allow ? undefined : "Acesso temporariamente bloqueado por segurança. Tente mais tarde ou fale com o administrador.",
+      });
+    } catch {
+      return json({ allow: true, skipped: true, reason: "timeout" });
+    }
+  }
 
   let eventType: string;
   let actorUserId: string | null = null;
