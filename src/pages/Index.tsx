@@ -12,7 +12,6 @@ import ContactSection from "@/components/landing/ContactSection";
 import WhatsAppButton from "@/components/landing/WhatsAppButton";
 import { LandingVideo } from "@/components/landing/LandingVideo";
 import { DonateDialog } from "@/components/landing/DonateDialog";
-import { useTheme } from "@/components/theme/DynamicThemeProvider";
 
 // Mídias: vídeos e imagens do Mixkit (licença gratuita para uso comercial),
 // guardados em public/landing.
@@ -61,11 +60,12 @@ const modules = [
   [ShieldCheck, "Auditoria", "Registro de quem fez o quê, com acesso por papel."],
 ] as const;
 
+const FAP_LOGO = "/brand/fap-logo.png";
+
 export default function Index() {
   const reduceMotion = useReducedMotion();
   const [menuOpen, setMenuOpen] = useState(false);
   const [donateOpen, setDonateOpen] = useState(false);
-  const { settings: { system_name: orgName, logo_url: orgLogo } } = useTheme();
   const { scrollYProgress } = useScroll();
   const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 28 });
 
@@ -104,12 +104,6 @@ export default function Index() {
               <Heart className="h-4 w-4" fill="currentColor" /> Doar
             </button>
             <Link to="/login" className="px-4 py-2 text-sm font-bold hover:text-cyan-300">Entrar</Link>
-            <Link
-              to="/cadastro"
-              className="group inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-[#0757a8] shadow-lg transition hover:-translate-y-0.5 hover:bg-cyan-50"
-            >
-              Cadastre-se <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-            </Link>
           </div>
           <button
             type="button"
@@ -134,7 +128,6 @@ export default function Index() {
                 Doar agora
               </button>
               <Link to="/login">Entrar</Link>
-              <Link to="/cadastro" className="rounded-full bg-white px-5 py-3 text-center text-[#0757a8]">Cadastre-se</Link>
             </div>
           </nav>
         )}
@@ -190,13 +183,22 @@ export default function Index() {
                   Agendar demonstração <ChevronRight className="h-5 w-5" />
                 </a>
               </div>
-              <button
-                type="button"
-                onClick={() => setDonateOpen(true)}
-                className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-rose-200 underline-offset-4 hover:text-white hover:underline"
-              >
-                <Heart className="h-4 w-4" fill="currentColor" /> Quer apoiar {orgName}? Doe agora
-              </button>
+              {/* Doação para o hospital da FAP — logo para o doador reconhecer o destino */}
+              <div className="mt-8 flex w-full max-w-xl flex-col items-center gap-4 rounded-3xl bg-white p-4 text-left text-[#061b3b] shadow-[0_18px_50px_rgba(0,0,0,.25)] sm:flex-row sm:p-5">
+                <img src={FAP_LOGO} alt="FAP — Fundação Assistencial da Paraíba" className="h-20 w-auto shrink-0" />
+                <div className="min-w-0 flex-1 text-center sm:text-left">
+                  <p className="text-[11px] font-black uppercase tracking-wider text-rose-600">Sua doação vai para</p>
+                  <p className="text-lg font-black leading-tight">Hospital da FAP</p>
+                  <p className="text-xs text-slate-500">Fundação Assistencial da Paraíba</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDonateOpen(true)}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-full bg-rose-500 px-6 py-3 font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-rose-600"
+                >
+                  <Heart className="h-4 w-4" fill="currentColor" /> Doe agora
+                </button>
+              </div>
               <div className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm text-slate-200">
                 {["Implantação assistida", "Importação da sua base", "Adequado à LGPD"].map((item) => (
                   <span key={item} className="flex items-center gap-2">
@@ -568,19 +570,18 @@ export default function Index() {
             <div className="relative min-h-[320px]">
               <img src="/landing/medica-crianca.jpg" alt="Médica atendendo uma criança" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-[#061b3b]/80 to-transparent" />
-              <div className="absolute bottom-6 left-6 flex items-center gap-3 rounded-2xl bg-white/95 p-3 shadow-xl">
-                <div className="grid h-11 w-11 place-items-center overflow-hidden rounded-xl border bg-white">
-                  {orgLogo ? <img src={orgLogo} alt="" className="h-full w-full object-contain p-0.5" /> : <Heart className="h-5 w-5 text-rose-500" />}
-                </div>
+              <div className="absolute bottom-6 left-6 flex items-center gap-4 rounded-2xl bg-white/95 p-4 shadow-xl">
+                <img src={FAP_LOGO} alt="FAP — Fundação Assistencial da Paraíba" className="h-16 w-auto shrink-0" />
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-sky-700">Instituição</p>
-                  <p className="font-black text-[#061b3b]">{orgName}</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-sky-700">Sua doação vai para</p>
+                  <p className="font-black text-[#061b3b]">Hospital da FAP</p>
+                  <p className="text-xs text-slate-500">Fundação Assistencial da Paraíba</p>
                 </div>
               </div>
             </div>
             <div className="p-8 sm:p-12">
               <span className="text-xs font-black uppercase tracking-[.2em] text-rose-600">Faça parte</span>
-              <h2 className="mt-4 text-4xl font-black tracking-[-.04em]">Apoie {orgName}.</h2>
+              <h2 className="mt-4 text-4xl font-black tracking-[-.04em]">Apoie o Hospital da FAP.</h2>
               <p className="mt-5 text-lg leading-8 text-slate-600">
                 Sua doação ajuda a manter o atendimento de quem mais precisa. É rápido e seguro: Pix com
                 QR code na hora, ou cartão e boleto pela página do Asaas.

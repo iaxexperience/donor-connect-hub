@@ -38,7 +38,7 @@ interface Props {
  */
 export function DonateDialog({ open, onOpenChange }: Props) {
   const { toast } = useToast();
-  const { settings: { system_name: orgName, logo_url: orgLogo } } = useTheme();
+  const { settings: { system_name: orgName } } = useTheme();
   const [org, setOrg] = useState<{ cnpj?: string | null }>({});
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -128,12 +128,11 @@ export function DonateDialog({ open, onOpenChange }: Props) {
           </DialogTitle>
           <DialogDescription asChild>
             <div className="mt-2 flex items-center gap-3 rounded-xl border bg-sky-50/60 p-3 text-left">
-              <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg border bg-white">
-                {orgLogo ? <img src={orgLogo} alt="" className="h-full w-full object-contain p-0.5" /> : <Heart className="h-4 w-4 text-sky-700" />}
-              </div>
+              <img src="/brand/fap-logo.png" alt="FAP — Fundação Assistencial da Paraíba" className="h-14 w-auto shrink-0 rounded-lg bg-white p-1" />
               <div className="min-w-0">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-sky-700">Você está doando para</p>
-                <p className="truncate font-black text-slate-900">{orgName}</p>
+                <p className="truncate font-black text-slate-900">Hospital da FAP</p>
+                <p className="truncate text-xs text-slate-500">Fundação Assistencial da Paraíba</p>
                 {org.cnpj && <p className="text-xs text-slate-500">CNPJ {org.cnpj}</p>}
               </div>
             </div>
