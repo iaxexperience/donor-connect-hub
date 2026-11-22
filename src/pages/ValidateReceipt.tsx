@@ -53,27 +53,15 @@ export default function ValidateReceipt() {
 
   useEffect(() => {
     const fetch = async () => {
-      const [{ data: rec }, { data: org }] = await Promise.all([
-        supabase
-          .from("caixa_transacoes")
-          .select("receipt_number, donor_name, amount, payment_method, cartao_tipo, status, created_at")
-          .eq("validation_hash", hash)
-          .maybeSingle(),
-        supabase.from("white_label_settings").select("*").eq("id", 1).maybeSingle(),
+      // A função devolve SÓ o recibo pedido: recibos do caixa pelo
+      // validation_hash, recibos de doação física pelo id.
+      const [{ data: found }, { data: org }] = await Promise.all([
+        (supabase as any).rpc("public_validate_receipt", { p_ref: hash }),
+        supabase.from("white_label_settings").select("system_name, logo_url, cnpj, address, phone, email").eq("id", 1).maybeSingle(),
       ]);
-      setReceipt(rec);
       setOrgSettings(org);
-
-      // Recibos de doações monetárias usam validation_hash; os de doações
-      // físicas (Alimentos, Remédios, etc.) são identificados pelo próprio id.
-      if (!rec) {
-        const { data: phys } = await supabase
-          .from("public_doacoes_fisicas_receipt")
-          .select("donor_name, tipo_doacao, subtipo, quantidade, setor_destino, status, created_at")
-          .eq("id", hash)
-          .maybeSingle();
-        setPhysicalReceipt(phys);
-      }
+      if (found?.kind === "caixa") setReceipt(found);
+      else if (found?.kind === "fisica") setPhysicalReceipt(found);
 
       setLoading(false);
     };
