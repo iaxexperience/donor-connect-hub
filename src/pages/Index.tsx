@@ -169,22 +169,6 @@ export default function Index() {
                 Carteira de doadores, telemarketing, caixa, coleta e relatórios em uma só plataforma —
                 com metas para a equipe e recibos que o doador pode validar.
               </p>
-              <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-                <Link
-                  to="/cadastro"
-                  className="group inline-flex items-center justify-center gap-3 rounded-full bg-white px-8 py-4 font-black text-[#0757a8] shadow-[0_18px_50px_rgba(0,0,0,.25)] transition hover:-translate-y-1 hover:bg-cyan-50"
-                >
-                  Começar agora <ArrowRight className="h-5 w-5 transition group-hover:translate-x-1" />
-                </Link>
-                <a
-                  href={WHATSAPP_DEMO}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-white/25 bg-white/10 px-8 py-4 font-bold backdrop-blur-xl hover:bg-white/15"
-                >
-                  Agendar demonstração <ChevronRight className="h-5 w-5" />
-                </a>
-              </div>
               {/* Doação para o hospital da FAP — logo para o doador reconhecer o destino */}
               <div className="mt-8 flex w-full max-w-xl flex-col items-center gap-4 rounded-3xl bg-white p-4 text-left text-[#061b3b] shadow-[0_18px_50px_rgba(0,0,0,.25)] sm:flex-row sm:p-5">
                 <img src={FAP_LOGO} alt="FAP — Fundação Assistencial da Paraíba" className="h-20 w-auto shrink-0" />

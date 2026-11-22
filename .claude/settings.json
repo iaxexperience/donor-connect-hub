@@ -31,7 +31,9 @@
       "PowerShell(Get-Content -Raw -Encoding UTF8 \"c:\\\\Users\\\\IAX\\\\OneDrive\\\\Documentos\\\\Donor conect\\\\donor-connect-hub\\\\supabase\\\\functions\\\\guardian-event\\\\index.ts\" | Set-Clipboard; $c = Get-Clipboard -Raw; \"copiado: $\\($c.Length\\) caracteres\"; \\($c -split \"`n\"\\)[0..2])",
       "PowerShell(Get-Content -Raw -Encoding UTF8 \"supabase/functions/guardian-event/index.ts\" | Set-Clipboard; $c = Get-Clipboard -Raw; \"$\\($c.Length\\) chars\"; \\($c -split \"`n\"\\)[0..1])",
       "PowerShell(Copy-Item \"C:\\\\Users\\\\IAX\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\0ca18c76dcc7691b\\\\a7af2fe5-579c-4e11-9139-ee12004903a9\\\\images\\\\15.png\" \"public\\\\brand\\\\fap-logo.png\"; Add-Type -AssemblyName System.Drawing; $i=[System.Drawing.Image]::FromFile\\(\\(Resolve-Path \"public\\\\brand\\\\fap-logo.png\"\\)\\); \"$\\($i.Width\\)x$\\($i.Height\\)\"; $i.Dispose\\(\\))",
-      "Bash(grep -oE '.{0,600}Acessos monitorados.{0,900}')"
+      "Bash(grep -oE '.{0,600}Acessos monitorados.{0,900}')",
+      "PowerShell(npx supabase functions list --project-ref zljlhlfbtnzbmeaglkll 2>&1)",
+      "PowerShell(Get-Content -Raw -Encoding UTF8 \"supabase/functions/public-donation/index.ts\" | Set-Clipboard; $c = Get-Clipboard -Raw; \"$\\($c.Length\\) chars, $\\(\\($c -split \"`n\"\\).Count\\) lines\"; \\($c -split \"`n\"\\)[0..1]; Select-String -Path \"supabase/functions/public-donation/index.ts\" -Pattern \"^import\")"
     ]
   }
 }
