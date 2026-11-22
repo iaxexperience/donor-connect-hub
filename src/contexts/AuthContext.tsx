@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 
@@ -27,25 +27,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [mustChangePassword, setMustChangePassword] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchRole(session.user.email!, session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
+  // Usuário cujo perfil já foi carregado: renovação de token (a cada ~1h) e
+  // eventos repetidos não recarregam o perfil nem mostram a tela de carregando.
+  const loadedFor = useRef<string | null>(null);
 
-    // Listen for auth changes
+  useEffect(() => {
+    // Um único ouvinte: o evento INITIAL_SESSION já traz a sessão salva.
+    //
+    // IMPORTANTE: nada de consultar o Supabase DIRETO aqui dentro. A biblioteca
+    // segura uma trava enquanto este callback roda; uma consulta aguardada aqui
+    // espera essa mesma trava → todas as telas ficavam lentíssimas e os pedidos
+    // acabavam saindo sem o login ("permission denied"). Por isso o setTimeout.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchRole(session.user.email!, session.user.id);
+        const { id, email } = session.user;
+        if (loadedFor.current !== id) {
+          loadedFor.current = id;
+          setTimeout(() => fetchRole(email!, id), 0);
+        }
       } else {
+        loadedFor.current = null;
         setRole(null);
         setProfileName(null);
         setStatus(null);
