@@ -114,7 +114,8 @@ const Telemarketing = () => {
     setPaymentMethod("Pix");
     setDonationStatus("pago");
     setDonationBank("asaas");
-    
+    setProofFile(null);
+
     setDialogOpen(true);
   };
 
@@ -162,9 +163,21 @@ const Telemarketing = () => {
 
       if (hasDonation && donationAmount) {
         parsedAmount = parseFloat(donationAmount);
+
+        // Comprovante (opcional): envia antes para gravar o caminho junto da doação.
+        let proofPath: string | null = null;
+        if (proofFile && user?.id) {
+          try {
+            proofPath = await uploadProof(user.id, proofFile);
+          } catch (upErr: any) {
+            throw new Error(`Falha ao enviar o comprovante: ${upErr?.message || upErr}`);
+          }
+        }
+
         const { error: donError } = await supabase
           .from("donations")
           .insert([{
+            ...(proofPath ? { proof_path: proofPath } : {}),
             donor_id: selectedDonor.id,
             amount: parsedAmount,
             campaign_id: selectedCampaignId && selectedCampaignId !== "none" ? selectedCampaignId : null,
@@ -176,6 +189,7 @@ const Telemarketing = () => {
           }]);
 
         if (donError) {
+          await removeProof(proofPath); // não deixa arquivo órfão
           console.error("Erro ao registrar doação:", donError);
           throw new Error(`Falha ao registrar doação: ${donError.message}`);
         }
