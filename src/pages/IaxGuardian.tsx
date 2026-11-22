@@ -171,6 +171,12 @@ export default function IaxGuardian() {
             </li>
           ))}
         </ul>
+        <p className="mt-4 font-semibold">Decisão antes do login</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Com o envio ativo, cada tentativa de entrar pergunta ao Guardian (<code className="rounded bg-muted px-1.5 py-0.5 text-xs">/api/public/decision</code>)
+          se o IP e o e-mail podem acessar. Se ele bloquear, o login é recusado. Se o Guardian estiver fora do ar ou demorar, o
+          acesso é liberado normalmente.
+        </p>
       </div>
     </div>
   );
