@@ -41,12 +41,12 @@ begin
 
     when 'tm_doacoes_qtd' then
       select count(*) into v from donations
-       where captured_by = p_user and coalesce(status, '') <> 'cancelado'
+       where captured_by = p_user and coalesce(status::text, '') <> 'cancelado'
          and donation_date >= ts_start and donation_date < ts_end;
 
     when 'tm_valor_prometido' then
       select coalesce(sum(amount), 0) into v from donations
-       where captured_by = p_user and coalesce(status, '') <> 'cancelado'
+       where captured_by = p_user and coalesce(status::text, '') <> 'cancelado'
          and donation_date >= ts_start and donation_date < ts_end;
 
     when 'tm_valor_recebido' then
@@ -84,7 +84,7 @@ begin
 
     when 'tm_taxa_conversao' then
       select count(*) into a from donations
-       where captured_by = p_user and coalesce(status, '') <> 'cancelado'
+       where captured_by = p_user and coalesce(status::text, '') <> 'cancelado'
          and donation_date >= ts_start and donation_date < ts_end;
       select count(*) into b from telemarketing_calls
        where operator_id = p_user and created_at >= ts_start and created_at < ts_end;
@@ -124,7 +124,7 @@ begin
 
     when 'coord_doacoes_qtd' then
       select count(*) into v from donations
-       where captured_by is not null and coalesce(status, '') <> 'cancelado'
+       where captured_by is not null and coalesce(status::text, '') <> 'cancelado'
          and donation_date >= ts_start and donation_date < ts_end;
 
     when 'coord_ligacoes' then

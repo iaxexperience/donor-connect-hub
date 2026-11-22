@@ -299,7 +299,7 @@ begin
         -- O gatilho de donations recalcula total, quantidade, última doação e tipo do doador.
         insert into donations (donor_id, amount, status, donation_date, confirmed_at, payment_method,
                                campaign_id, captured_by, notes, source, import_key, import_batch_id)
-        values (v_donor, v_amount, v_status,
+        values (v_donor, v_amount, v_status::donation_status,
                 (v_date::timestamp + interval '12 hours') at time zone 'America/Sao_Paulo',
                 case when v_status = 'pago' then (v_date::timestamp + interval '12 hours') at time zone 'America/Sao_Paulo' end,
                 coalesce(public.imp_text(d->>'forma_pagamento'), 'Importação'),

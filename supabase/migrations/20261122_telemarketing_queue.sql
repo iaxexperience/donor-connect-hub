@@ -46,11 +46,11 @@ language sql stable set search_path = public as $$
     select d.id,
            case
              when d.type = 'lead' or d.last_donation_date is null then null
-             else d.last_donation_date::date + public.donor_contact_interval(d.type)
+             else d.last_donation_date::date + public.donor_contact_interval(d.type::text)
            end as volta_em,
            (select max(c.created_at) from telemarketing_calls c where c.donor_id = d.id) as ultima_ligacao
       from donors d
-     where coalesce(d.type, 'lead') <> 'desativado'
+     where coalesce(d.type::text, 'lead') <> 'desativado'
        and (p_operator is null or d.assigned_operator_id = p_operator)
   ),
   fila as (

@@ -34,13 +34,13 @@ begin
   -- Tudo que entrou de dinheiro, com o dia (horário de Brasília).
   recebido as (
     select (coalesce(d.confirmed_at, d.donation_date) at time zone tz)::date as dia,
-           d.amount, d.campaign_id, d.captured_by, coalesce(nullif(d.billing_type, ''), d.payment_method, 'Outro') as forma,
+           d.amount, d.campaign_id, d.captured_by, coalesce(nullif(d.billing_type::text, ''), d.payment_method::text, 'Outro') as forma,
            'doacao'::text as origem
       from donations d
      where d.status = 'pago'
        and coalesce(d.confirmed_at, d.donation_date) >= (v_prev_month::timestamp at time zone tz)
     union all
-    select (c.created_at at time zone tz)::date, c.amount, null::uuid, c.created_by, c.payment_method, 'caixa'
+    select (c.created_at at time zone tz)::date, c.amount, null::uuid, c.created_by, c.payment_method::text, 'caixa'
       from caixa_transacoes c
      where c.status = 'confirmado'
        and c.created_at >= (v_prev_month::timestamp at time zone tz)
@@ -57,7 +57,7 @@ begin
       'recebido', coalesce((select sum(amount) from recebido where dia = v_day), 0),
       'recebido_qtd', (select count(*) from recebido where dia = v_day),
       'captado', coalesce((select sum(amount) from donations
-                            where coalesce(status, '') <> 'cancelado'
+                            where coalesce(status::text, '') <> 'cancelado'
                               and (donation_date at time zone tz)::date = v_day), 0),
       'ligacoes', (select count(*) from telemarketing_calls where (created_at at time zone tz)::date = v_day),
       'contatos_sucesso', (select count(*) from telemarketing_calls
@@ -145,7 +145,7 @@ begin
                  'nome', p.name, 'funcao', p.role,
                  'recebido', coalesce((select sum(amount) from recebido x where x.captured_by = p.id and x.origem = 'doacao'
                                          and x.dia between v_month and v_day), 0),
-                 'doacoes', (select count(*) from donations d where d.captured_by = p.id and coalesce(d.status, '') <> 'cancelado'
+                 'doacoes', (select count(*) from donations d where d.captured_by = p.id and coalesce(d.status::text, '') <> 'cancelado'
                               and (d.donation_date at time zone tz)::date between v_month and v_day),
                  'ligacoes', (select count(*) from telemarketing_calls t where t.operator_id = p.id
                                and (t.created_at at time zone tz)::date between v_month and v_day),

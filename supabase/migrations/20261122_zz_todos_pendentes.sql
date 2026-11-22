@@ -9,7 +9,6 @@
 --   5. Área de importação por Excel
 -- ============================================================
 
-
 -- >>>>>>>>>>>>>>>>>>>> 20261122_goals_coordenador.sql <<<<<<<<<<<<<<<<<<<<
 -- ============================================================
 -- METAS para COORDENADORES + aba "Meta mensal".
@@ -54,12 +53,12 @@ begin
 
     when 'tm_doacoes_qtd' then
       select count(*) into v from donations
-       where captured_by = p_user and coalesce(status, '') <> 'cancelado'
+       where captured_by = p_user and coalesce(status::text, '') <> 'cancelado'
          and donation_date >= ts_start and donation_date < ts_end;
 
     when 'tm_valor_prometido' then
       select coalesce(sum(amount), 0) into v from donations
-       where captured_by = p_user and coalesce(status, '') <> 'cancelado'
+       where captured_by = p_user and coalesce(status::text, '') <> 'cancelado'
          and donation_date >= ts_start and donation_date < ts_end;
 
     when 'tm_valor_recebido' then
@@ -97,7 +96,7 @@ begin
 
     when 'tm_taxa_conversao' then
       select count(*) into a from donations
-       where captured_by = p_user and coalesce(status, '') <> 'cancelado'
+       where captured_by = p_user and coalesce(status::text, '') <> 'cancelado'
          and donation_date >= ts_start and donation_date < ts_end;
       select count(*) into b from telemarketing_calls
        where operator_id = p_user and created_at >= ts_start and created_at < ts_end;
@@ -137,7 +136,7 @@ begin
 
     when 'coord_doacoes_qtd' then
       select count(*) into v from donations
-       where captured_by is not null and coalesce(status, '') <> 'cancelado'
+       where captured_by is not null and coalesce(status::text, '') <> 'cancelado'
          and donation_date >= ts_start and donation_date < ts_end;
 
     when 'coord_ligacoes' then
@@ -219,12 +218,12 @@ begin
 
     when 'tm_doacoes_qtd' then
       select count(*) into v from donations
-       where captured_by = p_user and coalesce(status, '') <> 'cancelado'
+       where captured_by = p_user and coalesce(status::text, '') <> 'cancelado'
          and donation_date >= ts_start and donation_date < ts_end;
 
     when 'tm_valor_prometido' then
       select coalesce(sum(amount), 0) into v from donations
-       where captured_by = p_user and coalesce(status, '') <> 'cancelado'
+       where captured_by = p_user and coalesce(status::text, '') <> 'cancelado'
          and donation_date >= ts_start and donation_date < ts_end;
 
     when 'tm_valor_recebido' then
@@ -262,7 +261,7 @@ begin
 
     when 'tm_taxa_conversao' then
       select count(*) into a from donations
-       where captured_by = p_user and coalesce(status, '') <> 'cancelado'
+       where captured_by = p_user and coalesce(status::text, '') <> 'cancelado'
          and donation_date >= ts_start and donation_date < ts_end;
       select count(*) into b from telemarketing_calls
        where operator_id = p_user and created_at >= ts_start and created_at < ts_end;
@@ -302,7 +301,7 @@ begin
 
     when 'coord_doacoes_qtd' then
       select count(*) into v from donations
-       where captured_by is not null and coalesce(status, '') <> 'cancelado'
+       where captured_by is not null and coalesce(status::text, '') <> 'cancelado'
          and donation_date >= ts_start and donation_date < ts_end;
 
     when 'coord_ligacoes' then
@@ -435,13 +434,13 @@ begin
   -- Tudo que entrou de dinheiro, com o dia (horário de Brasília).
   recebido as (
     select (coalesce(d.confirmed_at, d.donation_date) at time zone tz)::date as dia,
-           d.amount, d.campaign_id, d.captured_by, coalesce(nullif(d.billing_type, ''), d.payment_method, 'Outro') as forma,
+           d.amount, d.campaign_id, d.captured_by, coalesce(nullif(d.billing_type::text, ''), d.payment_method::text, 'Outro') as forma,
            'doacao'::text as origem
       from donations d
      where d.status = 'pago'
        and coalesce(d.confirmed_at, d.donation_date) >= (v_prev_month::timestamp at time zone tz)
     union all
-    select (c.created_at at time zone tz)::date, c.amount, null::uuid, c.created_by, c.payment_method, 'caixa'
+    select (c.created_at at time zone tz)::date, c.amount, null::uuid, c.created_by, c.payment_method::text, 'caixa'
       from caixa_transacoes c
      where c.status = 'confirmado'
        and c.created_at >= (v_prev_month::timestamp at time zone tz)
@@ -458,7 +457,7 @@ begin
       'recebido', coalesce((select sum(amount) from recebido where dia = v_day), 0),
       'recebido_qtd', (select count(*) from recebido where dia = v_day),
       'captado', coalesce((select sum(amount) from donations
-                            where coalesce(status, '') <> 'cancelado'
+                            where coalesce(status::text, '') <> 'cancelado'
                               and (donation_date at time zone tz)::date = v_day), 0),
       'ligacoes', (select count(*) from telemarketing_calls where (created_at at time zone tz)::date = v_day),
       'contatos_sucesso', (select count(*) from telemarketing_calls
@@ -546,7 +545,7 @@ begin
                  'nome', p.name, 'funcao', p.role,
                  'recebido', coalesce((select sum(amount) from recebido x where x.captured_by = p.id and x.origem = 'doacao'
                                          and x.dia between v_month and v_day), 0),
-                 'doacoes', (select count(*) from donations d where d.captured_by = p.id and coalesce(d.status, '') <> 'cancelado'
+                 'doacoes', (select count(*) from donations d where d.captured_by = p.id and coalesce(d.status::text, '') <> 'cancelado'
                               and (d.donation_date at time zone tz)::date between v_month and v_day),
                  'ligacoes', (select count(*) from telemarketing_calls t where t.operator_id = p.id
                                and (t.created_at at time zone tz)::date between v_month and v_day),
@@ -645,11 +644,11 @@ language sql stable set search_path = public as $$
     select d.id,
            case
              when d.type = 'lead' or d.last_donation_date is null then null
-             else d.last_donation_date::date + public.donor_contact_interval(d.type)
+             else d.last_donation_date::date + public.donor_contact_interval(d.type::text)
            end as volta_em,
            (select max(c.created_at) from telemarketing_calls c where c.donor_id = d.id) as ultima_ligacao
       from donors d
-     where coalesce(d.type, 'lead') <> 'desativado'
+     where coalesce(d.type::text, 'lead') <> 'desativado'
        and (p_operator is null or d.assigned_operator_id = p_operator)
   ),
   fila as (
@@ -982,7 +981,7 @@ begin
         -- O gatilho de donations recalcula total, quantidade, última doação e tipo do doador.
         insert into donations (donor_id, amount, status, donation_date, confirmed_at, payment_method,
                                campaign_id, captured_by, notes, source, import_key, import_batch_id)
-        values (v_donor, v_amount, v_status,
+        values (v_donor, v_amount, v_status::donation_status,
                 (v_date::timestamp + interval '12 hours') at time zone 'America/Sao_Paulo',
                 case when v_status = 'pago' then (v_date::timestamp + interval '12 hours') at time zone 'America/Sao_Paulo' end,
                 coalesce(public.imp_text(d->>'forma_pagamento'), 'Importação'),
