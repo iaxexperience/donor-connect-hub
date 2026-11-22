@@ -47,3 +47,9 @@ bb_*.crt
 bb_*.csr
 bb_*.key
 bb_*.pem
+
+# Planilhas de importação (dados pessoais)
+importacoes/entrada/*
+importacoes/saida/*
+!importacoes/entrada/.gitkeep
+!importacoes/saida/.gitkeep
