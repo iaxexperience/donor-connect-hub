@@ -44,6 +44,8 @@ export interface ReciboData {
   created_at: string;
   /** Assinatura (data URL) de quem recebeu/emitiu o recibo. */
   issuer_signature?: string | null;
+  /** Devolve o PDF como Blob (envio por WhatsApp) em vez de baixar. */
+  returnBlob?: boolean;
   org: {
     system_name?: string;
     logo_url?: string;
