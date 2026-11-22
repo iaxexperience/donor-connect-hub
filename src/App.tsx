@@ -95,7 +95,18 @@ const PageLoader = () => (
   </div>
 );
 
-const queryClient = new QueryClient();
+// Dados já carregados são reaproveitados ao voltar para uma tela (sem piscar
+// "carregando" nem buscar tudo de novo a cada clique).
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      gcTime: 30 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 import { DynamicThemeProvider } from "./components/theme/DynamicThemeProvider";
 

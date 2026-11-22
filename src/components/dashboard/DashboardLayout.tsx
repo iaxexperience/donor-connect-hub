@@ -1,6 +1,6 @@
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppSidebar } from "./AppSidebar";
-import { Outlet } from "react-router-dom";
+import { KeepAliveOutlet } from "./KeepAliveOutlet";
 import { Bell, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 // Os "workers" AsaasAutomationWorker e FollowUpAutomationWorker saíram daqui: estavam
@@ -12,6 +12,7 @@ import { ForcePasswordChangeModal } from "../auth/ForcePasswordChangeModal";
 
 export function DashboardLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
 
   // Reaplica o tema escolhido no menu (claro/escuro).
   useEffect(() => {
@@ -47,17 +48,9 @@ export function DashboardLayout() {
             <UserMenu />
           </div>
         </header>
-        <main className="flex-1 overflow-auto bg-background p-4 lg:p-6">
-          {/* Carregando a próxima tela: o menu e o topo continuam na tela. */}
-          <Suspense
-            fallback={
-              <div className="flex min-h-[50vh] items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
-              </div>
-            }
-          >
-            <Outlet />
-          </Suspense>
+        <main ref={mainRef} className="flex-1 overflow-auto bg-background p-4 lg:p-6">
+          {/* Telas visitadas ficam guardadas: sair e voltar mantém tudo como estava. */}
+          <KeepAliveOutlet scrollRef={mainRef} />
         </main>
       </div>
     </div>
