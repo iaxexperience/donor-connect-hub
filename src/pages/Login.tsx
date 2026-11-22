@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, EyeOff, ArrowLeft, Mail, Lock, Check } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Mail, Lock, Check, Building2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "@/components/theme/DynamicThemeProvider";
 import { supabase } from "@/integrations/supabase/client";
 import PulseLogo from "@/components/common/PulseLogo";
 
@@ -16,6 +17,8 @@ const Login = () => {
   const [sendingReset, setSendingReset] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { settings: { system_name: orgName, logo_url: orgLogo } } = useTheme();
+  const emailLooksValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
@@ -173,6 +176,34 @@ const Login = () => {
                       className="h-12 rounded-xl border-slate-200 bg-slate-50 pl-11 text-base"
                     />
                   </div>
+
+                  {/* Organização desta instalação (Configurações → Aparência). Não consulta o
+                      e-mail no banco antes do login — assim ninguém descobre por aqui se um
+                      e-mail está cadastrado. */}
+                  <AnimatePresence>
+                    {emailLooksValid && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-3 flex items-center gap-3 rounded-xl border border-sky-100 bg-sky-50/70 px-3 py-2.5">
+                          <div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg border bg-white">
+                            {orgLogo ? (
+                              <img src={orgLogo} alt="" className="h-full w-full object-contain p-0.5" />
+                            ) : (
+                              <Building2 className="h-4 w-4 text-sky-700" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-sky-700">Organização</p>
+                            <p className="truncate text-sm font-black text-[#061b3b]">{orgName}</p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 <div>
