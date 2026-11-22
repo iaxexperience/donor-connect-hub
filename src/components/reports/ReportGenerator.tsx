@@ -203,9 +203,43 @@ export function ReportGenerator() {
 
           const { data, error } = await query;
           if (error) throw error;
-          all.push(...(data || []));
+          all.push(...(data || []).map((d: any) => ({ ...d, origem: "Doação" })));
           if (!data || data.length < PAGE) break;
         }
+
+        // Recebimentos lançados no Caixa ficam em outra tabela (caixa_transacoes),
+        // sem ligação com "donations" — por isso entram aqui também, sem risco de
+        // contar a mesma doação duas vezes.
+        const caixaStatus: Record<string, string> = { confirmado: "pago", pendente: "pendente", cancelado: "cancelado" };
+        for (let from = 0; ; from += PAGE) {
+          let cq = supabase
+            .from("caixa_transacoes")
+            .select("id, amount, status, payment_method, created_at, compensated_at, donor_id, donor_name, donors(id, name, document_id, phone)")
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: false })
+            .range(from, from + PAGE - 1);
+          if (donationStartDate) cq = cq.gte("created_at", new Date(`${donationStartDate}T00:00:00`).toISOString());
+          if (donationEndDate) cq = cq.lte("created_at", new Date(`${donationEndDate}T23:59:59`).toISOString());
+          const { data, error } = await cq;
+          if (error) throw error;
+          all.push(
+            ...(data || []).map((t: any) => ({
+              id: `caixa-${t.id}`,
+              amount: t.amount,
+              donation_date: t.created_at,
+              status: caixaStatus[t.status] || t.status,
+              payment_method: t.payment_method,
+              billing_type: null,
+              campaign_id: null,
+              campaigns: null,
+              donors: t.donors || { name: t.donor_name || "Anônimo" },
+              origem: "Caixa",
+            }))
+          );
+          if (!data || data.length < PAGE) break;
+        }
+
+        all.sort((a, b) => new Date(b.donation_date || 0).getTime() - new Date(a.donation_date || 0).getTime());
         setDonationsData(all);
       } else if (activeTab === "inactive_donors") {
         // Base inteira de doadores (milhares de linhas): busca em páginas de 1000.
@@ -590,6 +624,7 @@ export function ReportGenerator() {
           align: "left",
           format: (v) => (v as any)?.phone || (v as any)?.document_id || "—",
         },
+        { header: "Origem", dataKey: "origem", align: "center", format: (v) => v || "Doação" },
         {
           header: "Campanha",
           dataKey: "campaigns",
@@ -625,7 +660,7 @@ export function ReportGenerator() {
 
       return {
         filename: "relatorio_doacoes_mensais",
-        title: "Relatório de Doações Recebidas Mensais",
+        title: "Relatório de Doações Recebidas (Doações + Caixa)",
         subtitle: `Período: ${donationStartDate ? format(new Date(`${donationStartDate}T00:00:00`), "dd/MM/yyyy") : "Início"} até ${donationEndDate ? format(new Date(`${donationEndDate}T00:00:00`), "dd/MM/yyyy") : "Hoje"} | Campanha: ${
           donationFilterCampaign === "all" ? "Todas" : campaigns.find((c) => c.id === donationFilterCampaign)?.name || donationFilterCampaign
         } | Pagamento: ${donationFilterMethod === "all" ? "Todos" : donationFilterMethod.toUpperCase()}${
