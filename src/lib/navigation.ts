@@ -28,6 +28,7 @@ export const NAV_SECTIONS: NavSection[] = [
     railIcon: LayoutDashboard,
     items: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/dashboard/coordenacao", label: "Painel da Coordenação", icon: TrendingUp },
     ],
   },
   {

@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  Area, AreaChart, CartesianGrid, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import {
   ArrowDownRight, ArrowUpRight, CalendarDays, Loader2, Megaphone, Phone, RefreshCw, Target,
@@ -185,7 +185,7 @@ export default function PainelCoordenacao() {
               <Tooltip formatter={(v: any) => brl(Number(v))} labelFormatter={(l) => `Dia ${l}`} />
               <Legend />
               {metaMes > 0 && (
-                <Area type="monotone" dataKey={() => null} name={`Meta: ${brl(metaMes)}`} stroke="#f59e0b" fill="none" />
+                <ReferenceLine y={metaMes} stroke="#f59e0b" strokeDasharray="6 4" label={{ value: `Meta ${brlShort(metaMes)}`, position: "insideTopLeft", fontSize: 11, fill: "#b45309" }} />
               )}
               <Area type="monotone" dataKey="anterior" name="Mês anterior" stroke="#94a3b8" fill="#94a3b8" fillOpacity={0.15} strokeDasharray="5 4" />
               <Area type="monotone" dataKey="atual" name="Mês atual" stroke="#0b5ccf" fill="#0b5ccf" fillOpacity={0.25} strokeWidth={2} connectNulls={false} />

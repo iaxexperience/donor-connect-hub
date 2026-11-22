@@ -34,6 +34,7 @@ const MinhasCaptacoes = lazy(() => import("./pages/MinhasCaptacoes"));
 const DoacoesRecebidas = lazy(() => import("./pages/DoacoesRecebidas"));
 const DistribuicaoCarteiras = lazy(() => import("./pages/DistribuicaoCarteiras"));
 const Metas = lazy(() => import("./pages/Metas"));
+const PainelCoordenacao = lazy(() => import("./pages/PainelCoordenacao"));
 const IaxGuardian = lazy(() => import("./pages/IaxGuardian"));
 const ValidateReceipt = lazy(() => import("./pages/ValidateReceipt"));
 const ValidarRecibo = lazy(() => import("./pages/ValidarRecibo"));
@@ -145,6 +146,7 @@ const App = () => (
                     <Route path="doacoes-recebidas" element={<DoacoesRecebidas />} />
                     <Route path="distribuicao-carteiras" element={<DistribuicaoCarteiras />} />
                     <Route path="metas" element={<Metas />} />
+                    <Route path="coordenacao" element={<PainelCoordenacao />} />
                     <Route path="iax-guardian" element={<IaxGuardian />} />
                   </Route>
                 </Route>

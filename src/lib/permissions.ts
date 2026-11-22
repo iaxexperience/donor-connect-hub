@@ -8,6 +8,7 @@ export function canAccessPage(role: AppRole | null, path: string): boolean {
   if (!role || !roles.includes(role)) return false;
   if (role === 'admin') return true;
   if (page === '/dashboard') return false;
+  if (page === '/dashboard/coordenacao') return role === 'coordenador';
   if (page === '/dashboard/metas') return ['operador', 'motoboy', 'coordenador'].includes(role);
   if (role === 'caixa') return page === '/dashboard/caixa';
   if (role === 'operador') return ['/dashboard/telemarketing', '/dashboard/minhas-captacoes'].includes(page);
@@ -30,5 +31,6 @@ export function homeForRole(role: AppRole | null): string {
   if (role === 'admin') return '/dashboard';
   if (role === 'caixa' || role === 'motoboy') return '/dashboard/caixa';
   if (role === 'operador') return '/dashboard/telemarketing';
+  if (role === 'coordenador') return '/dashboard/coordenacao';
   return '/dashboard/doacoes-fisicas';
 }
