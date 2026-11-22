@@ -33,6 +33,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useTelemarketing } from "@/hooks/useTelemarketing";
+import { ProofUpload } from "@/components/donations/ProofUpload";
+import { uploadProof, removeProof } from "@/lib/proofService";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { typeLabel, typeBadgeStyle } from "@/lib/donationService";
 import { useFollowUps } from "@/hooks/useFollowUps";
@@ -625,6 +627,14 @@ const Telemarketing = () => {
                         <span className="text-[10px] font-normal text-slate-400">Agência bancária</span>
                       </button>
                     </div>
+                  </div>
+
+                  {/* Comprovante de depósito / Pix */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-slate-700 font-semibold">
+                      Comprovante de depósito / Pix (opcional)
+                    </Label>
+                    <ProofUpload file={proofFile} onChange={setProofFile} enablePaste={dialogOpen && hasDonation} />
                   </div>
                 </div>
               )}

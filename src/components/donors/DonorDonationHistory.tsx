@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { History, Loader2 } from "lucide-react";
+import { History, Loader2, Paperclip } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { openProof } from "@/lib/proofService";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +30,7 @@ type DonationRow = {
   payment_method: string | null;
   status: string | null;
   notes: string | null;
+  proof_path?: string | null;
   campaigns: { name: string } | null;
 };
 
@@ -62,6 +65,9 @@ interface Props {
 
 const DonorDonationHistory = ({ donorId, donorName }: Props) => {
   const [open, setOpen] = useState(false);
+  const { toast } = useToast();
+  const alertError = (e: any) =>
+    toast({ title: "Não foi possível abrir o comprovante", description: e?.message, variant: "destructive" });
 
   const { data: donations = [], isLoading, error } = useQuery({
     queryKey: ["donor-donations", donorId],
@@ -69,7 +75,7 @@ const DonorDonationHistory = ({ donorId, donorName }: Props) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("donations")
-        .select("id, amount, donation_date, payment_method, status, notes, campaigns(name)")
+        .select("*, campaigns(name)")
         .eq("donor_id", donorId)
         .order("donation_date", { ascending: false });
       if (error) throw error;
@@ -131,6 +137,7 @@ const DonorDonationHistory = ({ donorId, donorName }: Props) => {
                   <TableHead>Pagamento</TableHead>
                   <TableHead>Campanha</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Comprovante</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -146,6 +153,20 @@ const DonorDonationHistory = ({ donorId, donorName }: Props) => {
                       <Badge variant="outline" className={statusStyle(d.status)}>
                         {d.status || "—"}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {d.proof_path ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => openProof(d.proof_path!).catch((e) => alertError(e))}
+                        >
+                          <Paperclip className="w-3.5 h-3.5 mr-1" /> Ver
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
