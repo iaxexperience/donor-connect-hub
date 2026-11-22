@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths, differenceInCalendarDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   FileText,
@@ -24,7 +24,8 @@ import {
   Baby,
   Package,
   Pill,
-  Scissors
+  Scissors,
+  UserX
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,9 +46,16 @@ import {
 const fmtCurrency = (n: number) =>
   Number(n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+// Converte o texto do filtro de valor em número; vazio ou inválido = sem filtro.
+const parseAmount = (v: string): number | null => {
+  if (!v || !v.trim()) return null;
+  const n = Number(v.replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+};
+
 export function ReportGenerator() {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"donors_telemarketing" | "donations_monthly" | "caixa_external" | "physical_donations">("donors_telemarketing");
+  const [activeTab, setActiveTab] = useState<"donors_telemarketing" | "donations_monthly" | "inactive_donors" | "caixa_external" | "physical_donations">("donors_telemarketing");
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState<"pdf" | "excel" | null>(null);
 
@@ -77,6 +85,20 @@ export function ReportGenerator() {
   const [donationFilterMethod, setDonationFilterMethod] = useState("all");
   const [donationFilterStatus, setDonationFilterStatus] = useState("all");
   const [donationSearchTerm, setDonationSearchTerm] = useState("");
+  const [donationMinAmount, setDonationMinAmount] = useState("");
+  const [donationMaxAmount, setDonationMaxAmount] = useState("");
+  const [donorNameOptions, setDonorNameOptions] = useState<string[]>([]);
+
+  // ─────────────────────────────────────────────────────────────
+  // Report: Doadores inativos (sem doar há X tempo)
+  // ─────────────────────────────────────────────────────────────
+  const [inactiveData, setInactiveData] = useState<any[]>([]);
+  const [inactivePeriod, setInactivePeriod] = useState("1"); // meses, ou "custom"
+  const [inactiveCustomDate, setInactiveCustomDate] = useState(format(subMonths(new Date(), 1), "yyyy-MM-dd"));
+  const [inactiveIncludeNever, setInactiveIncludeNever] = useState(false);
+  const [inactiveFilterType, setInactiveFilterType] = useState("active"); // "active" = todos menos desativados
+  const [inactiveFilterOperator, setInactiveFilterOperator] = useState("all");
+  const [inactiveSearchTerm, setInactiveSearchTerm] = useState("");
 
   // ─────────────────────────────────────────────────────────────
   // 3. Report 3 States: Caixa & External Receipts
@@ -160,21 +182,56 @@ export function ReportGenerator() {
 
         setDonorsData(processed);
       } else if (activeTab === "donations_monthly") {
-        let query = supabase
-          .from("donations")
-          .select("id, amount, donation_date, status, payment_method, billing_type, captured_by, donors(id, name, document_id, phone), campaigns(id, name)")
-          .order("donation_date", { ascending: false });
+        // O Supabase devolve no máximo 1000 linhas por consulta; busca em páginas
+        // para não cortar o relatório em períodos longos.
+        const PAGE = 1000;
+        const all: any[] = [];
+        for (let from = 0; ; from += PAGE) {
+          let query = supabase
+            .from("donations")
+            .select("id, amount, donation_date, status, payment_method, billing_type, captured_by, campaign_id, donors(id, name, document_id, phone), campaigns(id, name)")
+            .order("donation_date", { ascending: false })
+            .order("id", { ascending: false })
+            .range(from, from + PAGE - 1);
 
-        if (donationStartDate) {
-          query = query.gte("donation_date", new Date(`${donationStartDate}T00:00:00`).toISOString());
-        }
-        if (donationEndDate) {
-          query = query.lte("donation_date", new Date(`${donationEndDate}T23:59:59`).toISOString());
-        }
+          if (donationStartDate) {
+            query = query.gte("donation_date", new Date(`${donationStartDate}T00:00:00`).toISOString());
+          }
+          if (donationEndDate) {
+            query = query.lte("donation_date", new Date(`${donationEndDate}T23:59:59`).toISOString());
+          }
 
-        const { data, error } = await query;
-        if (error) throw error;
-        setDonationsData(data || []);
+          const { data, error } = await query;
+          if (error) throw error;
+          all.push(...(data || []));
+          if (!data || data.length < PAGE) break;
+        }
+        setDonationsData(all);
+      } else if (activeTab === "inactive_donors") {
+        // Base inteira de doadores (milhares de linhas): busca em páginas de 1000.
+        const PAGE = 1000;
+        const all: any[] = [];
+        for (let from = 0; ; from += PAGE) {
+          const { data, error } = await supabase
+            .from("donors")
+            .select("id, name, phone, email, type, total_donated, donation_count, last_donation_date, assigned_operator_id, metadata")
+            .order("id", { ascending: true })
+            .range(from, from + PAGE - 1);
+          if (error) throw error;
+          all.push(...(data || []));
+          if (!data || data.length < PAGE) break;
+        }
+        setInactiveData(
+          all.map((d) => {
+            const opId = d.assigned_operator_id || d.metadata?.assigned_to || null;
+            const op = profiles.find((p) => p.id === opId);
+            return {
+              ...d,
+              operator_id: opId,
+              operator_name: op ? op.name : d.metadata?.operator_name || "Não atribuído",
+            };
+          })
+        );
       } else if (activeTab === "caixa_external") {
         let query = supabase
           .from("caixa_transacoes")
@@ -233,6 +290,39 @@ export function ReportGenerator() {
     profiles.length
   ]);
 
+  // Lista com TODOS os doadores cadastrados para o campo "Nome do Doador"
+  // (carrega uma vez, em páginas de 1000, quando a aba de doações é aberta).
+  useEffect(() => {
+    if (activeTab !== "donations_monthly" || donorNameOptions.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      const PAGE = 1000;
+      const names = new Set<string>();
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from("donors")
+          .select("id, name")
+          .order("id", { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (error || cancelled) break;
+        (data || []).forEach((d: any) => d.name && names.add(String(d.name).trim()));
+        if (!data || data.length < PAGE) break;
+      }
+      if (!cancelled) setDonorNameOptions(Array.from(names).sort((a, b) => a.localeCompare(b, "pt-BR")));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, donorNameOptions.length]);
+
+  // Ao escolher um doador da lista, mostra todas as doações dele (todo o período).
+  const handleDonationNameChange = (value: string) => {
+    setDonationSearchTerm(value);
+    if (value && donationFilterMonth !== "all" && donorNameOptions.includes(value.trim())) {
+      handleDonationMonthChange("all");
+    }
+  };
+
   // Handle month selection shortcut for donations
   const handleDonationMonthChange = (val: string) => {
     setDonationFilterMonth(val);
@@ -251,6 +341,9 @@ export function ReportGenerator() {
     } else if (val === "year") {
       setDonationStartDate(`${now.getFullYear()}-01-01`);
       setDonationEndDate(`${now.getFullYear()}-12-31`);
+    } else if (val === "all") {
+      setDonationStartDate("");
+      setDonationEndDate("");
     }
   };
 
@@ -292,8 +385,14 @@ export function ReportGenerator() {
   const filteredDonations = useMemo(() => {
     return donationsData.filter((d) => {
       if (donationFilterCampaign !== "all") {
-        if (d.campaign_id !== donationFilterCampaign) return false;
+        const cid = d.campaign_id ?? (d.campaigns as any)?.id;
+        if (String(cid) !== String(donationFilterCampaign)) return false;
       }
+      const amount = Number(d.amount || 0);
+      const min = parseAmount(donationMinAmount);
+      const max = parseAmount(donationMaxAmount);
+      if (min !== null && amount < min) return false;
+      if (max !== null && amount > max) return false;
       if (donationFilterMethod !== "all") {
         const m = (d.payment_method || d.billing_type || "").toLowerCase();
         if (!m.includes(donationFilterMethod.toLowerCase())) return false;
@@ -311,7 +410,60 @@ export function ReportGenerator() {
       }
       return true;
     });
-  }, [donationsData, donationFilterCampaign, donationFilterMethod, donationFilterStatus, donationSearchTerm]);
+  }, [donationsData, donationFilterCampaign, donationFilterMethod, donationFilterStatus, donationSearchTerm, donationMinAmount, donationMaxAmount]);
+
+  // 2b. Doadores inativos: última doação ANTES da data de corte.
+  const inactiveCutoff = useMemo(() => {
+    if (inactivePeriod === "custom") return inactiveCustomDate || null;
+    return format(subMonths(new Date(), Number(inactivePeriod)), "yyyy-MM-dd");
+  }, [inactivePeriod, inactiveCustomDate]);
+
+  const filteredInactive = useMemo(() => {
+    if (!inactiveCutoff) return [];
+    const today = new Date();
+    return inactiveData
+      .filter((d) => {
+        const last = d.last_donation_date ? String(d.last_donation_date).slice(0, 10) : null;
+        if (!last) {
+          if (!inactiveIncludeNever) return false;
+        } else if (last >= inactiveCutoff) {
+          return false;
+        }
+        if (inactiveFilterType === "active") {
+          if (d.type === "desativado") return false;
+        } else if (inactiveFilterType !== "all" && d.type !== inactiveFilterType) {
+          return false;
+        }
+        if (inactiveFilterOperator !== "all") {
+          if (inactiveFilterOperator === "unassigned") {
+            if (d.operator_id) return false;
+          } else if (d.operator_id !== inactiveFilterOperator) {
+            return false;
+          }
+        }
+        if (inactiveSearchTerm) {
+          const term = inactiveSearchTerm.toLowerCase();
+          const digits = term.replace(/\D/g, "");
+          const matchesName = d.name?.toLowerCase().includes(term);
+          const matchesPhone = digits && d.phone?.replace(/\D/g, "").includes(digits);
+          if (!matchesName && !matchesPhone) return false;
+        }
+        return true;
+      })
+      .map((d) => {
+        const last = d.last_donation_date ? String(d.last_donation_date).slice(0, 10) : null;
+        return {
+          ...d,
+          days_inactive: last ? differenceInCalendarDays(today, new Date(`${last}T00:00:00`)) : null,
+        };
+      })
+      // Quem parou de doar há menos tempo primeiro (mais fácil de recuperar); "nunca doou" no fim.
+      .sort((a, b) => {
+        if (a.days_inactive === null) return 1;
+        if (b.days_inactive === null) return -1;
+        return a.days_inactive - b.days_inactive;
+      });
+  }, [inactiveData, inactiveCutoff, inactiveIncludeNever, inactiveFilterType, inactiveFilterOperator, inactiveSearchTerm]);
 
   // 3. Caixa Filtered
   const filteredCaixa = useMemo(() => {
@@ -476,9 +628,79 @@ export function ReportGenerator() {
         title: "Relatório de Doações Recebidas Mensais",
         subtitle: `Período: ${donationStartDate ? format(new Date(`${donationStartDate}T00:00:00`), "dd/MM/yyyy") : "Início"} até ${donationEndDate ? format(new Date(`${donationEndDate}T00:00:00`), "dd/MM/yyyy") : "Hoje"} | Campanha: ${
           donationFilterCampaign === "all" ? "Todas" : campaigns.find((c) => c.id === donationFilterCampaign)?.name || donationFilterCampaign
-        } | Pagamento: ${donationFilterMethod === "all" ? "Todos" : donationFilterMethod.toUpperCase()}`,
+        } | Pagamento: ${donationFilterMethod === "all" ? "Todos" : donationFilterMethod.toUpperCase()}${
+          donationSearchTerm ? ` | Doador: "${donationSearchTerm}"` : ""
+        }${
+          parseAmount(donationMinAmount) !== null || parseAmount(donationMaxAmount) !== null
+            ? ` | Valor: ${parseAmount(donationMinAmount) !== null ? fmtCurrency(parseAmount(donationMinAmount)!) : "R$ 0,00"} a ${
+                parseAmount(donationMaxAmount) !== null ? fmtCurrency(parseAmount(donationMaxAmount)!) : "sem limite"
+              }`
+            : ""
+        }${donationFilterStatus !== "all" ? ` | Status: ${donationFilterStatus.toUpperCase()}` : ""}`,
         columns,
         rows: filteredDonations,
+        kpis,
+        systemName: sysName,
+        orientation: "landscape" as const,
+      };
+    }
+
+    if (activeTab === "inactive_donors") {
+      const withHistory = filteredInactive.filter((d) => d.days_inactive !== null);
+      const neverDonated = filteredInactive.length - withHistory.length;
+      const historicTotal = filteredInactive.reduce((acc, d) => acc + Number(d.total_donated || 0), 0);
+      const avgDays =
+        withHistory.length > 0
+          ? Math.round(withHistory.reduce((acc, d) => acc + d.days_inactive, 0) / withHistory.length)
+          : 0;
+
+      const periodLabel =
+        inactivePeriod === "custom"
+          ? `sem doar desde ${inactiveCutoff ? format(new Date(`${inactiveCutoff}T00:00:00`), "dd/MM/yyyy") : "—"}`
+          : `sem doar há mais de ${inactivePeriod === "12" ? "1 ano" : `${inactivePeriod} ${inactivePeriod === "1" ? "mês" : "meses"}`}`;
+
+      const columns: ReportColumn[] = [
+        { header: "Doador", dataKey: "name", align: "left" },
+        { header: "Telefone", dataKey: "phone", align: "left", format: (v) => v || "—" },
+        { header: "Tipo", dataKey: "type", align: "center", format: (v) => (v ? v.toUpperCase() : "LEAD") },
+        { header: "Operador", dataKey: "operator_name", align: "left" },
+        {
+          header: "Última Doação",
+          dataKey: "last_donation_date",
+          align: "center",
+          format: (v) => (v ? format(new Date(`${String(v).slice(0, 10)}T00:00:00`), "dd/MM/yyyy") : "Nunca doou"),
+        },
+        {
+          header: "Dias sem Doar",
+          dataKey: "days_inactive",
+          align: "center",
+          format: (v) => (v === null || v === undefined ? "—" : String(v)),
+        },
+        { header: "Nº Doações", dataKey: "donation_count", align: "center", format: (v) => String(v || 0) },
+        { header: "Total Doado", dataKey: "total_donated", align: "right", format: (v) => fmtCurrency(Number(v || 0)) },
+      ];
+
+      const kpis: ReportKPI[] = [
+        { label: "Doadores Inativos", value: String(filteredInactive.length) },
+        { label: "Média de Dias sem Doar", value: String(avgDays) },
+        { label: "Total Já Doado por Eles", value: fmtCurrency(historicTotal) },
+        { label: "Nunca Doaram", value: String(neverDonated) },
+      ];
+
+      return {
+        filename: "relatorio_doadores_inativos",
+        title: "Relatório de Doadores Inativos",
+        subtitle: `Doadores ${periodLabel}${inactiveIncludeNever ? " (inclui quem nunca doou)" : ""} | Classificação: ${
+          inactiveFilterType === "active" ? "Todas (exceto desativados)" : inactiveFilterType === "all" ? "Todas" : inactiveFilterType.toUpperCase()
+        } | Operador: ${
+          inactiveFilterOperator === "all"
+            ? "Todos"
+            : inactiveFilterOperator === "unassigned"
+            ? "Não atribuído"
+            : profiles.find((p) => p.id === inactiveFilterOperator)?.name || inactiveFilterOperator
+        }`,
+        columns,
+        rows: filteredInactive,
         kpis,
         systemName: sysName,
         orientation: "landscape" as const,
@@ -732,7 +954,7 @@ export function ReportGenerator() {
           onValueChange={(v: any) => setActiveTab(v)}
           className="w-full space-y-4"
         >
-          <TabsList className="grid grid-cols-2 lg:grid-cols-4 h-auto p-1 bg-slate-100/90 rounded-xl">
+          <TabsList className="grid grid-cols-2 lg:grid-cols-5 h-auto p-1 bg-slate-100/90 rounded-xl">
             <TabsTrigger
               value="donors_telemarketing"
               className="py-2.5 data-[state=checked]:bg-white data-[state=checked]:shadow-sm rounded-lg flex items-center gap-2 text-xs sm:text-sm font-medium"
@@ -747,6 +969,14 @@ export function ReportGenerator() {
             >
               <BadgeDollarSign className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>Doações Recebidas Mensais</span>
+            </TabsTrigger>
+
+            <TabsTrigger
+              value="inactive_donors"
+              className="py-2.5 data-[state=checked]:bg-white data-[state=checked]:shadow-sm rounded-lg flex items-center gap-2 text-xs sm:text-sm font-medium"
+            >
+              <UserX className="w-4 h-4 text-orange-600 shrink-0" />
+              <span>Doadores Inativos</span>
             </TabsTrigger>
 
             <TabsTrigger
@@ -844,6 +1074,7 @@ export function ReportGenerator() {
                     <SelectItem value="last">Mês Anterior</SelectItem>
                     <SelectItem value="3months">Últimos 3 Meses</SelectItem>
                     <SelectItem value="year">Ano Atual</SelectItem>
+                    <SelectItem value="all">Todo o Período</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -901,6 +1132,166 @@ export function ReportGenerator() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs text-muted-foreground">Nome do Doador</Label>
+                <Input
+                  list="report-donor-names"
+                  placeholder={
+                    donorNameOptions.length > 0
+                      ? `Digite ou escolha entre ${donorNameOptions.length.toLocaleString("pt-BR")} doadores...`
+                      : "Buscar por nome ou CPF/CNPJ..."
+                  }
+                  value={donationSearchTerm}
+                  onChange={(e) => handleDonationNameChange(e.target.value)}
+                  className="bg-white h-9 text-xs"
+                />
+                <datalist id="report-donor-names">
+                  {donorNameOptions.map((n) => (
+                    <option key={n} value={n} />
+                  ))}
+                </datalist>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Valor Mínimo (R$)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0,00"
+                  value={donationMinAmount}
+                  onChange={(e) => setDonationMinAmount(e.target.value)}
+                  className="bg-white h-9 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Valor Máximo (R$)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Sem limite"
+                  value={donationMaxAmount}
+                  onChange={(e) => setDonationMaxAmount(e.target.value)}
+                  className="bg-white h-9 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Status</Label>
+                <Select value={donationFilterStatus} onValueChange={setDonationFilterStatus}>
+                  <SelectTrigger className="bg-white h-9 text-xs">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Status</SelectItem>
+                    <SelectItem value="pago">Pago</SelectItem>
+                    <SelectItem value="pendente">Pendente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ─────────────────────────────────────────────────────────────
+              FILTERS: Doadores Inativos
+             ───────────────────────────────────────────────────────────── */}
+          <TabsContent value="inactive_donors" className="space-y-4 m-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-3.5 bg-slate-50/70 border rounded-xl">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Sem doar há</Label>
+                <Select value={inactivePeriod} onValueChange={setInactivePeriod}>
+                  <SelectTrigger className="bg-white h-9 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Mais de 1 mês</SelectItem>
+                    <SelectItem value="2">Mais de 2 meses</SelectItem>
+                    <SelectItem value="3">Mais de 3 meses</SelectItem>
+                    <SelectItem value="6">Mais de 6 meses</SelectItem>
+                    <SelectItem value="12">Mais de 1 ano</SelectItem>
+                    <SelectItem value="custom">Data personalizada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {inactivePeriod === "custom" ? (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Sem doar desde (data)</Label>
+                  <Input
+                    type="date"
+                    value={inactiveCustomDate}
+                    max={format(new Date(), "yyyy-MM-dd")}
+                    onChange={(e) => setInactiveCustomDate(e.target.value)}
+                    className="bg-white h-9 text-xs"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Última doação antes de</Label>
+                  <div className="h-9 px-3 flex items-center rounded-md border bg-white/60 text-xs text-muted-foreground">
+                    {inactiveCutoff ? format(new Date(`${inactiveCutoff}T00:00:00`), "dd/MM/yyyy") : "—"}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Classificação do Doador</Label>
+                <Select value={inactiveFilterType} onValueChange={setInactiveFilterType}>
+                  <SelectTrigger className="bg-white h-9 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Todas (exceto desativados)</SelectItem>
+                    <SelectItem value="all">Todas (inclui desativados)</SelectItem>
+                    <SelectItem value="unico">Único</SelectItem>
+                    <SelectItem value="esporadico">Esporádico</SelectItem>
+                    <SelectItem value="recorrente">Recorrente</SelectItem>
+                    <SelectItem value="lead">Lead</SelectItem>
+                    <SelectItem value="desativado">Desativado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Operador</Label>
+                <Select value={inactiveFilterOperator} onValueChange={setInactiveFilterOperator}>
+                  <SelectTrigger className="bg-white h-9 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Operadores</SelectItem>
+                    <SelectItem value="unassigned">Sem operador (Não atribuído)</SelectItem>
+                    {profiles.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs text-muted-foreground">Nome ou Telefone</Label>
+                <Input
+                  placeholder="Buscar doador..."
+                  value={inactiveSearchTerm}
+                  onChange={(e) => setInactiveSearchTerm(e.target.value)}
+                  className="bg-white h-9 text-xs"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-xs text-muted-foreground sm:col-span-2 self-end h-9 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={inactiveIncludeNever}
+                  onChange={(e) => setInactiveIncludeNever(e.target.checked)}
+                  className="h-4 w-4 accent-primary"
+                />
+                Incluir doadores que nunca doaram
+              </label>
             </div>
           </TabsContent>
 

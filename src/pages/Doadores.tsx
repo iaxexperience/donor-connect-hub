@@ -41,6 +41,7 @@ import { useDonors } from "@/hooks/useDonors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { typeLabel, typeBadgeStyle } from "@/lib/donationService";
+import DonorDonationHistory from "@/components/donors/DonorDonationHistory";
 
 // INITIAL_DONORS moved to hook
 const Doadores = () => {
@@ -542,7 +543,8 @@ const Doadores = () => {
                   <TableCell>{donor.last_donation_date ? new Date(donor.last_donation_date).toLocaleDateString("pt-BR") : "Nunca"}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button 
+                      <DonorDonationHistory donorId={donor.id} donorName={donor.name} />
+                      <Button
                         variant="ghost" 
                         size="icon" 
                         className="h-8 w-8 text-muted-foreground hover:text-primary"
