@@ -236,6 +236,7 @@ export default function DoacoesFisicas() {
     try {
       await gerarReciboFisicoPDF({
         id: d.id,
+        receipt_number: (d as any).receipt_number,
         donor_name: d.donor_name,
         tipo_doacao: d.tipo_doacao,
         subtipo: d.subtipo,
@@ -337,6 +338,7 @@ export default function DoacoesFisicas() {
         gerarReciboFisicoPDF({
           ...signature,
           id: created.id,
+          receipt_number: (created as any).receipt_number,
           donor_name: created.donor_name,
           tipo_doacao: created.tipo_doacao,
           subtipo: created.subtipo,

@@ -90,7 +90,14 @@ export async function gerarReciboPDF(data: ReciboData): Promise<void> {
   doc.setFont("helvetica", "bold");
   doc.text("Recibo de Doação", pageW / 2, y, { align: "center" });
 
-  y += 12;
+  // Número do recibo em destaque logo abaixo do título.
+  y += 8;
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(0, 102, 204);
+  doc.text(`Nº ${data.receipt_number}`, pageW / 2, y, { align: "center" });
+
+  y += 10;
 
   // ── DATA NO TOPO (À direita) ───────────────────────────────────
   doc.setFontSize(11);
@@ -151,6 +158,11 @@ export async function gerarReciboPDF(data: ReciboData): Promise<void> {
   doc.setFontSize(7);
   doc.setTextColor(150, 150, 150);
   doc.text("Valide este recibo", qrX + qrSize/2, qrY + qrSize + 3, { align: "center" });
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(60, 60, 70);
+  doc.text(`Nº ${data.receipt_number}`, qrX + qrSize / 2, qrY - 2, { align: "center" });
+  doc.setFont("helvetica", "normal");
 
   // ── ASSINATURA DE QUEM RECEBEU (canto inferior esquerdo) ──────
   const sigW = 75;
@@ -188,6 +200,8 @@ export async function gerarReciboPDF(data: ReciboData): Promise<void> {
 
 export interface ReciboFisicoData {
   id: string;
+  /** Número sequencial do recibo (ex.: RDF-2026-000123). */
+  receipt_number?: string | null;
   donor_name: string;
   tipo_doacao: string;
   subtipo?: string;
@@ -260,7 +274,9 @@ export async function gerarReciboFisicoPDF(data: ReciboFisicoData): Promise<void
   }
 
   // Nº do documento (canto direito do cabeçalho)
-  const recNum = `RDF-${format(new Date(data.created_at), "yyyyMMdd-HHmmss")}`;
+  // Número sequencial gerado pelo banco; o formato antigo (data/hora) só
+  // aparece se o registro ainda não tiver número.
+  const recNum = data.receipt_number || `RDF-${format(new Date(data.created_at), "yyyyMMdd-HHmmss")}`;
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
   doc.text(`Nº ${recNum}`, pageW - margin, 14, { align: "right" });
@@ -275,10 +291,14 @@ export async function gerarReciboFisicoPDF(data: ReciboFisicoData): Promise<void
   doc.setFont("helvetica", "bold");
   doc.text("RECIBO DE DOAÇÃO FÍSICA", pageW / 2, y, { align: "center" });
 
+  doc.setFontSize(12);
+  doc.setTextColor(...primaryColor);
+  doc.text(`Nº ${recNum}`, pageW / 2, y + 8, { align: "center" });
+
   doc.setDrawColor(...primaryColor);
   doc.setLineWidth(0.6);
-  doc.line(margin, y + 4, pageW - margin, y + 4);
-  y += 16;
+  doc.line(margin, y + 12, pageW - margin, y + 12);
+  y += 24;
 
   // ── MENSAGEM DE AGRADECIMENTO ───────────────────────────────
   doc.setFontSize(10);
@@ -366,6 +386,11 @@ export async function gerarReciboFisicoPDF(data: ReciboFisicoData): Promise<void
   doc.setFontSize(7);
   doc.setTextColor(150, 150, 150);
   doc.text("Valide este recibo", pageW - margin - qrSize / 2, qrY + qrSize + 3, { align: "center" });
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(60, 60, 70);
+  doc.text(`Nº ${recNum}`, pageW - margin - qrSize / 2, qrY + qrSize + 7, { align: "center" });
+  doc.setFont("helvetica", "normal");
 
   // ── ASSINATURAS ──────────────────────────────────────────────
   y = Math.max(y, 234);
@@ -540,6 +565,11 @@ export async function gerarReciboColetaPDF(data: ReciboColetaData): Promise<void
     doc.setFontSize(6);
     doc.setTextColor(150, 150, 160);
     doc.text("Valide este recibo", margin + qrSize / 2, y + qrSize + 2.5, { align: "center" });
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(60, 60, 70);
+    doc.text(`Nº ${data.receipt_number}`, margin + qrSize / 2, y + qrSize + 5.5, { align: "center" });
+    doc.setFont("helvetica", "normal");
 
     const sigY = y + qrSize / 2 + 3;
     const sigW = 62;
