@@ -29,6 +29,9 @@ language sql stable security definer set search_path = public as $$
     select 1 from profiles
      where id = auth.uid() and role in ('admin', 'gestor', 'coordenador') and status = 'Ativo'
   )
+  -- SQL Editor do Supabase / scripts com a chave de serviço (sem usuário logado).
+  or (auth.uid() is null and session_user in ('postgres', 'supabase_admin', 'service_role'))
+  or coalesce(auth.role(), '') = 'service_role'
 $$;
 
 -- ── Colunas de rastreio nas tabelas finais ──────────────────
