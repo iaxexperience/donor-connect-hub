@@ -1,7 +1,7 @@
 // Catálogo dos indicadores de meta. As chaves precisam bater com o
 // CASE de public.goal_metric_value() em supabase/migrations/20261122_goals.sql.
 
-export type GoalRole = "operador" | "motoboy";
+export type GoalRole = "operador" | "motoboy" | "coordenador";
 export type GoalPeriod = "diaria" | "mensal";
 export type GoalUnit = "count" | "currency" | "percent";
 
