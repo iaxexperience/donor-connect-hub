@@ -60,6 +60,8 @@ const modules = [
   [ShieldCheck, "Auditoria", "Registro de quem fez o quê, com acesso por papel."],
 ] as const;
 
+import GuardianBadge from "@/components/common/GuardianBadge";
+
 const FAP_LOGO = "/brand/fap-logo.png";
 
 export default function Index() {
@@ -646,7 +648,10 @@ export default function Index() {
 
       <footer className="border-t border-slate-200 bg-white px-6 py-10">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 text-center sm:flex-row sm:text-left">
-          <PulseLogo variant="dark" size={40} showText />
+          <div className="flex flex-col items-center gap-3 sm:items-start">
+            <PulseLogo variant="dark" size={40} showText />
+            <GuardianBadge tone="light" />
+          </div>
           <p className="text-xs leading-6 text-slate-500">
             Pulse Doações © {new Date().getFullYear()} — Produzido por IAX Inteligência Artificial Experience LTDA.
             <br />

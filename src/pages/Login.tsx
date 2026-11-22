@@ -9,6 +9,7 @@ import { useTheme } from "@/components/theme/DynamicThemeProvider";
 import { sendGuardianEvent } from "@/lib/guardianService";
 import { supabase } from "@/integrations/supabase/client";
 import PulseLogo from "@/components/common/PulseLogo";
+import GuardianBadge from "@/components/common/GuardianBadge";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -295,7 +296,10 @@ const Login = () => {
 
         <footer className="flex flex-col items-center justify-between gap-3 text-center text-xs text-white/60 sm:flex-row sm:text-left">
           <p>Pulse Doações © {new Date().getFullYear()} — Produzido por IAX Inteligência Artificial Experience LTDA. Todos os direitos reservados.</p>
-          <p className="text-white/40">Atualização 1.0</p>
+          <div className="flex items-center gap-4">
+            <GuardianBadge tone="dark" />
+            <p className="text-white/40">Atualização 1.0</p>
+          </div>
         </footer>
       </div>
     </div>
