@@ -1,22 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="22 22 296 296" role="img" aria-label="Pulse Doações">
-<!-- Símbolo "P" recortado de pulse-doacoes-logo.svg (sem o texto), para uso em tamanho pequeno. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -36 456 456" role="img" aria-label="Pulse Doações">
+<!-- Símbolo (P + pulso em coração) recortado de pulse-doacoes-logo.svg, sem o texto, para uso em tamanho pequeno. -->
 <defs>
- <linearGradient id="blue" x1=".08" y1=".05" x2=".8" y2="1"><stop stop-color="#168ff0"/><stop offset=".42" stop-color="#087ee3"/><stop offset="1" stop-color="#075caf"/></linearGradient>
- <linearGradient id="cyan" x1=".04" y1=".95" x2=".95" y2=".1"><stop stop-color="#078bcf"/><stop offset=".5" stop-color="#08bcae"/><stop offset="1" stop-color="#27d3a0"/></linearGradient>
- <linearGradient id="darkEdge" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#0754a2"/><stop offset="1" stop-color="#032b60"/></linearGradient>
- <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".48"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#001c45" stop-opacity=".14"/></linearGradient>
- <path id="pShape" fill-rule="evenodd" d="M24 292V53C24 21 45 3 78 3h96c71 0 111 34 111 94 0 61-40 96-111 96H82v99c0 25-12 39-30 39-17 0-28-14-28-39zm58-153h88c34 0 51-14 51-42 0-27-17-41-51-41H82z"/>
- <clipPath id="pClip"><use href="#pShape"/></clipPath>
+ <linearGradient id="pFace" x1=".05" y1="0" x2=".8" y2="1"><stop stop-color="#1789e5"/><stop offset=".28" stop-color="#0871d2"/><stop offset=".72" stop-color="#075fbd"/><stop offset="1" stop-color="#064b9d"/></linearGradient>
+ <linearGradient id="pSide" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#07539f"/><stop offset="1" stop-color="#032c64"/></linearGradient>
+ <linearGradient id="pulseFace" x1="0" y1="0" x2="1" y2=".8"><stop stop-color="#23d9d0"/><stop offset=".48" stop-color="#09c7c6"/><stop offset="1" stop-color="#05a9c5"/></linearGradient>
+ <linearGradient id="pulseSide" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#078da9"/><stop offset="1" stop-color="#056681"/></linearGradient>
+ <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".58"/><stop offset=".32" stop-color="#fff" stop-opacity=".2"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#001b46" stop-opacity=".16"/></linearGradient>
+ <path id="P" fill-rule="evenodd" d="M32 324V72C32 31 58 8 101 8h105c88 0 132 43 132 118 0 77-46 121-136 121h-82v77c0 32-16 49-44 49-27 0-44-18-44-49zm88-142h75c34 0 52-19 52-55 0-34-18-52-52-52h-75z"/>
+ <clipPath id="pClip"><use href="#P"/></clipPath>
+ <path id="pulseLine" d="M-53 220H76c28 0 37-10 46-35l25-67c4-11 12-12 16 0l47 155c4 12 12 12 16 0l27-82c6-19 16-28 37-28h8c-18-13-29-29-29-47 0-25 20-44 45-44 20 0 35 12 46 28 11-16 26-28 46-28 25 0 45 19 45 44 0 40-50 74-90 102-14 10-28 20-42 31-10 8-16 13-25 13"/>
 </defs>
-<g transform="translate(40 29) scale(.82)">
- <use href="#pShape" transform="translate(7 9)" fill="url(#darkEdge)"/>
- <use href="#pShape" fill="url(#blue)"/>
+<g transform="translate(38 20) scale(.88)">
+ <use href="#P" transform="translate(8 11)" fill="url(#pSide)"/>
+ <use href="#P" fill="url(#pFace)"/>
  <g clip-path="url(#pClip)">
-  <path d="M24 169C48 123 91 95 153 95h105v30H157c-51 0-89 20-117 62z" fill="url(#cyan)"/>
-  <path d="M29 173c29-40 71-61 126-61h91" fill="none" stroke="#65e7c5" stroke-opacity=".45" stroke-width="3" stroke-linecap="round"/>
-  <path d="M24 185c31-45 77-68 134-68h53" fill="none" stroke="#064b94" stroke-opacity=".32" stroke-width="7"/>
-  <rect x="18" y="0" width="250" height="310" fill="url(#gloss)" opacity=".55"/>
+  <path d="M48 31h155c54 0 91 19 112 56-26-27-59-39-105-39H96c-24 0-42 9-55 28 0-26 0-45 7-45z" fill="url(#gloss)" opacity=".85"/>
+  <path d="M40 269c23 25 48 36 77 36v18c0 31-15 47-42 47-21 0-35-12-41-34z" fill="#002f69" opacity=".16"/>
  </g>
- <path d="M78 7h92c49 0 82 16 99 47-22-23-51-34-91-34H80c-23 0-39 8-49 24C35 20 51 7 78 7z" fill="#b7e8ff" opacity=".32"/>
+ <use href="#pulseLine" transform="translate(2 8)" fill="none" stroke="url(#pulseSide)" stroke-width="39" stroke-linecap="round" stroke-linejoin="round"/>
+ <use href="#pulseLine" fill="none" stroke="url(#pulseFace)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+ <use href="#pulseLine" transform="translate(0 -3)" fill="none" stroke="#a5fff3" stroke-opacity=".42" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
 </g>
 </svg>

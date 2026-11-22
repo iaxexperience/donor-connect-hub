@@ -222,34 +222,41 @@ const Configuracoes = () => {
       return;
     }
 
+    const allowed = ["image/png", "image/jpeg", "image/svg+xml", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      toast({ title: "Formato não suportado", description: "Use PNG, JPG, SVG ou WEBP.", variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
+
     setIsUploadingLogo(true);
-    
-    // 1. Mostrar prévia localBase64 (feedback imediato)
-    const preview = await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(new Error('Falha ao ler imagem'));reader.readAsDataURL(file);});
-    setLogoUrl(preview);
+    const previousLogo = logoUrl;
     try {
-      // 2. Tentar subir para o Supabase Storage se possível
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `logos/${fileName}`;
+      // Sobe para o Storage (bucket público "logos") e usa o link público.
+      // Antes, uma falha aqui era ignorada em silêncio e a imagem ficava como
+      // texto base64 no formulário — o que fazia o "Salvar" falhar depois.
+      const fileExt = (file.name.split('.').pop() || 'png').toLowerCase();
+      const filePath = `logos/logo-${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('logos')
-        .upload(filePath, file);
+        .upload(filePath, file, { contentType: file.type, cacheControl: '3600', upsert: false });
+      if (uploadError) throw uploadError;
 
-      if (!uploadError) {
-        const { data: { publicUrl } } = supabase.storage
-          .from('logos')
-          .getPublicUrl(filePath);
-        
-        setLogoUrl(publicUrl);
-        toast({ title: "Logo enviado!", description: "Imagem salva com sucesso." });
-      }
-    } catch (err) {
-      console.error("Storage upload failed, staying with Base64:", err);
-      toast({ title: "Prévia carregada", description: "Clique em salvar para aplicar no navegador." });
+      const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(filePath);
+      setLogoUrl(publicUrl);
+      toast({ title: "Logo enviado!", description: "Clique em “Salvar Todas as Configurações” para aplicar." });
+    } catch (err: any) {
+      console.error("Falha ao enviar logo:", err);
+      setLogoUrl(previousLogo);
+      toast({
+        title: "Não foi possível enviar o logo",
+        description: err?.message || "Erro desconhecido ao enviar a imagem.",
+        variant: "destructive",
+      });
     } finally {
       setIsUploadingLogo(false);
+      e.target.value = "";
     }
   };
 
