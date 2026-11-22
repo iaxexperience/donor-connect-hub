@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -29,7 +29,7 @@ import { gerarReciboPDF, gerarFechamentoCaixaPDF } from "@/lib/reciboService";
 import { getUserSignatureDataUrl } from "@/lib/signatureService";
 import { metaService, MetaConfig, getMetaConfig } from "@/services/metaService";
 
-// Link de validaÃ§Ã£o pÃºblica â€” aponta para a rota do frontend
+// Link de validação pública — aponta para a rota do frontend
 const receiptUrl = (hash: string) =>
   `${window.location.origin}/validate-receipt/${hash}`;
 
@@ -60,9 +60,9 @@ interface Transacao {
     address?: any;
     phone?: string;
   };
-  // DoaÃ§Ãµes pagas vindas da tabela `donations` (Asaas, telemarketing, etc.),
-  // mescladas aqui sÃ³ para exibiÃ§Ã£o/totais â€” nÃ£o sÃ£o linhas reais de
-  // caixa_transacoes, entÃ£o nÃ£o tÃªm recibo/aÃ§Ãµes de caixa.
+  // Doações pagas vindas da tabela `donations` (Asaas, telemarketing, etc.),
+  // mescladas aqui só para exibição/totais — não são linhas reais de
+  // caixa_transacoes, então não têm recibo/ações de caixa.
   source?: "caixa" | "donation";
 }
 
@@ -82,7 +82,7 @@ interface DonorSuggestion {
 }
 
 const methodLabel = (method: PaymentMethod, tipo?: CartaoTipo): string => {
-  if (method === "cartao") return tipo === "debito" ? "CartÃ£o de DÃ©bito" : tipo === "credito" ? "CartÃ£o de CrÃ©dito" : "CartÃ£o";
+  if (method === "cartao") return tipo === "debito" ? "Cartão de Débito" : tipo === "credito" ? "Cartão de Crédito" : "Cartão";
   return { dinheiro: "Dinheiro", pix: "Pix", boleto: "Boleto" }[method] || method;
 };
 
@@ -181,18 +181,18 @@ export default function Caixa() {
     setSuggestions([]); setShowSuggestions(false);
   };
 
-  // DoaÃ§Ãµes jÃ¡ pagas/confirmadas na tabela `donations` (Asaas, Pix direto,
-  // telemarketing etc.) â€” mescladas ao caixa sÃ³ para exibiÃ§Ã£o/totais, nunca
+  // Doações já pagas/confirmadas na tabela `donations` (Asaas, Pix direto,
+  // telemarketing etc.) — mescladas ao caixa só para exibição/totais, nunca
   // duplicadas: o Dashboard soma as duas tabelas separadamente em outro
-  // lugar, entÃ£o essas linhas aqui sÃ£o sÃ³ uma VIEW, nÃ£o um registro novo.
-  // Caixa Ã© sempre pessoal: cada usuÃ¡rio sÃ³ vÃª o que ele mesmo
-  // registrou/coletou, sem exceÃ§Ã£o de papel (nem admin vÃª o de outros).
+  // lugar, então essas linhas aqui são só uma VIEW, não um registro novo.
+  // Caixa é sempre pessoal: cada usuário só vê o que ele mesmo
+  // registrou/coletou, sem exceção de papel (nem admin vê o de outros).
   const fetchDonationsPagas = async (start: string, end: string): Promise<Transacao[]> => {
     if (!user?.id) return [];
     let donationIds: string[] | null = null;
 
     if (isMensageiro) {
-      // Mensageiro vÃª promessas que ele mesmo coletou presencialmente.
+      // Mensageiro vê promessas que ele mesmo coletou presencialmente.
       const { data: routeData } = await supabase
         .from("routes")
         .select("courier_id,route_items(source_kind,source_id,receipts(status,confirmed_at))")
@@ -200,8 +200,8 @@ export default function Caixa() {
       const ids: string[] = [];
       for (const route of (routeData || []) as any[]) {
         for (const item of route.route_items || []) {
-          // route_items.receipts vem como objeto Ãºnico (nÃ£o array): a coluna
-          // route_item_id em receipts tem constraint UNIQUE (relaÃ§Ã£o 1-para-1).
+          // route_items.receipts vem como objeto único (não array): a coluna
+          // route_item_id em receipts tem constraint UNIQUE (relação 1-para-1).
           const receipt = item.receipts;
           if (item.source_kind === "pledge" && receipt?.status === "confirmed" && receipt.confirmed_at >= start && receipt.confirmed_at <= end) {
             ids.push(item.source_id);
@@ -221,13 +221,13 @@ export default function Caixa() {
     if (donationIds) {
       query = query.in("id", donationIds);
     } else {
-      // Demais papÃ©is veem sÃ³ as doaÃ§Ãµes que eles mesmos captaram/registraram.
+      // Demais papéis veem só as doações que eles mesmos captaram/registraram.
       query = query.eq("captured_by", user.id);
     }
 
     const { data, error } = await query;
     if (error) {
-      console.error("Erro ao buscar doaÃ§Ãµes pagas:", error.message);
+      console.error("Erro ao buscar doações pagas:", error.message);
       return [];
     }
     return (data || []).map((d: any) => ({
@@ -247,7 +247,7 @@ export default function Caixa() {
   const fetchTransacoes = async () => {
     setLoading(true);
 
-    // Converte a data selecionada para UTC respeitando o fuso horÃ¡rio local
+    // Converte a data selecionada para UTC respeitando o fuso horário local
     const start = new Date(`${filterDate}T00:00:00`).toISOString();
     const end   = new Date(`${filterDate}T23:59:59`).toISOString();
 
@@ -264,8 +264,8 @@ export default function Caixa() {
       .order("created_at", { ascending: false });
 
     if (filterMethod !== "todos") query = query.eq("payment_method", filterMethod);
-    // Caixa Ã© sempre pessoal: cada usuÃ¡rio sÃ³ vÃª as transaÃ§Ãµes que ele mesmo
-    // registrou/coletou, independente do papel (sem visÃ£o geral da organizaÃ§Ã£o).
+    // Caixa é sempre pessoal: cada usuário só vê as transações que ele mesmo
+    // registrou/coletou, independente do papel (sem visão geral da organização).
     if (user?.id) query = query.eq("created_by", user.id);
 
     const [{ data, error }, donationsPagas] = await Promise.all([
@@ -274,8 +274,8 @@ export default function Caixa() {
     ]);
 
     if (error) {
-      console.error("Erro ao buscar transaÃ§Ãµes:", error.message);
-      toast({ title: "Erro ao carregar transaÃ§Ãµes", description: error.message, variant: "destructive" });
+      console.error("Erro ao buscar transações:", error.message);
+      toast({ title: "Erro ao carregar transações", description: error.message, variant: "destructive" });
       setTransacoes(donationsPagas.filter(t => filterMethod === "todos" || t.payment_method === filterMethod));
     } else {
       const caixaRows = ((data || []) as Transacao[]).map(t => ({ ...t, source: "caixa" as const }));
@@ -306,8 +306,8 @@ export default function Caixa() {
   const fetchCashierStatus = async () => {
     if (!user?.id) return;
     setCashierLoading(true);
-    // Cada usuÃ¡rio tem seu prÃ³prio caixa diÃ¡rio (operator_id = ele mesmo) â€”
-    // nÃ£o existe mais um caixa global compartilhado pela organizaÃ§Ã£o.
+    // Cada usuário tem seu próprio caixa diário (operator_id = ele mesmo) —
+    // não existe mais um caixa global compartilhado pela organização.
     const { data, error } = await supabase.from("caixas_dia").select("*")
       .eq("data_movimento", filterDate)
       .eq("operator_id", user.id)
@@ -328,22 +328,22 @@ export default function Caixa() {
 
   const handleSave = async () => {
     if (cashierData?.status === "fechado") {
-      toast({ title: "Caixa Fechado", description: "NÃ£o Ã© possÃ­vel registrar doaÃ§Ãµes em um caixa fechado.", variant: "destructive" });
+      toast({ title: "Caixa Fechado", description: "Não é possível registrar doações em um caixa fechado.", variant: "destructive" });
       return;
     }
     if (!cashierData && filterDate === format(new Date(), "yyyy-MM-dd")) {
-      toast({ title: "Caixa nÃ£o aberto", description: "Abra o caixa antes de registrar doaÃ§Ãµes.", variant: "destructive" });
+      toast({ title: "Caixa não aberto", description: "Abra o caixa antes de registrar doações.", variant: "destructive" });
       setOpenCashierDialog(true);
       return;
     }
 
     if (!donorName.trim()) { toast({ title: "Informe o nome do doador", variant: "destructive" }); return; }
-    if (!amount || parseFloat(amount) <= 0) { toast({ title: "Informe um valor vÃ¡lido", variant: "destructive" }); return; }
+    if (!amount || parseFloat(amount) <= 0) { toast({ title: "Informe um valor válido", variant: "destructive" }); return; }
 
     setSaving(true);
     const { data, error } = await supabase.from("caixa_transacoes").insert({
       donor_id: donorId,
-      donor_name: donorName.trim() || "AnÃ´nimo",
+      donor_name: donorName.trim() || "Anônimo",
       amount: parseFloat(amount.replace(",", ".")),
       payment_method: paymentMethod,
       cartao_tipo: paymentMethod === "cartao" ? cartaoTipo : null,
@@ -355,11 +355,11 @@ export default function Caixa() {
     if (error) {
       toast({ title: "Erro ao registrar", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "DoaÃ§Ã£o registrada!", description: `R$ ${amount} via ${methodLabel(paymentMethod, paymentMethod === "cartao" ? cartaoTipo : undefined)}` });
+      toast({ title: "Doação registrada!", description: `R$ ${amount} via ${methodLabel(paymentMethod, paymentMethod === "cartao" ? cartaoTipo : undefined)}` });
       resetForm();
       setOpenDialog(false);
       fetchTransacoes();
-      // Atualiza o resumo do caixa se for para o dia atual (opcional, jÃ¡ que fetchTransacoes roda)
+      // Atualiza o resumo do caixa se for para o dia atual (opcional, já que fetchTransacoes roda)
       // Emitir recibo automaticamente se confirmado
       if (data && data.status === "confirmado") {
         setTimeout(() => emitirRecibo(data as Transacao), 500);
@@ -419,24 +419,24 @@ export default function Caixa() {
       setCloseCashierDialog(false);
       fetchCashierStatus();
 
-      // Todo usuÃ¡rio recebe automaticamente o relatÃ³rio de fechamento do seu
-      // prÃ³prio caixa, para prestar contas.
+      // Todo usuário recebe automaticamente o relatório de fechamento do seu
+      // próprio caixa, para prestar contas.
       {
         try {
           const { data: profile } = await supabase.from("profiles").select("name,cpf").eq("id", user?.id).maybeSingle();
           await gerarFechamentoCaixaPDF({
-            operator_name: profile?.name || "UsuÃ¡rio",
+            operator_name: profile?.name || "Usuário",
             operator_document: profile?.cpf || undefined,
             data_movimento: filterDate,
             saldo_inicial: saldoInicialNum,
-            totals: totalPorMetodo.map(t => ({ label: methodLabel(t.method), total: t.total, count: t.count })),
+            totals: totalPorMetodo.map(t => ({ label: methodLabelDisplay(t.method), total: t.total, count: t.count })),
             total_geral: totalGeral,
             qtd_transacoes: confirmadas.length,
             transacoes: confirmadas.map(t => ({
               hora: format(new Date(t.created_at), "HH:mm"),
               donor_name: t.donor_name,
               amount: t.amount,
-              method_label: methodLabel(t.payment_method, t.cartao_tipo),
+              method_label: methodLabelDisplay(t.payment_method, t.cartao_tipo),
               status: t.status,
             })),
             observacoes: closingNotes.trim() || undefined,
@@ -452,8 +452,8 @@ export default function Caixa() {
             },
           });
         } catch (pdfError) {
-          console.error("Erro ao gerar relatÃ³rio de fechamento:", pdfError);
-          toast({ title: "Caixa fechado, mas o relatÃ³rio nÃ£o pÃ´de ser impresso", variant: "destructive" });
+          console.error("Erro ao gerar relatório de fechamento:", pdfError);
+          toast({ title: "Caixa fechado, mas o relatório não pôde ser impresso", variant: "destructive" });
         }
       }
     }
@@ -472,7 +472,7 @@ export default function Caixa() {
     if (error) {
       toast({ title: "Erro ao reabrir", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Caixa Reaberto!", description: "VocÃª jÃ¡ pode registrar novas doaÃ§Ãµes." });
+      toast({ title: "Caixa Reaberto!", description: "Você já pode registrar novas doações." });
       saveLog('REOPEN_CASHIER', 'caixa', { data_movimento: filterDate });
       fetchCashierStatus();
     }
@@ -493,11 +493,11 @@ export default function Caixa() {
 
   const handleCancelar = async (id: string) => {
     const { error } = await supabase.from("caixa_transacoes").update({ status: "cancelado" }).eq("id", id);
-    if (!error) { toast({ title: "TransaÃ§Ã£o cancelada" }); fetchTransacoes(); }
+    if (!error) { toast({ title: "Transação cancelada" }); fetchTransacoes(); }
   };
 
   const handleDesfazerCancelamento = async (t: Transacao) => {
-    // Boleto sem compensaÃ§Ã£o volta para pendente; qualquer outro volta para confirmado
+    // Boleto sem compensação volta para pendente; qualquer outro volta para confirmado
     const statusAnterior: Status =
       t.payment_method === "boleto" && !t.compensated_at ? "pendente" : "confirmado";
     const { error } = await supabase
@@ -513,7 +513,7 @@ export default function Caixa() {
   const emitirRecibo = async (t: Transacao) => {
     setEmittingId(t.id);
     try {
-      // Formatar endereÃ§o do doador
+      // Formatar endereço do doador
       let end = "";
       if (t.donors) {
         const d = t.donors;
@@ -554,18 +554,18 @@ export default function Caixa() {
   };
 
   const copiarLink = (t: Transacao) => {
-    if (!t.validation_hash) { toast({ title: "Recibo nÃ£o gerado ainda", variant: "destructive" }); return; }
+    if (!t.validation_hash) { toast({ title: "Recibo não gerado ainda", variant: "destructive" }); return; }
     const url = receiptUrl(t.validation_hash);
     navigator.clipboard.writeText(url);
     toast({ title: "Link copiado!", description: url });
   };
 
   const compartilharWhatsApp = async (t: Transacao) => {
-    if (!t.validation_hash) { toast({ title: "Recibo nÃ£o gerado ainda", variant: "destructive" }); return; }
+    if (!t.validation_hash) { toast({ title: "Recibo não gerado ainda", variant: "destructive" }); return; }
 
     const url = receiptUrl(t.validation_hash);
     const mensagem =
-      `OlÃ¡ ${t.donor_name}! ðŸ™\n\nRecebemos sua doaÃ§Ã£o de *${formatCurrency(t.amount)}* via ${methodLabel(t.payment_method, t.cartao_tipo)}.\n\nâœ… Recibo: *${t.receipt_number}*\nðŸ”— Ver recibo: ${url}\n\nObrigado pela sua generosidade!`;
+      `Olá ${t.donor_name}! 🙏\n\nRecebemos sua doação de *${formatCurrency(t.amount)}* via ${methodLabel(t.payment_method, t.cartao_tipo)}.\n\n✅ Recibo: *${t.receipt_number}*\n🔗 Ver recibo: ${url}\n\nObrigado pela sua generosidade!`;
 
     const donorPhone = t.donors?.phone?.replace(/\D/g, "");
     const metaOk = metaConfig?.phone_number_id && metaConfig?.access_token;
@@ -590,7 +590,7 @@ export default function Caixa() {
   const totalRecebido = confirmadas.reduce((s, t) => s + t.amount, 0);
   const saldoInicialNum = cashierData?.saldo_inicial ? parseFloat(cashierData.saldo_inicial) : 0;
   
-  // O total geral no caixa fÃ­sico deve considerar o saldo inicial (troco)
+  // O total geral no caixa físico deve considerar o saldo inicial (troco)
   const totalGeral = totalRecebido + saldoInicialNum;
 
   const totalPorMetodo = (["dinheiro", "pix", "cartao", "boleto"] as PaymentMethod[]).map(m => {
@@ -609,7 +609,7 @@ export default function Caixa() {
     const linhas = transacoes.map(t =>
       `${format(new Date(t.created_at), "HH:mm")} | ${t.donor_name.padEnd(20)} | ${formatCurrency(t.amount).padStart(12)} | ${methodLabel(t.payment_method, t.cartao_tipo)} | ${t.status}`
     ).join("\n");
-    const relatorio = `========================================\n   RELATÃ“RIO DE DOAÃ‡Ã•ES â€” ${format(new Date(filterDate + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}\n========================================\n\nRESUMO GERAL\n------------\nTotal: ${formatCurrency(totalGeral)}\nQuantidade: ${confirmadas.length}\n\nPOR MODALIDADE\n----------------------------\n${totalPorMetodo.map(m => `${methodLabel(m.method).padEnd(17)}: ${formatCurrency(m.total)}  (${m.count})`).join("\n")}\n\nDETALHAMENTO\n------------\n${linhas}\n\n========================================\n   Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR })}\n========================================`;
+    const relatorio = `========================================\n   RELATÓRIO DE DOAÇÕES — ${format(new Date(filterDate + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}\n========================================\n\nRESUMO GERAL\n------------\nTotal: ${formatCurrency(totalGeral)}\nQuantidade: ${confirmadas.length}\n\nPOR MODALIDADE\n----------------------------\n${totalPorMetodo.map(m => `${methodLabel(m.method).padEnd(17)}: ${formatCurrency(m.total)}  (${m.count})`).join("\n")}\n\nDETALHAMENTO\n------------\n${linhas}\n\n========================================\n   Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR })}\n========================================`;
     const win = window.open("", "_blank");
     if (win) { win.document.write(`<pre style="font-family:monospace;padding:20px">${relatorio}</pre>`); win.print(); }
   };
@@ -623,7 +623,7 @@ export default function Caixa() {
             <Wallet className="w-8 h-8 text-primary" /> Meu Caixa
           </h1>
           <p className="text-slate-500 text-sm mt-1">
-            Seu caixa pessoal â€” sÃ³ as doaÃ§Ãµes que vocÃª mesmo registrou ou coletou.
+            Seu caixa pessoal — só as doações que você mesmo registrou ou coletou.
           </p>
         </div>
         <div className="flex gap-2">
@@ -632,14 +632,14 @@ export default function Caixa() {
             Atualizar
           </Button>
           <Button variant="outline" className="gap-2 rounded-xl" onClick={handleImprimir}>
-            <Printer className="w-4 h-4" /> RelatÃ³rio
+            <Printer className="w-4 h-4" /> Relatório
           </Button>
           <Dialog open={openDialog} onOpenChange={(v) => { setOpenDialog(v); if (!v) resetForm(); }}>
             <DialogTrigger asChild>
-              <Button className="gap-2 rounded-xl"><Plus className="w-4 h-4" /> Nova DoaÃ§Ã£o</Button>
+              <Button className="gap-2 rounded-xl"><Plus className="w-4 h-4" /> Nova Doação</Button>
             </DialogTrigger>
             <DialogContent className="max-w-md">
-              <DialogHeader><DialogTitle>Registrar Nova DoaÃ§Ã£o</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>Registrar Nova Doação</DialogTitle></DialogHeader>
               <div className="space-y-4 pt-2">
 
                 {/* Busca de doador */}
@@ -670,12 +670,12 @@ export default function Caixa() {
                         </button>
                       ))}
                       <div className="border-t border-slate-100 px-4 py-2 text-xs text-slate-400">
-                        NÃ£o encontrou? SerÃ¡ registrado manualmente.
+                        Não encontrou? Será registrado manualmente.
                       </div>
                     </div>
                   )}
                   {showSuggestions && suggestions.length === 0 && donorName.length >= 2 && !searching && (
-                    <p className="text-xs text-slate-400 mt-1">Nenhum doador encontrado â€” registrando manualmente.</p>
+                    <p className="text-xs text-slate-400 mt-1">Nenhum doador encontrado — registrando manualmente.</p>
                   )}
                 </div>
 
@@ -689,22 +689,22 @@ export default function Caixa() {
                   <Select value={paymentMethod} onValueChange={v => setPaymentMethod(v as PaymentMethod)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="dinheiro">ðŸ’µ Dinheiro</SelectItem>
-                      <SelectItem value="pix">ðŸ“± Pix</SelectItem>
-                      <SelectItem value="cartao">ðŸ’³ CartÃ£o</SelectItem>
-                      <SelectItem value="boleto">ðŸ§¾ Boleto BancÃ¡rio</SelectItem>
+                      <SelectItem value="dinheiro">💵 Dinheiro</SelectItem>
+                      <SelectItem value="pix">📱 Pix</SelectItem>
+                      <SelectItem value="cartao">💳 Cartão</SelectItem>
+                      <SelectItem value="boleto">🧾 Boleto Bancário</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {paymentMethod === "cartao" && (
                   <div className="space-y-1">
-                    <Label>Tipo do CartÃ£o</Label>
+                    <Label>Tipo do Cartão</Label>
                     <Select value={cartaoTipo} onValueChange={v => setCartaoTipo(v as CartaoTipo)}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="debito">ðŸ’³ DÃ©bito</SelectItem>
-                        <SelectItem value="credito">ðŸ’³ CrÃ©dito</SelectItem>
+                        <SelectItem value="debito">💳 Débito</SelectItem>
+                        <SelectItem value="credito">💳 Crédito</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -713,17 +713,17 @@ export default function Caixa() {
                 {paymentMethod === "boleto" && (
                   <div className="flex items-start gap-2 p-3 bg-orange-50 rounded-xl border border-orange-100">
                     <AlertCircle className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
-                    <p className="text-xs text-orange-700">Boletos ficam pendentes atÃ© confirmaÃ§Ã£o de compensaÃ§Ã£o bancÃ¡ria. O recibo sÃ³ serÃ¡ emitido apÃ³s compensaÃ§Ã£o.</p>
+                    <p className="text-xs text-orange-700">Boletos ficam pendentes até confirmação de compensação bancária. O recibo só será emitido após compensação.</p>
                   </div>
                 )}
 
                 <div className="space-y-1">
-                  <Label>ObservaÃ§Ãµes (opcional)</Label>
-                  <Textarea placeholder="AnotaÃ§Ãµes sobre esta doaÃ§Ã£o..." value={notes} onChange={e => setNotes(e.target.value)} rows={2} />
+                  <Label>Observações (opcional)</Label>
+                  <Textarea placeholder="Anotações sobre esta doação..." value={notes} onChange={e => setNotes(e.target.value)} rows={2} />
                 </div>
 
                 <Button className="w-full" onClick={handleSave} disabled={saving}>
-                  {saving ? "Registrando..." : "Confirmar DoaÃ§Ã£o"}
+                  {saving ? "Registrando..." : "Confirmar Doação"}
                 </Button>
               </div>
             </DialogContent>
@@ -749,7 +749,7 @@ export default function Caixa() {
               <SelectItem value="todos">Todas modalidades</SelectItem>
               <SelectItem value="dinheiro">Dinheiro</SelectItem>
               <SelectItem value="pix">Pix</SelectItem>
-              <SelectItem value="cartao">CartÃ£o</SelectItem>
+              <SelectItem value="cartao">Cartão</SelectItem>
               <SelectItem value="boleto">Boleto</SelectItem>
             </SelectContent>
           </Select>
@@ -761,7 +761,7 @@ export default function Caixa() {
           ) : !cashierData ? (
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="bg-slate-50 text-slate-500 border-slate-200 py-1.5 px-3 rounded-lg">
-                <History className="w-3 h-3 mr-1.5" />NÃ£o Iniciado
+                <History className="w-3 h-3 mr-1.5" />Não Iniciado
               </Badge>
               {filterDate === format(new Date(), "yyyy-MM-dd") && (
                 <Button size="sm" onClick={() => setOpenCashierDialog(true)} className="rounded-xl gap-2 shadow-sm">
@@ -787,7 +787,7 @@ export default function Caixa() {
                 size="sm" 
                 variant="ghost" 
                 onClick={() => {
-                  if(confirm("Deseja realmente REABRIR este caixa? Esta aÃ§Ã£o serÃ¡ registrada na auditoria.")) {
+                  if(confirm("Deseja realmente REABRIR este caixa? Esta ação será registrada na auditoria.")) {
                     handleReabrirCaixa();
                   }
                 }} 
@@ -801,7 +801,7 @@ export default function Caixa() {
         </div>
       </div>
 
-      {/* DiÃ¡logo de Abertura de Caixa */}
+      {/* Diálogo de Abertura de Caixa */}
       <Dialog open={openCashierDialog} onOpenChange={setOpenCashierDialog}>
         <DialogContent className="max-w-md rounded-2xl">
           <DialogHeader>
@@ -830,7 +830,7 @@ export default function Caixa() {
                   className="pl-9 rounded-xl focus:ring-primary/20"
                 />
               </div>
-              <p className="text-xs text-slate-400">Informe o valor em espÃ©cie disponÃ­vel para inÃ­cio das operaÃ§Ãµes.</p>
+              <p className="text-xs text-slate-400">Informe o valor em espécie disponível para início das operações.</p>
             </div>
 
             <Button className="w-full h-11 rounded-xl shadow-lg shadow-primary/20" onClick={handleAbrirCaixa} disabled={saving}>
@@ -840,7 +840,7 @@ export default function Caixa() {
         </DialogContent>
       </Dialog>
 
-      {/* DiÃ¡logo de Fechamento de Caixa */}
+      {/* Diálogo de Fechamento de Caixa */}
       <Dialog open={closeCashierDialog} onOpenChange={setCloseCashierDialog}>
         <DialogContent className="max-w-md rounded-2xl">
           <DialogHeader>
@@ -866,9 +866,9 @@ export default function Caixa() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-slate-700 font-semibold">ObservaÃ§Ãµes de Fechamento</Label>
+              <Label className="text-slate-700 font-semibold">Observações de Fechamento</Label>
               <Textarea 
-                placeholder="Ex: DiferenÃ§a de valores, notas sobre sangria, etc..." 
+                placeholder="Ex: Diferença de valores, notas sobre sangria, etc..." 
                 value={closingNotes} 
                 onChange={e => setClosingNotes(e.target.value)}
                 className="rounded-xl focus:ring-primary/20"
@@ -893,14 +893,14 @@ export default function Caixa() {
           <CardContent className="flex flex-col md:flex-row items-start md:items-center justify-between p-6 gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <p className="text-sm text-slate-500 font-medium">Saldo em Caixa (FÃ­sico + Digital)</p>
+                <p className="text-sm text-slate-500 font-medium">Saldo em Caixa (Físico + Digital)</p>
                 {cashierData?.status === "fechado" && <Badge variant="secondary" className="bg-slate-200 text-slate-600 border-none">Encerrado</Badge>}
               </div>
               <p className={`text-4xl font-black ${cashierData?.status === "fechado" ? "text-slate-600" : "text-primary"}`}>
                 {formatCurrency(totalGeral)}
               </p>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 font-medium">
-                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-500" /> {confirmadas.length} doaÃ§Ãµes confirmadas</span>
+                <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-500" /> {confirmadas.length} doações confirmadas</span>
                 {saldoInicialNum > 0 && (
                   <span className="flex items-center gap-1"><Coins className="w-3 h-3 text-orange-400" /> Saldo Inicial: {formatCurrency(saldoInicialNum)}</span>
                 )}
@@ -940,7 +940,7 @@ export default function Caixa() {
               <p className={`text-xl font-black ${cashierData?.status === "fechado" ? "text-slate-500" : "text-slate-800"}`}>
                 {formatCurrency(m.total)}
               </p>
-              <p className="text-[10px] font-medium text-slate-400">{m.count} transaÃ§Ãµes no perÃ­odo</p>
+              <p className="text-[10px] font-medium text-slate-400">{m.count} transações no período</p>
             </CardContent>
           </Card>
         ))}
@@ -951,7 +951,7 @@ export default function Caixa() {
         <CardHeader className="border-b border-slate-50">
           <CardTitle className="text-base font-bold flex items-center gap-2">
             <FileBarChart className="w-4 h-4 text-primary" />
-            MovimentaÃ§Ã£o â€” {format(new Date(filterDate + "T12:00:00"), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+            Movimentação — {format(new Date(filterDate + "T12:00:00"), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
           </CardTitle>
           <CardDescription>{transacoes.length} registros encontrados</CardDescription>
         </CardHeader>
@@ -959,18 +959,18 @@ export default function Caixa() {
           {loading ? (
             <div className="p-8 text-center text-slate-400">Carregando...</div>
           ) : transacoes.length === 0 ? (
-            <div className="p-8 text-center text-slate-400">Nenhuma transaÃ§Ã£o encontrada para este dia.</div>
+            <div className="p-8 text-center text-slate-400">Nenhuma transação encontrada para este dia.</div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50/50">
                   <TableHead>Hora</TableHead>
-                  <TableHead>NÂº Recibo</TableHead>
+                  <TableHead>Nº Recibo</TableHead>
                   <TableHead>Doador</TableHead>
                   <TableHead>Valor</TableHead>
                   <TableHead>Modalidade</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>AÃ§Ãµes</TableHead>
+                  <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -980,7 +980,7 @@ export default function Caixa() {
                       {format(new Date(t.created_at), "HH:mm")}
                     </TableCell>
                     <TableCell className="text-xs font-mono text-slate-600">
-                      {t.receipt_number || <span className="text-slate-300">â€”</span>}
+                      {t.receipt_number || <span className="text-slate-300">—</span>}
                     </TableCell>
                     <TableCell className="font-medium">{t.donor_name}</TableCell>
                     <TableCell className="font-bold text-slate-800">{formatCurrency(t.amount)}</TableCell>
@@ -996,7 +996,7 @@ export default function Caixa() {
                     </TableCell>
                     <TableCell>
                       {t.source === "donation" ? (
-                        <span className="text-xs text-slate-400 italic">DoaÃ§Ã£o online/telemarketing</span>
+                        <span className="text-xs text-slate-400 italic">Doação online/telemarketing</span>
                       ) : (
                         <div className="flex items-center gap-1">
                           {t.status === "pendente" && (
@@ -1009,7 +1009,7 @@ export default function Caixa() {
                               <Button size="sm" variant="outline" className="text-xs rounded-lg h-7 gap-1" disabled={emittingId === t.id} onClick={() => emitirRecibo(t)}>
                                 <Receipt className="w-3 h-3" />{emittingId === t.id ? "..." : "Recibo"}
                               </Button>
-                              <Button size="sm" variant="ghost" className="text-xs rounded-lg h-7 px-2" onClick={() => copiarLink(t)} title="Copiar link de validaÃ§Ã£o">
+                              <Button size="sm" variant="ghost" className="text-xs rounded-lg h-7 px-2" onClick={() => copiarLink(t)} title="Copiar link de validação">
                                 <Link2 className="w-3 h-3" />
                               </Button>
                               <Button size="sm" variant="ghost" className="text-xs rounded-lg h-7 px-2 text-green-600" onClick={() => compartilharWhatsApp(t)} title="Enviar via WhatsApp">
