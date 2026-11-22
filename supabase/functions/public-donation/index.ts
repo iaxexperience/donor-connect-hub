@@ -132,7 +132,12 @@ serve(async (req) => {
     // atualizada) e depois o segredo ASAAS_API_KEY. O ambiente vem do prefixo da chave
     // ($aact_prod_ = produção, $aact_hmlg_ = sandbox) quando houver; senão da configuração.
     const { data: settings } = await supabase.from("asaas_settings").select("api_key, sandbox").eq("id", 1).maybeSingle();
-    const clean = (k: unknown) => String(k ?? "").trim().split("::")[0].trim();
+    const clean = (k: unknown) => {
+      // Tira espaços/quebras, aspas coladas junto e o "$" perdido no começo.
+      let v = String(k ?? "").split("::")[0].replace(/\s+/g, "").replace(/^["']|["']$/g, "");
+      if (/^aact_/.test(v)) v = `$${v}`;
+      return v;
+    };
     const envSandbox = Deno.env.get("ASAAS_SANDBOX");
     const candidates = [
       { key: clean(settings?.api_key), sandbox: !!settings?.sandbox },
@@ -140,21 +145,29 @@ serve(async (req) => {
     ].filter((c, i, all) => c.key && all.findIndex((o) => o.key === c.key) === i);
     if (!candidates.length) throw new Error("Doações online indisponíveis no momento (Asaas não configurado).");
 
-    const urlFor = (c: { key: string; sandbox: boolean }) => {
-      if (/^\$?aact_prod_/.test(c.key)) return "https://api.asaas.com/v3";
-      if (/^\$?aact_hmlg_/.test(c.key)) return "https://sandbox.asaas.com/api/v3";
-      return c.sandbox ? "https://sandbox.asaas.com/api/v3" : "https://api.asaas.com/v3";
+    const PROD = "https://api.asaas.com/v3";
+    const SANDBOX = "https://sandbox.asaas.com/api/v3";
+    // Ambiente provável primeiro; o outro como segunda tentativa (chave com o
+    // interruptor "Sandbox" trocado na tela também funciona).
+    const urlsFor = (c: { key: string; sandbox: boolean }) => {
+      if (/^\$aact_prod_/.test(c.key)) return [PROD];
+      if (/^\$aact_hmlg_/.test(c.key)) return [SANDBOX];
+      return c.sandbox ? [SANDBOX, PROD] : [PROD, SANDBOX];
     };
 
     // Descobre qual chave o Asaas aceita (consulta leve, sem criar nada).
     let active: { key: string; baseUrl: string } | null = null;
-    for (const c of candidates) {
-      const baseUrl = urlFor(c);
-      const res = await fetch(`${baseUrl}/customers?limit=1`, {
-        headers: { access_token: c.key, "User-Agent": "PulseDoacoes" },
-      });
-      if (res.ok) { active = { key: c.key, baseUrl }; break; }
-      console.error(`[public-donation] Chave recusada pelo Asaas (${baseUrl}): HTTP ${res.status}`);
+    outer: for (const [i, c] of candidates.entries()) {
+      for (const baseUrl of urlsFor(c)) {
+        const res = await fetch(`${baseUrl}/customers?limit=1`, {
+          headers: { access_token: c.key, "User-Agent": "PulseDoacoes" },
+        });
+        if (res.ok) { active = { key: c.key, baseUrl }; break outer; }
+        // Só o formato da chave vai para o log, nunca o valor.
+        console.error(
+          `[public-donation] Chave #${i + 1} (${c.key.slice(0, 10)}…, ${c.key.length} caracteres) recusada em ${baseUrl}: HTTP ${res.status}`,
+        );
+      }
     }
     if (!active) {
       throw new Error("Doações online indisponíveis no momento: a chave do Asaas cadastrada não foi aceita. Avise a instituição.");
