@@ -128,15 +128,42 @@ serve(async (req) => {
 
   try {
     // ── Credencial do Asaas (só no servidor) ──────────────────
+    // Candidatas, na ordem: a chave da tela "Integração Asaas" (a que o admin mantém
+    // atualizada) e depois o segredo ASAAS_API_KEY. O ambiente vem do prefixo da chave
+    // ($aact_prod_ = produção, $aact_hmlg_ = sandbox) quando houver; senão da configuração.
     const { data: settings } = await supabase.from("asaas_settings").select("api_key, sandbox").eq("id", 1).maybeSingle();
-    const apiKey = (Deno.env.get("ASAAS_API_KEY") || settings?.api_key || "").trim().split("::")[0].trim();
-    if (!apiKey) throw new Error("Doações online indisponíveis no momento (Asaas não configurado).");
-    const sandbox = Deno.env.get("ASAAS_SANDBOX") ? Deno.env.get("ASAAS_SANDBOX") === "true" : !!settings?.sandbox;
-    const baseUrl = sandbox ? "https://sandbox.asaas.com/api/v3" : "https://api.asaas.com/v3";
+    const clean = (k: unknown) => String(k ?? "").trim().split("::")[0].trim();
+    const envSandbox = Deno.env.get("ASAAS_SANDBOX");
+    const candidates = [
+      { key: clean(settings?.api_key), sandbox: !!settings?.sandbox },
+      { key: clean(Deno.env.get("ASAAS_API_KEY")), sandbox: envSandbox ? envSandbox === "true" : !!settings?.sandbox },
+    ].filter((c, i, all) => c.key && all.findIndex((o) => o.key === c.key) === i);
+    if (!candidates.length) throw new Error("Doações online indisponíveis no momento (Asaas não configurado).");
+
+    const urlFor = (c: { key: string; sandbox: boolean }) => {
+      if (/^\$?aact_prod_/.test(c.key)) return "https://api.asaas.com/v3";
+      if (/^\$?aact_hmlg_/.test(c.key)) return "https://sandbox.asaas.com/api/v3";
+      return c.sandbox ? "https://sandbox.asaas.com/api/v3" : "https://api.asaas.com/v3";
+    };
+
+    // Descobre qual chave o Asaas aceita (consulta leve, sem criar nada).
+    let active: { key: string; baseUrl: string } | null = null;
+    for (const c of candidates) {
+      const baseUrl = urlFor(c);
+      const res = await fetch(`${baseUrl}/customers?limit=1`, {
+        headers: { access_token: c.key, "User-Agent": "PulseDoacoes" },
+      });
+      if (res.ok) { active = { key: c.key, baseUrl }; break; }
+      console.error(`[public-donation] Chave recusada pelo Asaas (${baseUrl}): HTTP ${res.status}`);
+    }
+    if (!active) {
+      throw new Error("Doações online indisponíveis no momento: a chave do Asaas cadastrada não foi aceita. Avise a instituição.");
+    }
+
     const asaas = async (path: string, init?: RequestInit) => {
-      const res = await fetch(`${baseUrl}${path}`, {
+      const res = await fetch(`${active!.baseUrl}${path}`, {
         ...init,
-        headers: { access_token: apiKey, "Content-Type": "application/json", "User-Agent": "PulseDoacoes" },
+        headers: { access_token: active!.key, "Content-Type": "application/json", "User-Agent": "PulseDoacoes" },
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.errors?.[0]?.description || `Asaas respondeu ${res.status}`);
