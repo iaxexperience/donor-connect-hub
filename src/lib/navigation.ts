@@ -53,8 +53,29 @@ export const NAV_SECTIONS: NavSection[] = [
     railIcon: Heart,
     items: [
       { to: "/dashboard/doadores", label: "Doadores", icon: Heart },
+    ],
+  },
+  {
+    label: "Kanban",
+    accent: "#8b5cf6",
+    railIcon: GitMerge,
+    items: [
       { to: "/dashboard/kanbam", label: "Kanban", icon: GitMerge },
+    ],
+  },
+  {
+    label: "Campanhas",
+    accent: "#ec4899",
+    railIcon: Megaphone,
+    items: [
       { to: "/dashboard/campanhas", label: "Campanhas", icon: Megaphone },
+    ],
+  },
+  {
+    label: "Carteiras",
+    accent: "#06b6d4",
+    railIcon: Shuffle,
+    items: [
       { to: "/dashboard/distribuicao-carteiras", label: "Distribuição de Carteiras", icon: Shuffle },
     ],
   },
