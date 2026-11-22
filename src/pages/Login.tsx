@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/components/theme/DynamicThemeProvider";
+import { sendGuardianEvent } from "@/lib/guardianService";
 import { supabase } from "@/integrations/supabase/client";
 import PulseLogo from "@/components/common/PulseLogo";
 
@@ -64,6 +65,7 @@ const Login = () => {
       });
 
       if (error) {
+        sendGuardianEvent("login_failed", { actorEmail: email, metadata: { reason: error.message.slice(0, 80) } });
         let description = "E-mail ou senha incorretos. Verifique suas credenciais.";
         
         if (error.message.includes("Email not confirmed")) {

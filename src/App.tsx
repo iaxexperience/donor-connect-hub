@@ -34,6 +34,7 @@ import MinhasCaptacoes from "./pages/MinhasCaptacoes";
 import DoacoesRecebidas from "./pages/DoacoesRecebidas";
 import DistribuicaoCarteiras from "./pages/DistribuicaoCarteiras";
 import Metas from "./pages/Metas";
+import IaxGuardian from "./pages/IaxGuardian";
 import ValidateReceipt from "./pages/ValidateReceipt";
 import ValidarRecibo from "./pages/ValidarRecibo";
 import Documentacao from "./pages/Documentacao";
@@ -122,6 +123,7 @@ const App = () => (
                     <Route path="doacoes-recebidas" element={<DoacoesRecebidas />} />
                     <Route path="distribuicao-carteiras" element={<DistribuicaoCarteiras />} />
                     <Route path="metas" element={<Metas />} />
+                    <Route path="iax-guardian" element={<IaxGuardian />} />
                   </Route>
                 </Route>
 

@@ -11,6 +11,8 @@ import FAQSection from "@/components/landing/FAQSection";
 import ContactSection from "@/components/landing/ContactSection";
 import WhatsAppButton from "@/components/landing/WhatsAppButton";
 import { LandingVideo } from "@/components/landing/LandingVideo";
+import { DonateDialog } from "@/components/landing/DonateDialog";
+import { useTheme } from "@/components/theme/DynamicThemeProvider";
 
 // Mídias: vídeos e imagens do Mixkit (licença gratuita para uso comercial),
 // guardados em public/landing.
@@ -62,6 +64,8 @@ const modules = [
 export default function Index() {
   const reduceMotion = useReducedMotion();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [donateOpen, setDonateOpen] = useState(false);
+  const { settings: { system_name: orgName, logo_url: orgLogo } } = useTheme();
   const { scrollYProgress } = useScroll();
   const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 28 });
 
@@ -92,6 +96,13 @@ export default function Index() {
             ))}
           </nav>
           <div className="hidden items-center gap-3 md:flex">
+            <button
+              type="button"
+              onClick={() => setDonateOpen(true)}
+              className="inline-flex items-center gap-2 rounded-full bg-rose-500 px-5 py-3 text-sm font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-rose-600"
+            >
+              <Heart className="h-4 w-4" fill="currentColor" /> Doar
+            </button>
             <Link to="/login" className="px-4 py-2 text-sm font-bold hover:text-cyan-300">Entrar</Link>
             <Link
               to="/cadastro"
@@ -115,6 +126,13 @@ export default function Index() {
               {navLinks.map(([href, label]) => (
                 <a key={href} href={href} onClick={() => setMenuOpen(false)}>{label}</a>
               ))}
+              <button
+                type="button"
+                onClick={() => { setMenuOpen(false); setDonateOpen(true); }}
+                className="rounded-full bg-rose-500 px-5 py-3 text-center text-white"
+              >
+                Doar agora
+              </button>
               <Link to="/login">Entrar</Link>
               <Link to="/cadastro" className="rounded-full bg-white px-5 py-3 text-center text-[#0757a8]">Cadastre-se</Link>
             </div>
@@ -172,6 +190,13 @@ export default function Index() {
                   Agendar demonstração <ChevronRight className="h-5 w-5" />
                 </a>
               </div>
+              <button
+                type="button"
+                onClick={() => setDonateOpen(true)}
+                className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-rose-200 underline-offset-4 hover:text-white hover:underline"
+              >
+                <Heart className="h-4 w-4" fill="currentColor" /> Quer apoiar {orgName}? Doe agora
+              </button>
               <div className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm text-slate-200">
                 {["Implantação assistida", "Importação da sua base", "Adequado à LGPD"].map((item) => (
                   <span key={item} className="flex items-center gap-2">
@@ -537,6 +562,48 @@ export default function Index() {
           </div>
         </section>
 
+        {/* ── Doação para a organização cadastrada ─────────── */}
+        <section id="doar" className="px-6 pb-28 lg:px-8">
+          <div className="mx-auto grid max-w-7xl overflow-hidden rounded-[2.5rem] bg-white shadow-[0_24px_70px_rgba(5,40,80,.12)] ring-1 ring-slate-200 lg:grid-cols-2">
+            <div className="relative min-h-[320px]">
+              <img src="/landing/medica-crianca.jpg" alt="Médica atendendo uma criança" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#061b3b]/80 to-transparent" />
+              <div className="absolute bottom-6 left-6 flex items-center gap-3 rounded-2xl bg-white/95 p-3 shadow-xl">
+                <div className="grid h-11 w-11 place-items-center overflow-hidden rounded-xl border bg-white">
+                  {orgLogo ? <img src={orgLogo} alt="" className="h-full w-full object-contain p-0.5" /> : <Heart className="h-5 w-5 text-rose-500" />}
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-sky-700">Instituição</p>
+                  <p className="font-black text-[#061b3b]">{orgName}</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-8 sm:p-12">
+              <span className="text-xs font-black uppercase tracking-[.2em] text-rose-600">Faça parte</span>
+              <h2 className="mt-4 text-4xl font-black tracking-[-.04em]">Apoie {orgName}.</h2>
+              <p className="mt-5 text-lg leading-8 text-slate-600">
+                Sua doação ajuda a manter o atendimento de quem mais precisa. É rápido e seguro: Pix com
+                QR code na hora, ou cartão e boleto pela página do Asaas.
+              </p>
+              <div className="mt-6 space-y-3">
+                {["Pix, cartão ou boleto", "Recibo da sua doação", "Pagamento processado pelo Asaas"].map((item) => (
+                  <div key={item} className="flex items-center gap-3 font-bold">
+                    <span className="rounded-full bg-rose-100 p-1 text-rose-600"><Check className="h-4 w-4" /></span>
+                    {item}
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setDonateOpen(true)}
+                className="group mt-9 inline-flex items-center gap-3 rounded-full bg-rose-500 px-8 py-4 font-black text-white shadow-[0_18px_40px_rgba(244,63,94,.35)] transition hover:-translate-y-1 hover:bg-rose-600"
+              >
+                <Heart className="h-5 w-5" fill="currentColor" /> Doar agora
+              </button>
+            </div>
+          </div>
+        </section>
+
         <FAQSection />
         <ContactSection />
 
@@ -592,6 +659,7 @@ export default function Index() {
       </footer>
 
       <WhatsAppButton />
+      <DonateDialog open={donateOpen} onOpenChange={setDonateOpen} />
       <style>{`html{scroll-behavior:smooth}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}`}</style>
     </div>
   );

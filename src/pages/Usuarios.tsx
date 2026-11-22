@@ -34,6 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useAuth } from "@/contexts/AuthContext";
 import { SignatureField } from "@/components/users/SignatureField";
+import { sendGuardianEvent } from "@/lib/guardianService";
 
 const roleMapping: Record<string, { label: string, color: string }> = {
   "coordenador": { label: "Coordenador", color: "secondary" },
@@ -203,6 +204,11 @@ const Usuarios = () => {
           phone: newPhone,
           role: newRole,
         });
+        if (editingUser.role !== newRole) {
+          sendGuardianEvent("role_changed", {
+            metadata: { target_user_id: editingUser.id, target_email: newEmail, from_role: editingUser.role || "", to_role: newRole },
+          });
+        }
         toast({ title: "Usuário Atualizado!", description: `${newName} foi atualizado com sucesso.` });
       } else {
         // Cria o usuário no Auth (já confirmado) + o perfil, tudo no servidor
@@ -274,6 +280,7 @@ const Usuarios = () => {
         id: user.id,
         status: 'Ativo'
       });
+      sendGuardianEvent("user_activated", { metadata: { target_user_id: user.id, target_email: user.email || "", role: user.role || "" } });
       toast({
         title: "Usuário Ativado!",
         description: `O perfil de ${user.name} agora está ativo e pronto para uso.`,
@@ -297,6 +304,7 @@ const Usuarios = () => {
         id: user.id,
         status: 'Inativo'
       });
+      sendGuardianEvent("user_deactivated", { metadata: { target_user_id: user.id, target_email: user.email || "", role: user.role || "" } });
       toast({
         title: "Usuário Desativado",
         description: user.role === "operador"

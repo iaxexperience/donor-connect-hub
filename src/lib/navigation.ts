@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, BarChart3, Target, Heart, GitMerge, Megaphone, Shuffle, Phone, HeartHandshake,
   CalendarClock, MessageSquare, PiggyBank, PackageCheck, Gift, ArrowRightLeft, Route, ListChecks,
-  Users, Building2, Wallet, Landmark, Globe, Settings, Plug, type LucideIcon,
+  Users, Building2, Wallet, Landmark, Globe, Settings, Plug, ShieldCheck, type LucideIcon,
 } from "lucide-react";
 import { canAccessPage, type AppRole } from "@/lib/permissions";
 
@@ -36,6 +36,13 @@ export const NAV_SECTIONS: NavSection[] = [
     railIcon: BarChart3,
     items: [
       { to: "/dashboard/relatorios", label: "Relatórios", icon: BarChart3 },
+    ],
+  },
+  {
+    label: "Metas",
+    accent: "#14b8a6",
+    railIcon: Target,
+    items: [
       { to: "/dashboard/metas", label: "Metas", icon: Target },
     ],
   },
@@ -99,6 +106,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { to: "/dashboard/bb", label: "Banco do Brasil", icon: Landmark },
       { to: "/dashboard/api-aberta", label: "API Aberta", icon: Globe },
       { to: "/dashboard/configuracoes", label: "Configurações", icon: Settings },
+      { to: "/dashboard/iax-guardian", label: "IAX Guardian", icon: ShieldCheck },
     ],
   },
 ];

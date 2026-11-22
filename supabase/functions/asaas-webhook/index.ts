@@ -11,6 +11,26 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // Autenticidade: o Asaas envia o "Token de autenticação" configurado no
+  // webhook (painel do Asaas → Integrações → Webhooks) no cabeçalho
+  // "asaas-access-token". Sem isso, qualquer pessoa poderia enviar um aviso
+  // falso de "pagamento recebido". O mesmo valor fica no segredo
+  // ASAAS_WEBHOOK_TOKEN da Edge Function.
+  const expectedToken = Deno.env.get('ASAAS_WEBHOOK_TOKEN');
+  if (!expectedToken) {
+    console.error('[Asaas Webhook] ASAAS_WEBHOOK_TOKEN não configurado — aviso recusado.');
+    return new Response(JSON.stringify({ error: 'Webhook não configurado' }), {
+      status: 503,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+  if (req.headers.get('asaas-access-token') !== expectedToken) {
+    return new Response(JSON.stringify({ error: 'Não autorizado' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
