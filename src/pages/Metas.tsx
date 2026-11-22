@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Target, Loader2, Pencil, Trash2, Plus, CalendarDays, Users, ListChecks, Info } from "lucide-react";
+import { Target, Loader2, Pencil, Trash2, Plus, CalendarDays, Users, ListChecks, Info, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +21,7 @@ import {
   GOAL_METRICS, metricByKey, ROLE_LABEL, PERIOD_LABEL, formatGoalValue, goalPercent, progressTone,
   GoalProgressRow, GoalTemplate, GoalPeriod, GoalRole, MONTHLY_KEY_METRICS, ROLE_SHORT,
 } from "@/lib/goals";
+import { MedalBoard } from "@/components/goals/MedalBoard";
 
 // As tabelas/funções de metas ainda não estão nos tipos gerados do Supabase.
 const db = supabase as any;
@@ -129,6 +130,8 @@ function MyGoals() {
 
   return (
     <div className="space-y-4">
+      <MedalBoard mode="self" />
+      <h2 className="pt-4 text-lg font-bold">Todas as minhas metas</h2>
       <div className="flex flex-wrap items-end gap-3">
         <div>
           <Label className="text-xs text-muted-foreground">Dia de referência</Label>
@@ -149,6 +152,30 @@ function MyGoals() {
           <Section title="Metas do mês" subtitle={format(ref, "MMMM 'de' yyyy", { locale: ptBR })} rows={monthly} />
         </div>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Quadro de medalhas da equipe (coordenador / admin)
+// ─────────────────────────────────────────────────────────────
+function TeamMedals() {
+  const [roleFilter, setRoleFilter] = useState("all");
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label className="text-xs text-muted-foreground">Função</Label>
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="w-[240px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as funções</SelectItem>
+            <SelectItem value="operador">{ROLE_LABEL.operador}</SelectItem>
+            <SelectItem value="coordenador">{ROLE_LABEL.coordenador}</SelectItem>
+            <SelectItem value="motoboy">{ROLE_LABEL.motoboy}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <MedalBoard mode="team" roleFilter={roleFilter} />
     </div>
   );
 }
@@ -939,7 +966,7 @@ function MonthlyGoals() {
 export default function Metas() {
   const { role } = useAuth();
   const isManager = role === "admin" || role === "coordenador";
-  const [tab, setTab] = useState("painel");
+  const [tab, setTab] = useState("medalhas");
 
   return (
     <div className="space-y-6">
@@ -957,11 +984,13 @@ export default function Metas() {
       {isManager ? (
         <Tabs value={tab} onValueChange={setTab} className="space-y-4">
           <TabsList>
+            <TabsTrigger value="medalhas"><Trophy className="w-4 h-4 mr-1" />Medalhas</TabsTrigger>
             <TabsTrigger value="painel"><Users className="w-4 h-4 mr-1" />Painel da equipe</TabsTrigger>
             <TabsTrigger value="mensal"><Target className="w-4 h-4 mr-1" />Meta mensal</TabsTrigger>
             <TabsTrigger value="atribuir"><CalendarDays className="w-4 h-4 mr-1" />Atribuir metas</TabsTrigger>
             <TabsTrigger value="modelos"><ListChecks className="w-4 h-4 mr-1" />Modelos</TabsTrigger>
           </TabsList>
+          <TabsContent value="medalhas"><TeamMedals /></TabsContent>
           <TabsContent value="painel"><TeamPanel /></TabsContent>
           <TabsContent value="mensal"><MonthlyGoals /></TabsContent>
           <TabsContent value="atribuir"><AssignGoals onDone={() => setTab("painel")} /></TabsContent>
