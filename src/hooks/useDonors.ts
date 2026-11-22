@@ -5,13 +5,16 @@ import { sendWhatsAppThankYou } from "@/lib/whatsappService";
 import { useRef } from "react";
 
 
-export const useDonors = () => {
+// fetchList: false → só as ações (cadastrar, editar...), sem baixar a lista
+// inteira de doadores (milhares de linhas) — usado por telas que não precisam dela.
+export const useDonors = ({ fetchList = true }: { fetchList?: boolean } = {}) => {
   const queryClient = useQueryClient();
 
   // Fetch donors with React Query
   const { data: donors = [], isLoading, error } = useQuery({
     queryKey: ['donors'],
     queryFn: getDonors,
+    enabled: fetchList,
     // Lista grande (milhares de doadores): reaproveita por 2 min ao trocar de tela
     // em vez de baixar tudo de novo. Cadastros e edições invalidam na hora.
     staleTime: 2 * 60 * 1000,

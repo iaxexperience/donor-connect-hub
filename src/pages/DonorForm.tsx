@@ -15,12 +15,14 @@ import { useDonors } from "@/hooks/useDonors";
 import { DonorType, typeLabel } from "@/lib/donationService";
 import { ArrowLeft, User, Phone, MapPin, CheckCircle2, Loader2, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const DonorForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEditMode = !!id;
-  const { registerNewDonor, updateDonor, donors, isRegistering } = useDonors();
+  // Só as ações: o formulário busca apenas o doador aberto (abaixo), não a lista inteira.
+  const { registerNewDonor, updateDonor, isRegistering } = useDonors({ fetchList: false });
   const { toast } = useToast();
   
   const [formData, setFormData] = useState({
@@ -43,13 +45,25 @@ const DonorForm = () => {
   const [loadingCep, setLoadingCep] = useState(false);
 
   useEffect(() => {
-    if (isEditMode && donors.length > 0) {
-      const donor = donors.find(d => d.id === parseInt(id));
+    if (!isEditMode || !id) return;
+    let cancelled = false;
+    (async () => {
+      const { data: donor, error } = await supabase
+        .from("donors")
+        .select("*")
+        .eq("id", parseInt(id))
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        toast({ title: "Erro ao carregar doador", description: error.message, variant: "destructive" });
+        return;
+      }
       if (donor) {
+        const phone = donor.phone || "";
         setFormData({
-          name: donor.name,
-          email: donor.email,
-          phone: donor.phone.startsWith("+55") ? donor.phone : `+55 ${donor.phone}`,
+          name: donor.name || "Doador sem Nome",
+          email: donor.email || "sem@email.com",
+          phone: phone.startsWith("+55") ? phone : `+55 ${phone}`,
           whatsapp_opt_in: donor.whatsapp_opt_in ?? false,
           type: donor.type,
           cpf_cnpj: donor.document_id || "",
@@ -63,8 +77,10 @@ const DonorForm = () => {
           state: donor.state || ""
         });
       }
-    }
-  }, [isEditMode, id, donors]);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditMode, id]);
 
   const formatPhone = (value: string) => {
     // Remove tudo que não é número

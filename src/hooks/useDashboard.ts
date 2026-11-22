@@ -3,29 +3,89 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDonors } from "./useDonors";
 import { useCampaigns } from "./useCampaigns";
 
+// O painel fica aberto (guardado) mesmo ao trocar de tela; atualizar a cada 30 s
+// deixava o sistema inteiro buscando dados sem parar. 5 minutos basta para o painel.
+const DASHBOARD_REFRESH = 5 * 60_000;
+
+const countDonorsByType = async (type: string) => {
+  const { count, error } = await supabase
+    .from('donors')
+    .select('id', { count: 'exact', head: true })
+    .eq('type', type);
+  if (error) throw error;
+  return count ?? 0;
+};
+
+/**
+ * Resumo de doadores para o painel: contagens por tipo e os maiores doadores,
+ * calculados no banco — antes o painel baixava a lista inteira de doadores.
+ */
+export const useDonorSummary = () => {
+  const { data, isLoading } = useQuery({
+    queryKey: ['donor-summary'],
+    queryFn: async () => {
+      const [recorrentes, unicos, esporadicos, top] = await Promise.all([
+        countDonorsByType('recorrente'),
+        countDonorsByType('unico'),
+        countDonorsByType('esporadico'),
+        supabase
+          .from('donors')
+          .select('name, total_donated, type')
+          .order('total_donated', { ascending: false, nullsFirst: false })
+          .limit(4),
+      ]);
+      if (top.error) throw top.error;
+      return { recorrentes, unicos, esporadicos, topDonors: top.data ?? [] };
+    },
+    staleTime: 2 * 60_000,
+  });
+  return {
+    summary: data ?? { recorrentes: 0, unicos: 0, esporadicos: 0, topDonors: [] as any[] },
+    isLoading,
+  };
+};
+
+/** Quantidade de follow-ups pendentes, contada no banco. */
+export const usePendingFollowUpsCount = () => {
+  const { data = 0 } = useQuery({
+    queryKey: ['followups', 'pending-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('follow_ups')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pendente');
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+  return data;
+};
+
 export const useDashboard = () => {
-  const { donors } = useDonors();
+  const { summary } = useDonorSummary();
   const { campaigns } = useCampaigns();
 
+  // Só as colunas usadas nos gráficos (antes vinham todas as colunas de cada doação).
   const { data: donations = [], isLoading: donationsLoading } = useQuery({
     queryKey: ['donations-full'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('donations')
-        .select('*, donors(name, type)')
+        .select('amount, status, confirmed_at, donation_date, campaign_id, donors(name)')
         .order('donation_date', { ascending: false });
 
       if (error) {
         console.error("[useDashboard] Supabase error fetching donations:", error);
         if (error.code === '42703' || error.message?.includes('does not exist')) {
             // Fallback para evitar travamento da tela toda
-            const { data: fallbackData } = await supabase.from('donations').select('*, donors(name, type)');
-            return fallbackData || [];
+            const { data: fallbackData } = await supabase.from('donations').select('*, donors(name)');
+            return (fallbackData || []) as any[];
         }
         throw error;
       }
-      return data;
+      return data as any[];
     },
+    refetchInterval: DASHBOARD_REFRESH,
   });
 
   const { data: caixaTransactions = [], isLoading: caixaLoading } = useQuery({
@@ -33,7 +93,7 @@ export const useDashboard = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('caixa_transacoes')
-        .select('*, donors(name, type)')
+        .select('amount, status, created_at, donor_name, donors(name)')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -128,10 +188,8 @@ export const useDashboard = () => {
 
   // 4. Maiores Doadores
   const getTopDonors = () => {
-    return [...donors]
-      .sort((a, b) => (b.total_donated || 0) - (a.total_donated || 0))
-      .slice(0, 4)
-      .map(d => ({
+    return summary.topDonors
+      .map((d: any) => ({
         name: d.name,
         total: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(d.total_donated || 0),
         type: d.type === 'recorrente' ? 'Recorrente' : d.type === 'unico' ? 'Único' : 'Esporádico'
@@ -209,7 +267,7 @@ export const useDashboard = () => {
       }
       return data || [];
     },
-    refetchInterval: 30000
+    refetchInterval: DASHBOARD_REFRESH
   });
 
   const bbTodayTotal = bbTodayCredits.reduce((acc: number, t: any) => acc + Number(t.amount || 0), 0);
