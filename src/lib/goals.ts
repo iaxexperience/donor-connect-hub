@@ -38,13 +38,38 @@ export const GOAL_METRICS: GoalMetric[] = [
     howMeasured: "Soma dos valores em dinheiro das visitas coletadas." },
   { key: "msg_taxa_sucesso", label: "Taxa de sucesso das visitas", role: "motoboy", unit: "percent",
     howMeasured: "Coletas ÷ visitas concluídas no período." },
+  // Coordenador: resultado da equipe inteira (20261122_goals_coordenador.sql).
+  { key: "coord_valor_recebido", label: "Valor recebido pela equipe", role: "coordenador", unit: "currency",
+    howMeasured: "Soma das doações captadas pela equipe de telemarketing já pagas." },
+  { key: "coord_doacoes_qtd", label: "Doações captadas pela equipe", role: "coordenador", unit: "count",
+    howMeasured: "Doações lançadas por todos os operadores (exceto canceladas)." },
+  { key: "coord_ligacoes", label: "Ligações da equipe", role: "coordenador", unit: "count",
+    howMeasured: "Todas as ligações registradas no Telemarketing." },
+  { key: "coord_valor_coletado", label: "Valor coletado pelos mensageiros", role: "coordenador", unit: "currency",
+    howMeasured: "Soma dos valores coletados em todas as rotas." },
+  { key: "coord_coletas", label: "Coletas da equipe", role: "coordenador", unit: "count",
+    howMeasured: "Visitas com coleta realizada em todas as rotas." },
 ];
+
+// Indicadores mostrados na aba "Meta mensal" (uma coluna por indicador).
+export const MONTHLY_KEY_METRICS: Record<GoalRole, string[]> = {
+  operador: ["tm_valor_recebido", "tm_doacoes_qtd", "tm_ligacoes"],
+  motoboy: ["msg_valor_coletado", "msg_coletas", "msg_visitas"],
+  coordenador: ["coord_valor_recebido", "coord_doacoes_qtd", "coord_valor_coletado"],
+};
+
+export const ROLE_SHORT: Record<GoalRole, string> = {
+  operador: "Telemarketing",
+  motoboy: "Mensageiro",
+  coordenador: "Coordenação",
+};
 
 export const metricByKey = (key: string) => GOAL_METRICS.find((m) => m.key === key);
 
 export const ROLE_LABEL: Record<string, string> = {
   operador: "Operador de Telemarketing",
   motoboy: "Mensageiro / Cobrador",
+  coordenador: "Coordenador",
 };
 
 export const PERIOD_LABEL: Record<GoalPeriod, string> = {
