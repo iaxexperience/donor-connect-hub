@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { Search, Filter, GitMerge, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -75,28 +75,28 @@ const Pipeline = () => {
         />
         <KpiCard 
           title="Leads" 
-          value={donors.filter(d => d.type === 'lead').length} 
+          value={counts.lead ?? 0} 
           icon={Target} 
           color="orange" 
           delay={0.2}
         />
         <KpiCard 
           title="Recorrentes" 
-          value={donors.filter(d => d.type === 'recorrente').length} 
+          value={counts.recorrente ?? 0} 
           icon={Activity} 
           color="green" 
           delay={0.3}
         />
         <KpiCard 
           title="Únicos" 
-          value={donors.filter(d => d.type === 'unico').length} 
+          value={counts.unico ?? 0} 
           icon={Heart} 
           color="red" 
           delay={0.4}
         />
         <KpiCard 
           title="Esporádicos" 
-          value={donors.filter(d => d.type === 'esporadico').length} 
+          value={counts.esporadico ?? 0} 
           icon={GitMergeIcon} 
           color="purple" 
           delay={0.5}
