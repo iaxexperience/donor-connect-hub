@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useDonors } from "./useDonors";
 import { useCampaigns } from "./useCampaigns";
 
 // O painel fica aberto (guardado) mesmo ao trocar de tela; atualizar a cada 30 s
@@ -299,8 +298,8 @@ export const useDashboard = () => {
       }
       return 0;
     },
-    // Recarrega a cada 30 segundos
-    refetchInterval: 30000 
+    // Consulta o Asaas pela internet: a cada 5 min (antes era a cada 30 s).
+    refetchInterval: DASHBOARD_REFRESH
   });
 
   const { data: bbStats = { totalToday: 0, totalAll: 0, matched: 0, unmatched: 0, total: 0 } } = useQuery({
@@ -323,7 +322,7 @@ export const useDashboard = () => {
       const matched = allTx?.filter(t => t.matched).length ?? 0;
       return { totalToday, totalAll, matched, unmatched: (allTx?.length ?? 0) - matched, total: allTx?.length ?? 0 };
     },
-    refetchInterval: 30000
+    refetchInterval: DASHBOARD_REFRESH
   });
 
   // Soma histórica total de doações confirmadas no banco
