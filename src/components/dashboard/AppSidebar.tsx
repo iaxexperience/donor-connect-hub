@@ -24,6 +24,7 @@ import {
   HeartHandshake,
   PackageCheck,
   Shuffle,
+  Target,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink } from "@/components/NavLink";
@@ -50,6 +51,7 @@ const mainItems = [
   { title: "Campanhas", url: "/dashboard/campanhas", icon: Megaphone },
   { title: "Telemarketing", url: "/dashboard/telemarketing", icon: Phone },
   { title: "Minhas Captações", url: "/dashboard/minhas-captacoes", icon: HeartHandshake },
+  { title: "Metas", url: "/dashboard/metas", icon: Target },
   { title: "Follow-ups", url: "/dashboard/followups", icon: CalendarClock },
   { title: "Usuários", url: "/dashboard/usuarios", icon: Users },
   { title: "Setores", url: "/dashboard/setores", icon: Building2 },

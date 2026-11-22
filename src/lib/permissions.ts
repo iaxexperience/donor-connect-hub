@@ -8,6 +8,7 @@ export function canAccessPage(role: AppRole | null, path: string): boolean {
   if (!role || !roles.includes(role)) return false;
   if (role === 'admin') return true;
   if (page === '/dashboard') return false;
+  if (page === '/dashboard/metas') return ['operador', 'motoboy', 'coordenador'].includes(role);
   if (role === 'caixa') return page === '/dashboard/caixa';
   if (role === 'operador') return ['/dashboard/telemarketing', '/dashboard/minhas-captacoes'].includes(page);
   if (role === 'motoboy') return ['/dashboard/caixa', '/dashboard/rotas', '/dashboard/doacoes-recebidas'].includes(page);
