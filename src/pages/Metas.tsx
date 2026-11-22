@@ -19,7 +19,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   GOAL_METRICS, metricByKey, ROLE_LABEL, PERIOD_LABEL, formatGoalValue, goalPercent, progressTone,
-  GoalProgressRow, GoalTemplate, GoalPeriod, GoalRole,
+  GoalProgressRow, GoalTemplate, GoalPeriod, GoalRole, MONTHLY_KEY_METRICS, ROLE_SHORT,
 } from "@/lib/goals";
 
 // As tabelas/funções de metas ainda não estão nos tipos gerados do Supabase.
@@ -92,7 +92,7 @@ function useTeam() {
       const { data, error } = await supabase
         .from("profiles")
         .select("id, name, role, status")
-        .in("role", ["operador", "motoboy"])
+        .in("role", ["operador", "coordenador", "motoboy"])
         .eq("status", "Ativo")
         .order("name");
       if (error) throw error;
@@ -228,6 +228,7 @@ function TeamPanel() {
             <SelectContent>
               <SelectItem value="all">Todas as funções</SelectItem>
               <SelectItem value="operador">{ROLE_LABEL.operador}</SelectItem>
+              <SelectItem value="coordenador">{ROLE_LABEL.coordenador}</SelectItem>
               <SelectItem value="motoboy">{ROLE_LABEL.motoboy}</SelectItem>
             </SelectContent>
           </Select>
@@ -428,13 +429,14 @@ function AssignGoals({ onDone }: { onDone: () => void }) {
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={() => selectAllRole("operador")}>Todos do telemarketing</Button>
+            <Button size="sm" variant="outline" onClick={() => selectAllRole("coordenador")}>Todos os coordenadores</Button>
             <Button size="sm" variant="outline" onClick={() => selectAllRole("motoboy")}>Todos os mensageiros</Button>
           </div>
           <div className="max-h-[420px] overflow-y-auto border rounded-md divide-y">
             {teamLoading ? (
               <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin" /></div>
             ) : team.length === 0 ? (
-              <p className="p-4 text-sm text-muted-foreground">Nenhum operador ou mensageiro ativo.</p>
+              <p className="p-4 text-sm text-muted-foreground">Nenhum operador, coordenador ou mensageiro ativo.</p>
             ) : (
               team.map((t) => (
                 <label key={t.id} className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/40">
@@ -457,7 +459,7 @@ function AssignGoals({ onDone }: { onDone: () => void }) {
             <CardDescription>Use os modelos prontos e ajuste os valores, ou crie uma meta personalizada.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {(["operador", "motoboy"] as GoalRole[]).map((role) => {
+            {(["operador", "coordenador", "motoboy"] as GoalRole[]).map((role) => {
               const list = templates.filter((t) => t.active && t.role === role);
               if (list.length === 0) return null;
               const dim = selectedRoles.size > 0 && !selectedRoles.has(role);
@@ -489,7 +491,7 @@ function AssignGoals({ onDone }: { onDone: () => void }) {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {GOAL_METRICS.map((m) => (
-                      <SelectItem key={m.key} value={m.key}>{m.label} ({m.role === "operador" ? "Telemarketing" : "Mensageiro"})</SelectItem>
+                      <SelectItem key={m.key} value={m.key}>{m.label} ({ROLE_SHORT[m.role]})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -538,7 +540,7 @@ function AssignGoals({ onDone }: { onDone: () => void }) {
                   {drafts.map((d, i) => (
                     <TableRow key={`${d.metric}-${d.period}`}>
                       <TableCell className="text-sm">{metricByKey(d.metric)?.label}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{d.role === "operador" ? "Telemarketing" : "Mensageiro"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{ROLE_SHORT[d.role]}</TableCell>
                       <TableCell><Badge variant="secondary">{PERIOD_LABEL[d.period]}</Badge></TableCell>
                       <TableCell>
                         <Input type="number" min="0" step="0.01" className="h-8" value={d.target}
@@ -694,7 +696,7 @@ function Templates() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {GOAL_METRICS.map((m) => (
-                      <SelectItem key={m.key} value={m.key}>{m.label} ({m.role === "operador" ? "Telemarketing" : "Mensageiro"})</SelectItem>
+                      <SelectItem key={m.key} value={m.key}>{m.label} ({ROLE_SHORT[m.role]})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -748,7 +750,7 @@ export default function Metas() {
         </h1>
         <p className="text-muted-foreground text-sm">
           {isManager
-            ? "Acompanhe e personalize as metas diárias e mensais do telemarketing e dos mensageiros."
+            ? "Acompanhe e personalize as metas diárias e mensais do telemarketing, da coordenação e dos mensageiros."
             : "Suas metas do dia e do mês, atualizadas com o que você já registrou no sistema."}
         </p>
       </div>
@@ -757,10 +759,12 @@ export default function Metas() {
         <Tabs value={tab} onValueChange={setTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="painel"><Users className="w-4 h-4 mr-1" />Painel da equipe</TabsTrigger>
+            <TabsTrigger value="mensal"><Target className="w-4 h-4 mr-1" />Meta mensal</TabsTrigger>
             <TabsTrigger value="atribuir"><CalendarDays className="w-4 h-4 mr-1" />Atribuir metas</TabsTrigger>
             <TabsTrigger value="modelos"><ListChecks className="w-4 h-4 mr-1" />Modelos</TabsTrigger>
           </TabsList>
           <TabsContent value="painel"><TeamPanel /></TabsContent>
+          <TabsContent value="mensal"><MonthlyGoals /></TabsContent>
           <TabsContent value="atribuir"><AssignGoals onDone={() => setTab("painel")} /></TabsContent>
           <TabsContent value="modelos"><Templates /></TabsContent>
         </Tabs>
