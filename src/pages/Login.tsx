@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Heart, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Mail, Lock, Check } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
@@ -125,124 +125,145 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left side — branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-hero relative items-center justify-center p-12">
-        <div className="absolute top-10 right-10 w-72 h-72 rounded-full bg-accent/10 blur-3xl" />
-        <div className="absolute bottom-10 left-10 w-96 h-96 rounded-full bg-primary-foreground/5 blur-3xl" />
+    <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_80%_15%,rgba(14,116,190,.45),transparent_40%),linear-gradient(135deg,#041330_0%,#061b3b_45%,#0a2a55_100%)] text-white">
+      {/* grade sutil, como na landing */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[.06] [background-image:linear-gradient(rgba(255,255,255,.7)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.7)_1px,transparent_1px)] [background-size:64px_64px]"
+      />
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="relative z-10 text-center max-w-md flex flex-col items-center"
-        >
-          <div className="mb-8">
-            <PulseLogo variant="light" size={80} showText className="scale-125" />
-          </div>
-          <p className="text-primary-foreground/70 leading-relaxed text-lg">
-            Gerencie doadores, automatize follow-ups e maximize suas campanhas de arrecadação com inteligência.
-          </p>
-        </motion.div>
-      </div>
-
-      {/* Right side — login form */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-background">
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md"
-        >
+      <div className="relative mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-6 sm:px-6">
+        <div className="flex justify-end">
           <Link
             to="/"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8"
+            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm font-bold text-white/90 backdrop-blur hover:bg-white/10"
           >
-            <ArrowLeft className="w-4 h-4" />
-            Voltar ao site
+            <ArrowLeft className="h-4 w-4" /> Voltar para o site
           </Link>
+        </div>
 
-          <div className="lg:hidden mb-8">
-            <PulseLogo variant="dark" size={40} showText />
-          </div>
+        <div className="flex flex-1 items-center justify-center py-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="grid w-full max-w-5xl overflow-hidden rounded-[2rem] shadow-[0_30px_90px_rgba(0,0,0,.45)] lg:grid-cols-2"
+          >
+            {/* ── Formulário ─────────────────────────────── */}
+            <div className="bg-white px-6 py-10 text-[#061b3b] sm:px-12 sm:py-14">
+              <div className="flex justify-center">
+                <PulseLogo variant="dark" size={46} showText />
+              </div>
 
-          <h1 className="font-heading font-bold text-2xl text-foreground mb-1">
-            Bem-vindo de volta
-          </h1>
-          <p className="text-muted-foreground text-sm mb-8">
-            Entre com suas credenciais para acessar a plataforma.
-          </p>
+              <h1 className="mt-10 text-center text-3xl font-black tracking-[-.03em]">Acesse sua conta</h1>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">
-                E-mail
-              </label>
-              <Input
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                maxLength={255}
-              />
-            </div>
+              <form onSubmit={handleLogin} className="mt-8 space-y-5">
+                <div>
+                  <label className="mb-1.5 block text-sm font-bold text-slate-700">E-mail</label>
+                  <div className="relative">
+                    <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      type="email"
+                      placeholder="email@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      maxLength={255}
+                      autoComplete="email"
+                      className="h-12 rounded-xl border-slate-200 bg-slate-50 pl-11 text-base"
+                    />
+                  </div>
+                </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm font-medium text-foreground">Senha</label>
+                <div>
+                  <label className="mb-1.5 block text-sm font-bold text-slate-700">Senha</label>
+                  <div className="relative">
+                    <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Sua senha"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={8}
+                      maxLength={128}
+                      autoComplete="current-password"
+                      className="h-12 rounded-xl border-slate-200 bg-slate-50 pl-11 pr-11 text-base"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                      aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="h-12 w-full rounded-full bg-[#0b5ccf] text-base font-black shadow-[0_12px_30px_rgba(11,92,207,.35)] hover:bg-[#0a52b9]"
+                >
+                  {loading ? "Entrando..." : "Entrar"}
+                </Button>
+              </form>
+
+              <div className="mt-6 text-center">
                 <button
                   type="button"
                   onClick={handleForgotPassword}
                   disabled={sendingReset}
-                  className="text-xs text-primary hover:underline disabled:opacity-50"
+                  className="text-sm font-bold text-[#0b5ccf] hover:underline disabled:opacity-50"
                 >
-                  {sendingReset ? "Enviando..." : "Esqueceu a senha?"}
+                  {sendingReset ? "Enviando..." : "Esqueceu sua senha?"}
                 </button>
               </div>
-              <div className="relative">
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  maxLength={128}
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
+
+              <p className="mt-8 border-t border-slate-100 pt-6 text-center text-sm text-slate-500">
+                Não tem conta?{" "}
+                <Link to="/cadastro" className="font-black text-[#0b5ccf] hover:underline">
+                  Criar conta
+                </Link>
+              </p>
             </div>
 
-            <Button type="submit" className="w-full" size="lg" disabled={loading}>
-              {loading ? "Entrando..." : "Entrar"}
-            </Button>
-          </form>
+            {/* ── Painel com foto ────────────────────────── */}
+            <div className="relative hidden min-h-[560px] lg:block">
+              <img
+                src="/landing/cuidado-maos.jpg"
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover grayscale-[35%]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#061b3b] via-[#061b3b]/75 to-[#061b3b]/20" />
+              <div className="absolute inset-x-0 bottom-0 p-12">
+                <p className="text-xs font-black uppercase tracking-[.28em] text-sky-300">
+                  Gestão de doações filantrópicas
+                </p>
+                <h2 className="mt-4 text-4xl font-black tracking-[-.03em]">Que bom ter você aqui!</h2>
+                <p className="mt-4 leading-7 text-slate-200">
+                  Do telefonema ao recibo: doadores, captação, caixa e coleta num lugar só.
+                </p>
+                <ul className="mt-6 space-y-3">
+                  {["Carteira de doadores e telemarketing", "Recibos numerados com QR code", "Metas, relatórios e coleta"].map((item) => (
+                    <li key={item} className="flex items-center gap-3 font-semibold">
+                      <span className="grid h-6 w-6 place-items-center rounded-full bg-[#0b5ccf]">
+                        <Check className="h-4 w-4" />
+                      </span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </motion.div>
+        </div>
 
-          <p className="text-center text-sm text-muted-foreground mt-6">
-            Não tem uma conta?{" "}
-            <Link to="/cadastro" className="text-primary font-medium hover:underline">
-              Cadastre-se
-            </Link>
-          </p>
-
-          <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col items-center gap-2">
-            <p className="text-[10px] text-slate-400 font-medium tracking-tight">
-              © 2026 FAP — Todos os direitos reservados
-            </p>
-            <p className="text-[9px] text-slate-300 uppercase tracking-[0.2em] font-bold text-center">
-              Desenvolvido por IAX — Inteligência Artificial Experience — Atualização 1.0
-            </p>
-          </div>
-        </motion.div>
+        <footer className="flex flex-col items-center justify-between gap-3 text-center text-xs text-white/60 sm:flex-row sm:text-left">
+          <p>Pulse Doações © {new Date().getFullYear()} — Produzido por IAX Inteligência Artificial Experience LTDA. Todos os direitos reservados.</p>
+          <p className="text-white/40">Atualização 1.0</p>
+        </footer>
       </div>
     </div>
   );
