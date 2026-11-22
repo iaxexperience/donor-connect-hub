@@ -149,8 +149,9 @@ const Integracoes = () => {
 
     fetchHistory();
 
-    // 2. Polling a cada 5 segundos para garantir mensagens recebidas
-    const poll = setInterval(fetchHistory, 5000);
+    // 2. Reserva caso o tempo real caia. Era a cada 5 s e seguia rodando com a tela
+    //    escondida (as telas ficam guardadas abertas); o tempo real já entrega na hora.
+    const poll = setInterval(fetchHistory, 30_000);
 
     // 3. Realtime subscription para mensagens instantâneas
     const channel = supabase
@@ -192,8 +193,9 @@ const Integracoes = () => {
           donors (name)
         `)
         .eq('sender_id', 'me')
-        .order('created_at', { ascending: false });
-      
+        .order('created_at', { ascending: false })
+        .limit(500); // as 500 mais recentes; antes baixava todo o histórico de envios
+
       if (!error && data) {
         setHistoryMessages(data);
       }

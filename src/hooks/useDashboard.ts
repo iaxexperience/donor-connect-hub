@@ -21,7 +21,8 @@ const countDonorsByType = async (type: string) => {
  */
 export const useDonorSummary = () => {
   const { data, isLoading } = useQuery({
-    queryKey: ['donor-summary'],
+    // Começa com 'donors': cadastrar/editar doador (que invalida 'donors') atualiza o resumo também.
+    queryKey: ['donors', 'summary'],
     queryFn: async () => {
       const [recorrentes, unicos, esporadicos, top] = await Promise.all([
         countDonorsByType('recorrente'),

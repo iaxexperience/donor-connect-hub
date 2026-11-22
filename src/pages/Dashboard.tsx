@@ -37,10 +37,7 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useDonors } from "@/hooks/useDonors";
-import { useCampaigns } from "@/hooks/useCampaigns";
-import { useFollowUps } from "@/hooks/useFollowUps";
-import { useDashboard } from "@/hooks/useDashboard";
+import { useDashboard, useDonorSummary, usePendingFollowUpsCount } from "@/hooks/useDashboard";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 
 
@@ -59,10 +56,10 @@ const item = {
 };
 
 export default function Dashboard() {
-  const { donors, isLoading: donorsLoading } = useDonors();
-  const { campaigns, isLoading: campaignsLoading } = useCampaigns();
-  const { followUps, isLoading: followUpsLoading } = useFollowUps();
-  const { 
+  // Contagens calculadas no banco (antes baixava todos os doadores e follow-ups).
+  const { summary } = useDonorSummary();
+  const pendingFollowUps = usePendingFollowUpsCount();
+  const {
     monthlyData, 
     campaignData, 
     evolutionData, 
@@ -77,11 +74,11 @@ export default function Dashboard() {
 
   const stats = {
     today: todayTotal,
-    recorrentes: donors.filter(d => d.type === "recorrente").length,
-    unicos: donors.filter(d => d.type === "unico").length,
-    esporadicos: donors.filter(d => d.type === "esporadico").length,
+    recorrentes: summary.recorrentes,
+    unicos: summary.unicos,
+    esporadicos: summary.esporadicos,
     totalBalance: totalDonations,
-    pendingFollowUps: followUps.filter(f => f.status === "pendente").length
+    pendingFollowUps
   };
 
 

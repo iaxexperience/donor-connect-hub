@@ -36,14 +36,16 @@ export default function DistribuicaoCarteiras() {
       setLoading(false);
       return;
     }
-    const rows: OperatorRow[] = [];
-    for (const p of profiles || []) {
-      const { count } = await supabase
-        .from("donors")
-        .select("id", { count: "exact", head: true })
-        .eq("assigned_operator_id", p.id);
-      rows.push({ id: p.id, name: p.name, carteiraCount: count || 0 });
-    }
+    // Conta a carteira de todos os operadores ao mesmo tempo (antes era um por vez).
+    const rows: OperatorRow[] = await Promise.all(
+      (profiles || []).map(async (p) => {
+        const { count } = await supabase
+          .from("donors")
+          .select("id", { count: "exact", head: true })
+          .eq("assigned_operator_id", p.id);
+        return { id: p.id, name: p.name, carteiraCount: count || 0 };
+      }),
+    );
     setOperators(rows);
     setLoading(false);
   };
