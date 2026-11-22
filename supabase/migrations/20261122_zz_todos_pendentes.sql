@@ -344,7 +344,7 @@ declare
   v_manager boolean := public.can_manage_goals();
   v_my_role text;
 begin
-  select role into v_my_role from profiles where id = auth.uid() and status = 'Ativo';
+  select role::text into v_my_role from profiles where id = auth.uid() and status = 'Ativo';
   if v_my_role is null then raise exception 'Usuário sem acesso'; end if;
 
   return query
@@ -368,7 +368,7 @@ begin
       from metas m
       join profiles p on p.id = m.user_id
      where p.status = 'Ativo'
-       and (v_manager or m.user_id = auth.uid() or p.role = v_my_role)
+       and (v_manager or m.user_id = auth.uid() or p.role::text = v_my_role)
   )
   select b.user_id, b.nome, b.funcao, b.metric, b.alvo_mes, b.alvo_dia,
          public.goal_metric_value_internal(b.user_id, b.metric, v_ms, least(v_day, v_me)),
