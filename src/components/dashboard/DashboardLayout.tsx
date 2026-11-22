@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { AppSidebar } from "./AppSidebar";
 import { Outlet } from "react-router-dom";
 import { Bell, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AsaasAutomationWorker } from "../automation/AsaasAutomationWorker";
-import { FollowUpAutomationWorker } from "@/components/automation/FollowUpAutomationWorker";
+// Os "workers" AsaasAutomationWorker e FollowUpAutomationWorker saíram daqui: estavam
+// desativados (o follow-up roda no servidor via pg_cron), mas o do Asaas ainda baixava
+// todos os doadores a cada tela aberta, deixando o painel inteiro lento.
 
 import { UserMenu } from "./UserMenu";
 import { ForcePasswordChangeModal } from "../auth/ForcePasswordChangeModal";
@@ -21,8 +22,6 @@ export function DashboardLayout() {
 
   return (
     <div className="h-dvh w-full flex bg-background overflow-hidden">
-      <AsaasAutomationWorker />
-      <FollowUpAutomationWorker />
       <ForcePasswordChangeModal />
       <AppSidebar mobileOpen={mobileNavOpen} onMobileClose={() => setMobileNavOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0 h-full">
@@ -49,7 +48,16 @@ export function DashboardLayout() {
           </div>
         </header>
         <main className="flex-1 overflow-auto bg-background p-4 lg:p-6">
-          <Outlet />
+          {/* Carregando a próxima tela: o menu e o topo continuam na tela. */}
+          <Suspense
+            fallback={
+              <div className="flex min-h-[50vh] items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+              </div>
+            }
+          >
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

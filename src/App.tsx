@@ -1,43 +1,43 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import ResetPassword from "./pages/ResetPassword";
-import Dashboard from "./pages/Dashboard";
-import Doadores from "./pages/Doadores";
-import Campanhas from "./pages/Campanhas";
-import Telemarketing from "./pages/Telemarketing";
-import Usuarios from "./pages/Usuarios";
-import Relatorios from "./pages/Relatorios";
-import Configuracoes from "./pages/Configuracoes";
-import Integracoes from "./pages/Integracoes";
-import IntegracaoAsaas from "./pages/IntegracaoAsaas";
-import IntegracaoBB from "./pages/IntegracaoBB";
-import FollowUps from "./pages/FollowUps";
-import ApiAberta from "./pages/ApiAberta";
-import ApiDocumentation from "./pages/ApiDocumentation";
-import Pipeline from "./pages/Pipeline";
-import DonorForm from "./pages/DonorForm";
-import WhatsApp from "./pages/WhatsApp";
-import Caixa from "./pages/Caixa";
-import DoacoesFisicas from "./pages/DoacoesFisicas";
-import Setores from "./pages/Setores";
-import TransferenciaDoacoes from "./pages/TransferenciaDoacoes";
-import Rotas from "./pages/Rotas";
-import GestaoAtribuicoes from "./pages/GestaoAtribuicoes";
-import MinhasCaptacoes from "./pages/MinhasCaptacoes";
-import DoacoesRecebidas from "./pages/DoacoesRecebidas";
-import DistribuicaoCarteiras from "./pages/DistribuicaoCarteiras";
-import Metas from "./pages/Metas";
-import IaxGuardian from "./pages/IaxGuardian";
-import ValidateReceipt from "./pages/ValidateReceipt";
-import ValidarRecibo from "./pages/ValidarRecibo";
-import Documentacao from "./pages/Documentacao";
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Doadores = lazy(() => import("./pages/Doadores"));
+const Campanhas = lazy(() => import("./pages/Campanhas"));
+const Telemarketing = lazy(() => import("./pages/Telemarketing"));
+const Usuarios = lazy(() => import("./pages/Usuarios"));
+const Relatorios = lazy(() => import("./pages/Relatorios"));
+const Configuracoes = lazy(() => import("./pages/Configuracoes"));
+const Integracoes = lazy(() => import("./pages/Integracoes"));
+const IntegracaoAsaas = lazy(() => import("./pages/IntegracaoAsaas"));
+const IntegracaoBB = lazy(() => import("./pages/IntegracaoBB"));
+const FollowUps = lazy(() => import("./pages/FollowUps"));
+const ApiAberta = lazy(() => import("./pages/ApiAberta"));
+const ApiDocumentation = lazy(() => import("./pages/ApiDocumentation"));
+const Pipeline = lazy(() => import("./pages/Pipeline"));
+const DonorForm = lazy(() => import("./pages/DonorForm"));
+const WhatsApp = lazy(() => import("./pages/WhatsApp"));
+const Caixa = lazy(() => import("./pages/Caixa"));
+const DoacoesFisicas = lazy(() => import("./pages/DoacoesFisicas"));
+const Setores = lazy(() => import("./pages/Setores"));
+const TransferenciaDoacoes = lazy(() => import("./pages/TransferenciaDoacoes"));
+const Rotas = lazy(() => import("./pages/Rotas"));
+const GestaoAtribuicoes = lazy(() => import("./pages/GestaoAtribuicoes"));
+const MinhasCaptacoes = lazy(() => import("./pages/MinhasCaptacoes"));
+const DoacoesRecebidas = lazy(() => import("./pages/DoacoesRecebidas"));
+const DistribuicaoCarteiras = lazy(() => import("./pages/DistribuicaoCarteiras"));
+const Metas = lazy(() => import("./pages/Metas"));
+const IaxGuardian = lazy(() => import("./pages/IaxGuardian"));
+const ValidateReceipt = lazy(() => import("./pages/ValidateReceipt"));
+const ValidarRecibo = lazy(() => import("./pages/ValidarRecibo"));
+const Documentacao = lazy(() => import("./pages/Documentacao"));
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
@@ -51,6 +51,19 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   }
   static getDerivedStateFromError(error: any) {
     return { hasError: true, error };
+  }
+  componentDidCatch(error: any) {
+    // Depois de uma atualização do site, quem estava com a página aberta pode pedir um
+    // pedaço de código que não existe mais. Recarrega uma vez para pegar a versão nova.
+    const msg = String(error?.message || error);
+    if (/dynamically imported module|Importing a module script failed|Loading chunk/i.test(msg)) {
+      try {
+        if (!sessionStorage.getItem("pulse_chunk_reload")) {
+          sessionStorage.setItem("pulse_chunk_reload", "1");
+          window.location.reload();
+        }
+      } catch { /* sem armazenamento */ }
+    }
   }
   render() {
     if (this.state.hasError) {
@@ -73,6 +86,14 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   }
 }
 
+
+// Cada tela é baixada só quando aberta (antes o site inteiro vinha num arquivo de 2,7 MB).
+const PageLoader = () => (
+  <div className="flex min-h-[60vh] items-center justify-center">
+    <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+  </div>
+);
+
 const queryClient = new QueryClient();
 
 import { DynamicThemeProvider } from "./components/theme/DynamicThemeProvider";
@@ -86,6 +107,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
+              <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Login />} />
@@ -131,6 +153,7 @@ const App = () => (
                 <Route path="/validar-recibo" element={<ValidarRecibo />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </Suspense>
             </BrowserRouter>
           </TooltipProvider>
         </DynamicThemeProvider>
