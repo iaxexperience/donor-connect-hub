@@ -87,6 +87,7 @@ const Telemarketing = () => {
   const [paymentMethod, setPaymentMethod] = useState<string>("Pix");
   const [donationStatus, setDonationStatus] = useState<"pago" | "pendente">("pago");
   const [donationBank, setDonationBank] = useState<string>("asaas"); // banco que recebeu
+  const [proofFile, setProofFile] = useState<File | null>(null); // comprovante de depósito/Pix
 
   const [saving, setSaving] = useState(false);
   const [sendingWpp, setSendingWpp] = useState<number | null>(null);
