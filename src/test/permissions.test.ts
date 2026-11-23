@@ -15,8 +15,8 @@ describe('permissões dos menus e páginas', () => {
     expect(canAccessPage('caixa',allowed+'/nao-autorizado')).toBe(false);
     expect(homeForRole('caixa')).toBe(allowed);
   });
-  it('operador tem telemarketing e suas próprias captações, mais nada', () => {
-    const allowed=['/dashboard/telemarketing','/dashboard/minhas-captacoes'];
+  it('operador tem telemarketing, suas próprias captações e o WhatsApp da carteira, mais nada', () => {
+    const allowed=['/dashboard/telemarketing','/dashboard/minhas-captacoes','/dashboard/whatsapp'];
     for(const page of pages) expect(canAccessPage('operador',page),page).toBe(allowed.includes(page));
     expect(canAccessPage('operador','/DASHBOARD/TELEMARKETING/')).toBe(true);
     expect(canAccessPage('operador','/dashboard/telemarketing/nao-autorizado')).toBe(false);
