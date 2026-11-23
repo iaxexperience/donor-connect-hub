@@ -24,6 +24,14 @@ const DonorForm = () => {
   // Só as ações: o formulário busca apenas o doador aberto (abaixo), não a lista inteira.
   const { registerNewDonor, updateDonor, isRegistering } = useDonors({ fetchList: false });
   const { toast } = useToast();
+
+  // Carteira (operador responsável): só admin e coordenador mudam.
+  const { role } = useAuth();
+  const canManageCarteira = !!role && CARTEIRA_MANAGER_ROLES.includes(role);
+  const { data: operators = [] } = useOperators(canManageCarteira);
+  const assignDonors = useAssignDonors();
+  const [operatorId, setOperatorId] = useState<string>(SEM_CARTEIRA);
+  const [originalOperatorId, setOriginalOperatorId] = useState<string>(SEM_CARTEIRA);
   
   const [formData, setFormData] = useState({
     name: "",
@@ -59,6 +67,9 @@ const DonorForm = () => {
         return;
       }
       if (donor) {
+        const op = donor.assigned_operator_id || SEM_CARTEIRA;
+        setOperatorId(op);
+        setOriginalOperatorId(op);
         const phone = donor.phone || "";
         setFormData({
           name: donor.name || "Doador sem Nome",
