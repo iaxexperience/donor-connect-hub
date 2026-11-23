@@ -4,8 +4,12 @@ import {
   Globe, ChevronRight, Database, Users, Heart, Megaphone,
   LayoutDashboard, GitMerge, Phone, MessageSquare, Wallet,
   FileText, Settings, ArrowLeft, CheckCircle2, Layers, Cpu,
-  Building2, Webhook, Key, Info
+  Building2, Webhook, Key, Info, Sparkles, UserCog, Shuffle, Target,
+  TrendingUp, Truck, Gift, ShieldCheck, BarChart3
 } from "lucide-react";
+
+/** Versão exibida no topo da Central de Ajuda. */
+export const APP_VERSION = "2.0";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,15 +20,22 @@ const API_BASE = "https://api.donorconnect.hub/v1";
 
 const NAV = [
   { id: "visao-geral", label: "Visão Geral", icon: Book },
+  { id: "novidades", label: "Novidades da 2.0", icon: Sparkles },
+  { id: "perfis", label: "Perfis de Acesso", icon: UserCog },
   { id: "modulos", label: "Módulos do Sistema", icon: Layers },
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "doadores", label: "Doadores", icon: Users },
+  { id: "carteiras", label: "Carteiras", icon: Shuffle },
+  { id: "telemarketing", label: "Telemarketing", icon: Phone },
+  { id: "metas", label: "Metas & Coordenação", icon: Target },
   { id: "doacoes", label: "Doações", icon: Heart },
   { id: "campanhas", label: "Campanhas", icon: Megaphone },
   { id: "kanban", label: "Kanban", icon: GitMerge },
   { id: "followups", label: "Follow-ups", icon: Phone },
   { id: "whatsapp", label: "WhatsApp", icon: MessageSquare },
   { id: "caixa", label: "Caixa", icon: Wallet },
+  { id: "coleta", label: "Coleta & Recebimentos", icon: Truck },
+  { id: "seguranca", label: "Segurança", icon: ShieldCheck },
   { id: "integracoes", label: "Integrações", icon: Building2 },
   { id: "api", label: "API Reference", icon: Code },
   { id: "autenticacao", label: "Autenticação", icon: Lock },
@@ -98,7 +109,7 @@ const Documentacao = () => {
             <div className="flex items-center gap-2">
               <Book className="w-4 h-4 text-primary" />
               <span className="font-bold text-sm">Documentação</span>
-              <Badge variant="secondary" className="text-[10px]">v1.2</Badge>
+              <Badge variant="secondary" className="text-[10px]">v{APP_VERSION}</Badge>
             </div>
           </div>
           <Button className="bg-primary shadow-glow h-9 text-sm" onClick={() => navigate("/login")}>
@@ -133,13 +144,14 @@ const Documentacao = () => {
             <SectionTitle id="visao-geral" icon={Book} title="Visão Geral" sub="Pulse Doações — Plataforma de Gestão de Doações" />
             <p className="text-muted-foreground leading-relaxed">
               O <strong>Pulse Doações</strong> é um CRM completo para organizações sem fins lucrativos e fundações assistenciais.
-              Centraliza a gestão de doadores, doações, campanhas, caixa, comunicação via WhatsApp e integrações bancárias em um único painel.
+              Centraliza a gestão de doadores, carteiras de telemarketing, metas da equipe, doações, campanhas, caixa,
+              coleta, comunicação via WhatsApp e integrações bancárias em um único painel — no navegador e no aplicativo Android.
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { label: "Doadores", value: "Gestão completa" },
-                { label: "Campanhas", value: "Metas & progresso" },
-                { label: "Integrações", value: "ASAAS + BB" },
+                { label: "Versão", value: APP_VERSION },
+                { label: "Equipe", value: "Carteiras & metas" },
+                { label: "Integrações", value: "ASAAS + BB + Meta" },
                 { label: "API", value: "RESTful v1" },
               ].map(i => (
                 <Card key={i.label} className="border-none shadow-soft text-center p-4">
@@ -152,21 +164,91 @@ const Documentacao = () => {
 
           <Separator />
 
+          {/* NOVIDADES 2.0 */}
+          <section className="space-y-4">
+            <SectionTitle id="novidades" icon={Sparkles} title={`Novidades da versão ${APP_VERSION}`} sub="O que mudou em relação à 1.2" />
+            <div className="space-y-2">
+              {[
+                { t: "Carteiras de telemarketing", d: "Cada doador pode ter um operador responsável. Distribuição automática em rodízio, escolha no cadastro do doador e movimentação em lote na lista." },
+                { t: "WhatsApp compartilhado por carteira", d: "Um único número usado por toda a equipe: cada operador vê só as conversas da própria carteira ou as encaminhadas pela coordenação." },
+                { t: "Fila do Telemarketing", d: "O doador volta para a fila quando passa o prazo desde a última doação (recorrente 30 dias, esporádico 60, único 90)." },
+                { t: "Metas e Painel da Coordenação", d: "Metas diárias e mensais por operador, mensageiro e coordenador, com quadro de medalhas e acompanhamento do mês." },
+                { t: "Coleta e recebimentos", d: "Rotas de coleta para mensageiros, gestão de atribuições e conferência de doações recebidas." },
+                { t: "Mais rápido", d: "Telas carregadas só quando abertas, lista de doadores de 100 em 100 com busca no banco e painel sem atualizações excessivas." },
+                { t: "Segurança reforçada", d: "Dados protegidos por perfil direto no banco, sem acesso para visitantes, e monitoramento pelo IAX Guardian." },
+                { t: "Aplicativo Android", d: "O sistema também roda como aplicativo no celular." },
+              ].map(n => (
+                <div key={n.t} className="flex items-start gap-3 p-3 rounded-xl border border-muted/30 bg-muted/10">
+                  <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-bold text-sm">{n.t}</p>
+                    <p className="text-xs text-muted-foreground">{n.d}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <Separator />
+
+          {/* PERFIS */}
+          <section className="space-y-4">
+            <SectionTitle id="perfis" icon={UserCog} title="Perfis de Acesso" sub="Cada usuário vê só o que precisa" />
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              O perfil é definido em <strong>Equipe → Usuários</strong>. Usuários com situação <em>Pendente</em> ou <em>Inativo</em> não conseguem entrar.
+            </p>
+            <div className="overflow-hidden rounded-xl border border-muted">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 border-b border-muted">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-bold w-36">Perfil</th>
+                    <th className="px-4 py-3 text-left font-bold">O que acessa</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-muted text-xs">
+                  {[
+                    ["Administrador", "Tudo, inclusive Dashboard, integrações e IAX Guardian."],
+                    ["Coordenador", "Painel da Coordenação, Usuários, Carteiras, Metas, Rotas e Atribuições, Doações Recebidas, Relatórios, WhatsApp completo e o dia a dia de doadores e doações."],
+                    ["Gestor", "Doadores, Campanhas, Kanban, Follow-ups, Telemarketing, Setores, Caixa, Doações Físicas, Transferência, Relatórios, Configurações, WhatsApp e integrações."],
+                    ["Operador", "Telemarketing, Minhas Captações, Metas e o WhatsApp só com as conversas da própria carteira."],
+                    ["Mensageiro", "Meu Caixa, Meu Itinerário (rotas), Doações Recebidas e Metas."],
+                    ["Caixa", "Somente o Caixa."],
+                    ["Visualizador", "Doadores, Campanhas, Kanban, Follow-ups, Telemarketing, Setores, Caixa, Doações Físicas e Transferência."],
+                  ].map(([p, d]) => (
+                    <tr key={p}>
+                      <td className="px-4 py-3 font-bold">{p}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{d}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <Separator />
+
           {/* MÓDULOS */}
           <section className="space-y-4">
             <SectionTitle id="modulos" icon={Layers} title="Módulos do Sistema" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {[
-                { icon: LayoutDashboard, name: "Dashboard", desc: "Visão executiva com KPIs, saldos em tempo real e gráficos" },
-                { icon: Users, name: "Doadores", desc: "Cadastro, importação CSV, histórico e classificação" },
-                { icon: Heart, name: "Doações", desc: "Registro manual, via API, ASAAS e Banco do Brasil" },
+                { icon: LayoutDashboard, name: "Dashboard", desc: "Visão executiva com KPIs, saldos e gráficos" },
+                { icon: TrendingUp, name: "Painel da Coordenação", desc: "Resultado do mês e metas da equipe em tempo real" },
+                { icon: Users, name: "Doadores", desc: "Cadastro, importação, histórico, classificação e carteira" },
+                { icon: Shuffle, name: "Carteiras", desc: "Distribuição de doadores entre os operadores" },
+                { icon: Phone, name: "Telemarketing", desc: "Fila de ligações por carteira e registro de contatos" },
+                { icon: Target, name: "Metas", desc: "Metas diárias e mensais com quadro de medalhas" },
+                { icon: Heart, name: "Doações", desc: "Registro manual, pelo site, via API, ASAAS e Banco do Brasil" },
                 { icon: Megaphone, name: "Campanhas", desc: "Criação, metas e acompanhamento de arrecadação" },
                 { icon: GitMerge, name: "Kanban", desc: "Pipeline visual de conversão de leads" },
                 { icon: Phone, name: "Follow-ups", desc: "Agendamento automático de contatos com doadores" },
-                { icon: MessageSquare, name: "WhatsApp", desc: "Chat em tempo real e envio de templates Meta" },
-                { icon: Wallet, name: "Caixa", desc: "Controle de caixa físico com emissão de recibos" },
-                { icon: FileText, name: "Doações Físicas", desc: "Registro de doações não-financeiras (alimentos, roupas etc.)" },
-                { icon: Building2, name: "Integrações", desc: "ASAAS, Banco do Brasil e API Aberta" },
+                { icon: MessageSquare, name: "WhatsApp", desc: "Chat compartilhado por carteira e envio de templates Meta" },
+                { icon: Wallet, name: "Caixa", desc: "Caixa pessoal com abertura, fechamento e recibos" },
+                { icon: Truck, name: "Coleta", desc: "Rotas dos mensageiros e atribuição de coletas" },
+                { icon: Gift, name: "Doações Físicas", desc: "Doações não financeiras vinculadas a setores" },
+                { icon: BarChart3, name: "Relatórios", desc: "Análises e exportações de doações, doadores e campanhas" },
+                { icon: Building2, name: "Integrações", desc: "ASAAS, Banco do Brasil, Meta e API Aberta" },
+                { icon: ShieldCheck, name: "IAX Guardian", desc: "Monitoramento de segurança dos acessos" },
                 { icon: Settings, name: "Configurações", desc: "White label, usuários e gerenciamento de acesso" },
               ].map(m => (
                 <div key={m.name} className="flex items-start gap-3 p-3 rounded-xl border border-muted/30 bg-muted/10">
@@ -190,7 +272,7 @@ const Documentacao = () => {
               {[
                 "Recebimentos do dia (soma de doações confirmadas)",
                 "Contadores: Recorrentes, Únicos, Esporádicos, Follow-ups pendentes",
-                "Saldo ASAAS em tempo real via API (atualiza a cada 30s)",
+                "Saldo ASAAS via API (atualiza a cada 5 minutos)",
                 "Entradas do Banco do Brasil — hoje e total acumulado",
                 "Gráfico de recebimentos mensais (últimos 6 meses)",
                 "Mix por campanha (participação percentual)",
