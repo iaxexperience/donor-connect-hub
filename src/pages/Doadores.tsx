@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Heart, Search, Plus, Filter, MessageSquare, Upload, FileDown, CheckCircle2, GitMerge, Edit, Trash2, Loader2 } from "lucide-react";
+import { Heart, Search, Plus, Filter, MessageSquare, Upload, FileDown, CheckCircle2, GitMerge, Edit, Trash2, Loader2, Users } from "lucide-react";
 import Papa from "papaparse";
 import { useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDonors } from "@/hooks/useDonors";
 import { useDonorsPaged, useDonorsCount, useDonorLookup, useDebounced, DONORS_PAGE_SIZE } from "@/hooks/useDonorsPaged";
+import { CARTEIRA_MANAGER_ROLES, useAssignDonors, useOperators } from "@/hooks/useOperators";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { typeLabel, typeBadgeStyle } from "@/lib/donationService";
@@ -56,6 +57,17 @@ const Doadores = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const debouncedSearch = useDebounced(searchTerm);
+
+  // Carteiras: admin e coordenador filtram por operador e movem doadores em lote.
+  const canManageCarteira = !!role && CARTEIRA_MANAGER_ROLES.includes(role);
+  const { data: operators = [] } = useOperators(canManageCarteira);
+  const assignDonors = useAssignDonors();
+  const [filterCarteira, setFilterCarteira] = useState("all");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [targetOperator, setTargetOperator] = useState("");
+  const operatorName = (id?: string | null) =>
+    id ? operators.find(o => o.id === id)?.name ?? "Operador inativo" : "—";
+
   const {
     donors: filteredDonors,
     total: filteredTotal,
@@ -64,7 +76,38 @@ const Doadores = () => {
     loadMore,
     hasMore,
     isLoadingMore,
-  } = useDonorsPaged(debouncedSearch, filterType);
+  } = useDonorsPaged(debouncedSearch, filterType, canManageCarteira ? filterCarteira : "all");
+
+  // Trocar busca/filtros limpa a seleção (evita mover doadores que nem aparecem mais).
+  useEffect(() => { setSelectedIds(new Set()); }, [debouncedSearch, filterType, filterCarteira]);
+
+  const allLoadedSelected = filteredDonors.length > 0 && filteredDonors.every(d => selectedIds.has(d.id));
+  const toggleAllLoaded = () =>
+    setSelectedIds(allLoadedSelected ? new Set() : new Set(filteredDonors.map(d => d.id)));
+  const toggleOne = (id: number) =>
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+
+  const handleMoveSelected = async () => {
+    if (!targetOperator || selectedIds.size === 0) return;
+    const operatorId = targetOperator === "none" ? null : targetOperator;
+    try {
+      await assignDonors.mutateAsync({ donorIds: [...selectedIds], operatorId });
+      toast({
+        title: "Carteira atualizada",
+        description: operatorId
+          ? `${selectedIds.size} doador(es) movido(s) para a carteira de ${operatorName(operatorId)}.`
+          : `${selectedIds.size} doador(es) retirado(s) da carteira.`,
+      });
+      setSelectedIds(new Set());
+      setTargetOperator("");
+    } catch (error: any) {
+      toast({ title: "Erro ao mover doadores", description: error.message, variant: "destructive" });
+    }
+  };
   const { data: totalDonors } = useDonorsCount();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDonorId, setSelectedDonorId] = useState<string>("");
@@ -542,16 +585,69 @@ const Doadores = () => {
             <SelectItem value="desativado">Desativado</SelectItem>
           </SelectContent>
         </Select>
+        {canManageCarteira && (
+          <Select value={filterCarteira} onValueChange={setFilterCarteira}>
+            <SelectTrigger className="w-[200px]">
+              <Users className="w-4 h-4 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="Carteira" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as carteiras</SelectItem>
+              <SelectItem value="none">Sem carteira</SelectItem>
+              {operators.map(op => (
+                <SelectItem key={op.id} value={op.id}>{op.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
+
+      {canManageCarteira && selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+          <span className="text-sm font-medium">
+            {selectedIds.size.toLocaleString('pt-BR')} selecionado(s)
+          </span>
+          <Select value={targetOperator} onValueChange={setTargetOperator}>
+            <SelectTrigger className="w-[240px] bg-background">
+              <SelectValue placeholder="Mover para a carteira de..." />
+            </SelectTrigger>
+            <SelectContent>
+              {operators.map(op => (
+                <SelectItem key={op.id} value={op.id}>{op.name}</SelectItem>
+              ))}
+              <SelectItem value="none">Tirar da carteira (sem operador)</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button size="sm" onClick={handleMoveSelected} disabled={!targetOperator || assignDonors.isPending} className="gap-2">
+            {assignDonors.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+            Mover
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+            Limpar seleção
+          </Button>
+        </div>
+      )}
 
       <div className="rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
+              {canManageCarteira && (
+                <TableHead className="w-10">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 cursor-pointer"
+                    aria-label="Selecionar todos os doadores carregados"
+                    checked={allLoadedSelected}
+                    onChange={toggleAllLoaded}
+                  />
+                </TableHead>
+              )}
               <TableHead>Nome</TableHead>
               <TableHead>E-mail</TableHead>
               <TableHead>Telefone</TableHead>
               <TableHead>Classificação</TableHead>
+              {canManageCarteira && <TableHead>Operador</TableHead>}
               <TableHead>Total Doado</TableHead>
               <TableHead>Última Doação</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -560,7 +656,7 @@ const Doadores = () => {
           <TableBody>
             {donorsLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-32 text-center">
+                <TableCell colSpan={canManageCarteira ? 9 : 7} className="h-32 text-center">
                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                     <p className="text-xs">Carregando doadores...</p>
@@ -569,13 +665,27 @@ const Doadores = () => {
               </TableRow>
             ) : filteredDonors.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                <TableCell colSpan={canManageCarteira ? 9 : 7} className="h-32 text-center text-muted-foreground">
                   Nenhum doador encontrado.
                 </TableCell>
               </TableRow>
             ) : (
               filteredDonors.map((donor) => (
-                <TableRow key={donor.id} className="group hover:bg-muted/30 transition-colors">
+                <TableRow
+                  key={donor.id}
+                  className={`group hover:bg-muted/30 transition-colors ${selectedIds.has(donor.id) ? "bg-primary/5" : ""}`}
+                >
+                  {canManageCarteira && (
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 cursor-pointer"
+                        aria-label={`Selecionar ${donor.name}`}
+                        checked={selectedIds.has(donor.id)}
+                        onChange={() => toggleOne(donor.id)}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell className="font-medium">{donor.name}</TableCell>
                   <TableCell>{donor.email}</TableCell>
                   <TableCell>{donor.phone}</TableCell>
@@ -584,6 +694,11 @@ const Doadores = () => {
                       {typeLabel[donor.type]}
                     </Badge>
                   </TableCell>
+                  {canManageCarteira && (
+                    <TableCell className={donor.assigned_operator_id ? "text-sm" : "text-sm text-muted-foreground"}>
+                      {donor.assigned_operator_id ? operatorName(donor.assigned_operator_id) : "Sem carteira"}
+                    </TableCell>
+                  )}
                   <TableCell>
                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(donor.total_donated)}
                   </TableCell>
