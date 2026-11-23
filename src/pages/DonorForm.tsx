@@ -16,6 +16,11 @@ import { DonorType, typeLabel } from "@/lib/donationService";
 import { ArrowLeft, User, Phone, MapPin, CheckCircle2, Loader2, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { CARTEIRA_MANAGER_ROLES, useAssignDonors, useOperators } from "@/hooks/useOperators";
+
+// Valor do seletor para "nenhum operador" (o Select não aceita valor vazio).
+const SEM_CARTEIRA = "__sem_carteira__";
 
 const DonorForm = () => {
   const { id } = useParams();
@@ -172,19 +177,37 @@ const DonorForm = () => {
     }
 
     try {
+      let donorId: number | undefined;
       if (isEditMode) {
-        await updateDonor(parseInt(id), formData);
-        toast({
-          title: "Sucesso!",
-          description: "Doador atualizado com sucesso.",
-        });
+        donorId = parseInt(id);
+        await updateDonor(donorId, formData);
       } else {
-        await registerNewDonor(formData as any);
-        toast({
-          title: "Sucesso!",
-          description: "Doador cadastrado com sucesso.",
-        });
+        const created = await registerNewDonor(formData as any);
+        donorId = created?.id;
       }
+
+      // Carteira: só envia se mudou (a função do banco valida a permissão e registra auditoria).
+      if (canManageCarteira && donorId && operatorId !== originalOperatorId) {
+        try {
+          await assignDonors.mutateAsync({
+            donorIds: [donorId],
+            operatorId: operatorId === SEM_CARTEIRA ? null : operatorId,
+          });
+        } catch (err: any) {
+          toast({
+            title: "Doador salvo, mas a carteira não foi alterada",
+            description: err.message,
+            variant: "destructive",
+          });
+          navigate("/dashboard/doadores");
+          return;
+        }
+      }
+
+      toast({
+        title: "Sucesso!",
+        description: isEditMode ? "Doador atualizado com sucesso." : "Doador cadastrado com sucesso.",
+      });
       
       navigate("/dashboard/doadores");
     } catch (error: any) {
@@ -279,6 +302,31 @@ const DonorForm = () => {
                 />
               </div>
             </div>
+            {canManageCarteira && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="operador">Operador responsável (carteira)</Label>
+                  <Select value={operatorId} onValueChange={setOperatorId}>
+                    <SelectTrigger id="operador">
+                      <SelectValue placeholder="Sem carteira" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={SEM_CARTEIRA}>Sem carteira</SelectItem>
+                      {operators.map(op => (
+                        <SelectItem key={op.id} value={op.id}>{op.name}</SelectItem>
+                      ))}
+                      {/* Operador atual que ficou inativo continua visível */}
+                      {operatorId !== SEM_CARTEIRA && !operators.some(o => o.id === operatorId) && (
+                        <SelectItem value={operatorId}>Operador inativo</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Só este operador vê o doador no Telemarketing e as conversas dele no WhatsApp.
+                  </p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
