@@ -53,8 +53,32 @@ import { metaService, MetaConfig } from "@/services/metaService";
 import { metaHistoricoService } from "@/services/metaHistoricoService";
 import { useDonors } from "@/hooks/useDonors";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+
+/** Quem vê todas as conversas e as abas de gestão (templates, disparos, API...). */
+export const WHATSAPP_MANAGER_ROLES = ["admin", "gestor", "coordenador"];
+
+// Operador do telemarketing: só o chat, com as conversas da própria carteira
+// ou encaminhadas pela coordenação (o banco filtra — ver 20261123_whatsapp_por_carteira.sql).
+const WhatsAppOperador = () => (
+  <div className="space-y-4">
+    <div>
+      <h1 className="font-heading font-bold text-2xl text-foreground">WhatsApp</h1>
+      <p className="text-muted-foreground text-sm">
+        Conversas dos doadores da sua carteira e as encaminhadas pela coordenação.
+      </p>
+    </div>
+    <WhatsAppChat />
+  </div>
+);
 
 const WhatsApp = () => {
+  const { role } = useAuth();
+  if (role && !WHATSAPP_MANAGER_ROLES.includes(role)) return <WhatsAppOperador />;
+  return <WhatsAppGestao />;
+};
+
+const WhatsAppGestao = () => {
   const { donors } = useDonors();
   const { toast } = useToast();
   

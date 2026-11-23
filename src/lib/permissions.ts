@@ -11,7 +11,10 @@ export function canAccessPage(role: AppRole | null, path: string): boolean {
   if (page === '/dashboard/coordenacao') return role === 'coordenador';
   if (page === '/dashboard/metas') return ['operador', 'motoboy', 'coordenador'].includes(role);
   if (role === 'caixa') return page === '/dashboard/caixa';
-  if (role === 'operador') return ['/dashboard/telemarketing', '/dashboard/minhas-captacoes'].includes(page);
+  // Operador usa o WhatsApp compartilhado, vendo só as conversas da própria carteira
+  // ou encaminhadas pela coordenação (regra garantida no banco, ver
+  // 20261123_whatsapp_por_carteira.sql). Na tela ele só vê a aba Chat.
+  if (role === 'operador') return ['/dashboard/telemarketing', '/dashboard/minhas-captacoes', '/dashboard/whatsapp'].includes(page);
   if (role === 'motoboy') return ['/dashboard/caixa', '/dashboard/rotas', '/dashboard/doacoes-recebidas'].includes(page);
   if (page === '/dashboard/usuarios') return role === 'coordenador';
   if (page === '/dashboard/rotas') return role === 'coordenador';

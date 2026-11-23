@@ -26,8 +26,16 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import { useDebounced, cleanSearch } from "@/hooks/useDonorsPaged";
+import { UserCheck } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -44,7 +52,13 @@ interface Chat {
   last_message: string;
   last_message_at: string;
   unread_count: number;
+  donor_id?: number | null;
+  /** Operador para quem a coordenação encaminhou a conversa. */
+  assigned_operator_id?: string | null;
 }
+
+/** Quem vê todas as conversas, encaminha e pode excluir/limpar histórico. */
+const MANAGER_ROLES = ["admin", "gestor", "coordenador"];
 
 interface Message {
   id: string;
@@ -132,6 +146,60 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
   const [donorSearch, setDonorSearch] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { role, user } = useAuth();
+  const isManager = !!role && MANAGER_ROLES.includes(role);
+
+  // Operadores ativos (para a coordenação encaminhar conversas).
+  const { data: operators = [] } = useQuery({
+    queryKey: ["whatsapp-operators"],
+    enabled: isManager,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, name")
+        .eq("role", "operador")
+        .eq("status", "Ativo")
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string }[];
+    },
+    staleTime: 5 * 60_000,
+  });
+  const operatorName = (id?: string | null) =>
+    id ? operators.find(o => o.id === id)?.name || "operador" : null;
+
+  // "Nova conversa": busca no banco (o operador só acha doadores da própria carteira).
+  const donorTerm = cleanSearch(useDebounced(donorSearch, 300));
+  const { data: donorResults = [], isFetching: donorSearching } = useQuery({
+    queryKey: ["donors", "whatsapp-lookup", donorTerm, isManager ? "all" : user?.id],
+    enabled: isDialogOpen && (isManager || !!user?.id),
+    queryFn: async () => {
+      let q = supabase.from("donors").select("id, name, phone, type").order("name").limit(30);
+      if (!isManager) q = q.eq("assigned_operator_id", user!.id);
+      if (donorTerm) q = q.or(`name.ilike.%${donorTerm}%,phone.ilike.%${donorTerm}%`);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as Donor[];
+    },
+    staleTime: 60_000,
+  });
+
+  const assignChat = async (chat: Chat, operatorId: string | null) => {
+    const { error } = await supabase.rpc("assign_whatsapp_chat", {
+      p_chat_id: chat.id,
+      p_operator_id: operatorId,
+    });
+    if (error) {
+      toast({ title: "Erro ao encaminhar", description: error.message, variant: "destructive" });
+      return;
+    }
+    setSelectedChat(prev => (prev && prev.id === chat.id ? { ...prev, assigned_operator_id: operatorId } : prev));
+    toast({
+      title: operatorId ? "Conversa encaminhada" : "Conversa devolvida à coordenação",
+      description: operatorId ? `Agora ${operatorName(operatorId)} vê e responde esta conversa.` : undefined,
+    });
+    fetchChats();
+  };
 
   const fetchChats = async () => {
     const { data, error } = await supabase
@@ -520,10 +588,6 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
     }
   };
 
-  const filteredDonors = donors.filter(d =>
-    d.name.toLowerCase().includes(donorSearch.toLowerCase()) ||
-    (d.phone && d.phone.includes(donorSearch))
-  );
 
   return (
     <div className="flex h-[calc(100vh-14rem)] min-h-[500px] bg-card border rounded-xl overflow-hidden shadow-sm">
@@ -567,7 +631,12 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-xs text-muted-foreground">
-                    <p className="truncate pr-4">{chat.last_message || "Sem mensagens"}</p>
+                    <p className="truncate pr-4">
+                      {isManager && chat.assigned_operator_id && (
+                        <UserCheck className="inline w-3 h-3 mr-1 text-primary" aria-label={`Encaminhada para ${operatorName(chat.assigned_operator_id)}`} />
+                      )}
+                      {chat.last_message || "Sem mensagens"}
+                    </p>
                     {chat.unread_count > 0 && (
                       <Badge variant="default" className="h-4 min-w-4 px-1 rounded-full text-[10px] flex items-center justify-center bg-primary">
                         {chat.unread_count}
@@ -579,7 +648,9 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
             ))}
             {filteredChats.length === 0 && (
               <div className="p-10 text-center text-muted-foreground text-sm">
-                Nenhuma conversa encontrada.
+                {isManager || searchTerm
+                  ? "Nenhuma conversa encontrada."
+                  : "Nenhuma conversa da sua carteira ainda. Aqui aparecem os doadores da sua carteira e as conversas que a coordenação encaminhar para você."}
               </div>
             )}
           </div>
@@ -606,6 +677,11 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
                   <p className="text-[10px] text-muted-foreground mt-1 truncate">
                     {selectedChat.telefone}
                     {selectedChat.telefone.length === 12 && selectedChat.telefone.startsWith('55') && ' (Normalizado)'}
+                    {isManager && selectedChat.assigned_operator_id && (
+                      <span className="ml-2 text-primary font-medium">
+                        · Encaminhada para {operatorName(selectedChat.assigned_operator_id)}
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -634,13 +710,43 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
                       <Check className="w-4 h-4 mr-2" /> Selecionar mensagens
                     </DropdownMenuItem>
 
-                    <DropdownMenuItem onClick={clearChat}>
-                      <Trash2 className="w-4 h-4 mr-2" /> Limpar histórico
-                    </DropdownMenuItem>
+                    {isManager && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>
+                            <UserCheck className="w-4 h-4 mr-2" /> Encaminhar para operador
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent className="max-h-72 overflow-auto">
+                            {operators.length === 0 && (
+                              <DropdownMenuItem disabled>Nenhum operador ativo</DropdownMenuItem>
+                            )}
+                            {operators.map(op => (
+                              <DropdownMenuItem key={op.id} onClick={() => assignChat(selectedChat, op.id)}>
+                                {selectedChat.assigned_operator_id === op.id && <Check className="w-4 h-4 mr-2" />}
+                                {op.name}
+                              </DropdownMenuItem>
+                            ))}
+                            {selectedChat.assigned_operator_id && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => assignChat(selectedChat, null)}>
+                                  Devolver à coordenação
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={clearChat}>
+                          <Trash2 className="w-4 h-4 mr-2" /> Limpar histórico
+                        </DropdownMenuItem>
 
-                    <DropdownMenuItem onClick={handleDeleteChat} className="text-destructive font-bold">
-                      <XCircle className="w-4 h-4 mr-2" /> Excluir conversa
-                    </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleDeleteChat} className="text-destructive font-bold">
+                          <XCircle className="w-4 h-4 mr-2" /> Excluir conversa
+                        </DropdownMenuItem>
+                      </>
+                    )}
 
                     <DropdownMenuItem
                       className="text-muted-foreground opacity-50"
@@ -756,7 +862,10 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
             </div>
             <ScrollArea className="h-72 pr-4">
               <div className="space-y-2">
-                {filteredDonors.map(donor => (
+                {!isManager && (
+                  <p className="text-xs text-muted-foreground pb-1">Mostrando só os doadores da sua carteira.</p>
+                )}
+                {donorResults.map(donor => (
                   <div
                     key={donor.id}
                     onClick={() => startChatWithDonor(donor)}
@@ -764,17 +873,19 @@ export const WhatsAppChat = ({ donors = [] }: { donors?: Donor[] }) => {
                   >
                     <Avatar className="h-10 w-10">
                       <AvatarFallback className="bg-primary/5 text-primary text-xs font-bold">
-                        {donor.name.slice(0, 2).toUpperCase()}
+                        {(donor.name || "??").slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate">{donor.name}</p>
+                      <p className="font-semibold text-sm truncate">{donor.name || "Doador sem Nome"}</p>
                       <p className="text-xs text-muted-foreground">{donor.phone || "Sem telefone"}</p>
                     </div>
                   </div>
                 ))}
-                {filteredDonors.length === 0 && (
-                  <p className="text-center text-sm text-muted-foreground py-8">Nenhum doador encontrado.</p>
+                {donorResults.length === 0 && (
+                  <p className="text-center text-sm text-muted-foreground py-8">
+                    {donorSearching ? "Buscando..." : "Nenhum doador encontrado."}
+                  </p>
                 )}
               </div>
             </ScrollArea>
