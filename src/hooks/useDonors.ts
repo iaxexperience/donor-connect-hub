@@ -25,14 +25,23 @@ export const useDonors = ({ fetchList = true }: { fetchList?: boolean } = {}) =>
   const donationMutation = useMutation({
     mutationFn: ({ donorId, amount, campaignId, paymentMethod }: { donorId: number; amount: number; campaignId?: string; paymentMethod?: string }) => 
       registerDonation(donorId, amount, campaignId, paymentMethod),
-    onSuccess: (data, variables) => {
+    onSuccess: async (data, variables) => {
       // Invalidate queries to refresh data (totals, counts, and classification happen on DB side)
       queryClient.invalidateQueries({ queryKey: ['donors'] });
       queryClient.invalidateQueries({ queryKey: ['followups'] });
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-      
+
       // Auto-send WhatsApp Thank You message
-      const donor = donors.find(d => d.id === variables.donorId);
+      // Telas que não baixam a lista inteira (fetchList: false) buscam só este doador.
+      let donor: Pick<Donor, 'name' | 'phone'> | undefined = donors.find(d => d.id === variables.donorId);
+      if (!donor) {
+        const { data: one } = await supabase
+          .from('donors')
+          .select('name, phone')
+          .eq('id', variables.donorId)
+          .maybeSingle();
+        donor = one ?? undefined;
+      }
       if (donor && donor.phone) {
         sendWhatsAppThankYou(
           donor.name, 

@@ -38,6 +38,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useDonors } from "@/hooks/useDonors";
+import { useDonorsPaged, useDonorsCount, useDonorLookup, useDebounced, DONORS_PAGE_SIZE } from "@/hooks/useDonorsPaged";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { typeLabel, typeBadgeStyle } from "@/lib/donationService";
@@ -47,14 +48,29 @@ import DonorDonationHistory from "@/components/donors/DonorDonationHistory";
 const Doadores = () => {
   const navigate = useNavigate();
   const { role } = useAuth();
-  const { donors, addDonation, deleteDonor, isDonationPending, isLoading: donorsLoading, importDonors } = useDonors();
+  // Só as ações; a lista vem do banco de 100 em 100 (useDonorsPaged).
+  const { addDonation, deleteDonor, isDonationPending, importDonors } = useDonors({ fetchList: false });
   const { campaigns, isLoading: campaignsLoading } = useCampaigns();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
+  const debouncedSearch = useDebounced(searchTerm);
+  const {
+    donors: filteredDonors,
+    total: filteredTotal,
+    isLoading: donorsLoading,
+    isFetching: donorsFetching,
+    loadMore,
+    hasMore,
+    isLoadingMore,
+  } = useDonorsPaged(debouncedSearch, filterType);
+  const { data: totalDonors } = useDonorsCount();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDonorId, setSelectedDonorId] = useState<string>("");
+  const [donorQuery, setDonorQuery] = useState("");
+  const [selectedDonorName, setSelectedDonorName] = useState("");
+  const { data: donorMatches = [], isFetching: donorLookupLoading } = useDonorLookup(donorQuery);
   const [donationAmount, setDonationAmount] = useState<string>("");
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<string>("Pix");
@@ -76,6 +92,9 @@ const Doadores = () => {
     setIsDialogOpen(false);
     setDonationAmount("");
     setSelectedCampaignId("");
+    setSelectedDonorId("");
+    setSelectedDonorName("");
+    setDonorQuery("");
   };
 
   const handleDeleteDonor = async (id: number) => {
@@ -282,24 +301,15 @@ const Doadores = () => {
     reader.readAsArrayBuffer(file);
   };
 
-  const filteredDonors = donors.filter(d => {
-    const donorName = d.name || "";
-    const donorEmail = d.email || "";
-    const matchesSearch = donorName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         donorEmail.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === "all" || d.type === filterType;
-    return matchesSearch && matchesType;
-  });
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="font-heading font-bold text-2xl text-foreground">Doadores</h1>
-            {!donorsLoading && (
+            {totalDonors !== undefined && (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
-                {donors.length.toLocaleString('pt-BR')} cadastrados
+                {totalDonors.toLocaleString('pt-BR')} cadastrados
               </span>
             )}
           </div>
@@ -323,16 +333,53 @@ const Doadores = () => {
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
                   <Label>Doador</Label>
-                  <Select onValueChange={setSelectedDonorId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um doador" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {donors.map(d => (
-                        <SelectItem key={d.id} value={d.id.toString()}>{d.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {/* Busca pelo nome no banco (antes a lista trazia todos os milhares de doadores). */}
+                  {selectedDonorId ? (
+                    <div className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+                      <span className="font-medium">{selectedDonorName}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7"
+                        onClick={() => { setSelectedDonorId(""); setSelectedDonorName(""); }}
+                      >
+                        Trocar
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Digite ao menos 2 letras do nome..."
+                          className="pl-9"
+                          value={donorQuery}
+                          onChange={(e) => setDonorQuery(e.target.value)}
+                        />
+                      </div>
+                      {donorQuery.trim().length >= 2 && (
+                        <div className="max-h-56 overflow-auto rounded-md border">
+                          {donorLookupLoading && donorMatches.length === 0 ? (
+                            <p className="p-3 text-xs text-muted-foreground">Buscando...</p>
+                          ) : donorMatches.length === 0 ? (
+                            <p className="p-3 text-xs text-muted-foreground">Nenhum doador encontrado.</p>
+                          ) : (
+                            donorMatches.map(d => (
+                              <button
+                                key={d.id}
+                                type="button"
+                                className="block w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                                onClick={() => { setSelectedDonorId(String(d.id)); setSelectedDonorName(d.name || "Doador sem Nome"); }}
+                              >
+                                {d.name || "Doador sem Nome"}
+                                {d.phone && <span className="ml-2 text-xs text-muted-foreground">{d.phone}</span>}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -590,6 +637,20 @@ const Doadores = () => {
             )}
           </TableBody>
         </Table>
+        {!donorsLoading && filteredDonors.length > 0 && (
+          <div className="flex flex-col items-center gap-2 border-t p-4 sm:flex-row sm:justify-between">
+            <p className="text-xs text-muted-foreground">
+              Mostrando {filteredDonors.length.toLocaleString('pt-BR')} de {filteredTotal.toLocaleString('pt-BR')}
+              {donorsFetching && !isLoadingMore && " · atualizando..."}
+            </p>
+            {hasMore && (
+              <Button variant="outline" size="sm" onClick={() => loadMore()} disabled={isLoadingMore} className="gap-2">
+                {isLoadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
+                Carregar mais {Math.min(DONORS_PAGE_SIZE, filteredTotal - filteredDonors.length)}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
