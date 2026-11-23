@@ -6,7 +6,10 @@ import type { Donor } from "@/lib/donationService";
 export const DONORS_PAGE_SIZE = 100;
 
 // Colunas mostradas na lista (sem endereço, documento etc.).
-const LIST_COLUMNS = "id, name, email, phone, type, total_donated, last_donation_date";
+const LIST_COLUMNS = "id, name, email, phone, type, total_donated, last_donation_date, assigned_operator_id";
+
+/** Filtro de carteira: "all", "none" (sem carteira) ou o id do operador. */
+export type CarteiraFilter = string;
 
 /**
  * Texto da busca seguro para o filtro do Supabase: vírgula, parênteses, % e _
@@ -37,11 +40,11 @@ const normalize = (d: any): Donor => ({
  * A chave começa com 'donors': cadastrar, editar, excluir ou importar (que
  * invalidam 'donors') atualizam esta lista também.
  */
-export const useDonorsPaged = (search: string, type: string) => {
+export const useDonorsPaged = (search: string, type: string, carteira: CarteiraFilter = "all") => {
   const term = cleanSearch(search);
 
   const query = useInfiniteQuery({
-    queryKey: ["donors", "paged", term, type],
+    queryKey: ["donors", "paged", term, type, carteira],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const from = pageParam * DONORS_PAGE_SIZE;
@@ -52,6 +55,8 @@ export const useDonorsPaged = (search: string, type: string) => {
         .order("id", { ascending: true }) // desempate estável entre páginas
         .range(from, from + DONORS_PAGE_SIZE - 1);
       if (type !== "all") q = q.eq("type", type);
+      if (carteira === "none") q = q.is("assigned_operator_id", null);
+      else if (carteira !== "all") q = q.eq("assigned_operator_id", carteira);
       if (term) q = q.or(`name.ilike.%${term}%,email.ilike.%${term}%`);
 
       const { data, error, count } = await q;
