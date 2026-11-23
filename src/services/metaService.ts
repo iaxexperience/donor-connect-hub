@@ -79,6 +79,36 @@ async function callProxy(body: object): Promise<any> {
   return checkProxyResponse(data);
 }
 
+/**
+ * Traduz os erros de configuração mais comuns da Meta para algo que diga o que fazer.
+ * Mantém o texto original no fim para suporte técnico.
+ */
+function explainMetaError(metaErr: any, original: string): string {
+  const code = metaErr?.code;
+  const sub = metaErr?.error_subcode;
+  const text = String(metaErr?.message || original);
+
+  // "Object with ID 'X' does not exist, cannot be loaded due to missing permissions..."
+  if ((code === 100 && sub === 33) || /does not exist, cannot be loaded due to missing permissions/i.test(text)) {
+    const id = text.match(/ID '(\d+)'/)?.[1];
+    return `A Meta não reconhece o identificador ${id ? `${id} ` : ""}configurado. ` +
+      `Na aba API, confira se o campo "Phone Number ID" tem o ID do NÚMERO de telefone ` +
+      `(não o ID da conta WABA nem do aplicativo) e se o Access Token tem permissão sobre esse número. ` +
+      `Use "Testar conexão" para conferir. [Meta: ${original}]`;
+  }
+  // Token vencido ou inválido
+  if (code === 190) {
+    return `O Access Token da Meta venceu ou é inválido. Gere um token permanente (usuário do sistema) ` +
+      `no Gerenciador de Negócios e salve na aba API. [Meta: ${original}]`;
+  }
+  // Falta de permissão do token
+  if (code === 10 || code === 200) {
+    return `O Access Token não tem permissão para enviar mensagens por este número ` +
+      `(precisa de whatsapp_business_messaging e acesso à conta do WhatsApp). [Meta: ${original}]`;
+  }
+  return original;
+}
+
 // Checks for embedded errors returned by api-proxy (which always returns HTTP 200)
 function checkProxyResponse(data: any): any {
   if (!data) return data;
@@ -94,7 +124,7 @@ function checkProxyResponse(data: any): any {
     const msg = metaErr?.error_user_title
       ? `${metaErr.error_user_title}: ${metaErr.error_user_msg || metaErr.message}`
       : metaErr?.message || `Meta API retornou status ${data.__meta_status}`;
-    throw new Error(msg);
+    throw new Error(explainMetaError(metaErr, msg));
   }
 
   return data;
