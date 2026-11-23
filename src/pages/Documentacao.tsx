@@ -311,8 +311,10 @@ const Documentacao = () => {
                 {[
                   "Cadastro manual com campos completos (nome, e-mail, telefone, CPF/CNPJ, endereço)",
                   "Importação em massa via CSV — suporta UTF-8 e Windows-1252 (Excel)",
-                  "Busca e filtro por nome, e-mail e tipo",
-                  "Registro de doação diretamente pelo perfil do doador",
+                  "Lista carregada de 100 em 100 (botão \"Carregar mais\"), com busca por nome ou e-mail feita no banco",
+                  "Filtros por classificação e por carteira (operador)",
+                  "Operador responsável no cadastro e movimentação de vários doadores de uma vez entre carteiras",
+                  "Registro de doação com busca do doador pelo nome",
                   "Histórico completo de doações com total acumulado",
                   "Visualização no Kanban de captação",
                 ].map(f => (
@@ -326,6 +328,80 @@ const Documentacao = () => {
               <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Formato do CSV de importação</p>
               <CodeBlock code={`nome;email;telefone;cpf;tipo;nascimento;cep;endereco;numero;complemento;bairro;cidade;estado
 João Silva;joao@email.com;83999999999;123.456.789-00;recorrente;1985-06-20;58000-000;Rua das Flores;100;;Centro;João Pessoa;PB`} />
+            </div>
+          </section>
+
+          <Separator />
+
+          {/* CARTEIRAS */}
+          <section className="space-y-4">
+            <SectionTitle id="carteiras" icon={Shuffle} title="Carteiras" sub="Quem cuida de cada doador" />
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              A carteira é o conjunto de doadores de um operador de telemarketing. O operador só vê os doadores da própria
+              carteira no Telemarketing e as conversas deles no WhatsApp. Só administrador e coordenador mudam carteiras, e cada mudança fica registrada na auditoria.
+            </p>
+            <div className="space-y-1.5">
+              {[
+                "Automática: em Carteiras → Distribuição de Carteiras, informe quantos doadores cada operador recebe e clique em Distribuir Automaticamente (rodízio entre os doadores sem carteira).",
+                "Um doador: no cadastro do doador, campo \"Operador responsável (carteira)\".",
+                "Vários de uma vez: em Doadores, marque as caixas de seleção e use \"Mover para a carteira de…\". Também é possível tirar da carteira.",
+                "Por planilha: na importação, a coluna \"operador\" já define a carteira.",
+                "Operador desativado: os doadores dele são redistribuídos.",
+              ].map(f => (
+                <div key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <CheckCircle2 className="w-3 h-3 text-green-500 mt-0.5 shrink-0" />{f}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <Separator />
+
+          {/* TELEMARKETING */}
+          <section className="space-y-4">
+            <SectionTitle id="telemarketing" icon={Phone} title="Telemarketing" sub="Fila de ligações por carteira" />
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Cada operador recebe a fila do dia com os doadores da própria carteira que estão prontos para contato.
+            </p>
+            <div className="space-y-1.5">
+              {[
+                { label: "Recorrente", value: "volta à fila 30 dias após a última doação" },
+                { label: "Esporádico", value: "volta à fila 60 dias após a última doação" },
+                { label: "Único", value: "volta à fila 90 dias após a última doação" },
+                { label: "Lead / nunca doou", value: "sempre na fila" },
+                { label: "Desativado", value: "nunca aparece" },
+              ].map(r => (
+                <div key={r.label} className="flex items-start justify-between p-3 rounded-lg bg-muted/20 text-xs gap-4">
+                  <span className="font-bold text-foreground shrink-0">{r.label}</span>
+                  <span className="text-muted-foreground text-right">{r.value}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Quem já recebeu ligação hoje sai da fila do dia. Quem foi contatado e não doou vai para o final da fila.
+              Em <strong>Minhas Captações</strong> o operador acompanha as doações que ele captou.
+            </p>
+          </section>
+
+          <Separator />
+
+          {/* METAS */}
+          <section className="space-y-4">
+            <SectionTitle id="metas" icon={Target} title="Metas & Coordenação" />
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              A coordenação define metas diárias e mensais para operadores, mensageiros e para a própria coordenação.
+              Cada pessoa acompanha as suas em <strong>Metas</strong>, com quadro de medalhas.
+            </p>
+            <div className="space-y-1.5">
+              {[
+                "Operador: ligações do dia, contatos efetivos, doações captadas, valor captado e recebido, doadores reativados e novos, taxa de conversão",
+                "Painel da Coordenação: resultado do mês comparado ao mês anterior, meta mensal e metas diárias da equipe",
+                "Atualização automática a cada minuto no painel",
+              ].map(f => (
+                <div key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <CheckCircle2 className="w-3 h-3 text-green-500 mt-0.5 shrink-0" />{f}
+                </div>
+              ))}
             </div>
           </section>
 
@@ -403,10 +479,18 @@ João Silva;joao@email.com;83999999999;123.456.789-00;recorrente;1985-06-20;5800
           <section className="space-y-4">
             <SectionTitle id="whatsapp" icon={MessageSquare} title="WhatsApp" sub="Integração Meta Business API" />
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Comunicação direta com doadores via WhatsApp Business. Suporta chat em tempo real, histórico de conversas e envio de templates aprovados pela Meta.
+              Comunicação direta com doadores via WhatsApp Business. Um único número é compartilhado pela equipe; o que cada pessoa vê depende do perfil.
             </p>
             <div className="space-y-1.5">
-              {["Envio de templates aprovados (agradecimento, follow-up, automação)", "Chat em tempo real com histórico por doador", "Proxy seguro via Edge Function para a Meta API"].map(f => (
+              {[
+                "Operador: vê só a aba Chat, com as conversas dos doadores da própria carteira e as encaminhadas para ele",
+                "Coordenação (admin, gestor, coordenador): vê todas as conversas e usa ⋮ → Encaminhar para operador / Devolver à coordenação",
+                "Contatos que ainda não são doadores ficam com a coordenação até serem encaminhados",
+                "Limpar histórico e excluir conversa: só a coordenação",
+                "Envio de templates aprovados (agradecimento, follow-up, automação) e disparos em massa",
+                "Chat em tempo real com fotos, áudios, vídeos e documentos",
+                "Configuração na aba API: Phone Number ID, WABA ID e Access Token, com Testar conexão",
+              ].map(f => (
                 <div key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
                   <CheckCircle2 className="w-3 h-3 text-green-500 mt-0.5 shrink-0" />{f}
                 </div>
@@ -425,6 +509,47 @@ João Silva;joao@email.com;83999999999;123.456.789-00;recorrente;1985-06-20;5800
             <div className="p-3 rounded-xl bg-muted/20 text-xs text-muted-foreground space-y-1">
               <p><strong>Métodos aceitos:</strong> Dinheiro, PIX, Cartão de Crédito, Cartão de Débito, Boleto</p>
               <p><strong>Recibo:</strong> Número sequencial DOA-YYYY-NNNNNN com validação pública em <code className="font-mono">/validate-receipt/:hash</code></p>
+            </div>
+          </section>
+
+          <Separator />
+
+          {/* COLETA */}
+          <section className="space-y-4">
+            <SectionTitle id="coleta" icon={Truck} title="Coleta & Recebimentos" />
+            <div className="space-y-1.5">
+              {[
+                "Gestão de Atribuições: a coordenação seleciona os doadores com coleta pendente e atribui a um mensageiro",
+                "Rotas de Coleta: a coordenação monta as rotas; o mensageiro vê o próprio itinerário",
+                "Doações Recebidas: conferência do que foi coletado e confirmado no período",
+                "Meu Caixa: cada usuário vê só as doações que registrou ou coletou, com abertura e fechamento do dia",
+                "Doações Físicas: itens não financeiros vinculados ao setor e coordenador responsável",
+                "Recibos com QR Code validados publicamente em /validar-recibo",
+              ].map(f => (
+                <div key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <CheckCircle2 className="w-3 h-3 text-green-500 mt-0.5 shrink-0" />{f}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <Separator />
+
+          {/* SEGURANÇA */}
+          <section className="space-y-4">
+            <SectionTitle id="seguranca" icon={ShieldCheck} title="Segurança" />
+            <div className="space-y-1.5">
+              {[
+                "Regras de acesso aplicadas no banco de dados, não só na tela",
+                "Visitantes sem login não acessam nenhum dado (exceto a validação de recibo)",
+                "Chaves do ASAAS e do Banco do Brasil visíveis só para admin, gestor e coordenador",
+                "Troca de senha obrigatória no primeiro acesso, quando definida",
+                "IAX Guardian: recebe eventos de login falho e mudanças de perfil, e pode bloquear acessos suspeitos",
+              ].map(f => (
+                <div key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <CheckCircle2 className="w-3 h-3 text-green-500 mt-0.5 shrink-0" />{f}
+                </div>
+              ))}
             </div>
           </section>
 
