@@ -60,17 +60,41 @@ export const WHATSAPP_MANAGER_ROLES = ["admin", "gestor", "coordenador"];
 
 // Operador do telemarketing: só o chat, com as conversas da própria carteira
 // ou encaminhadas pela coordenação (o banco filtra — ver 20261123_whatsapp_por_carteira.sql).
-const WhatsAppOperador = () => (
-  <div className="space-y-4">
-    <div>
-      <h1 className="font-heading font-bold text-2xl text-foreground">WhatsApp</h1>
-      <p className="text-muted-foreground text-sm">
-        Conversas dos doadores da sua carteira e as encaminhadas pela coordenação.
-      </p>
+const WhatsAppOperador = () => {
+  // Trava de segurança: o chat só abre para o operador depois que a regra
+  // "cada um vê a sua carteira" estiver aplicada no banco. Sem ela, o banco
+  // ainda libera todas as conversas para qualquer usuário logado.
+  const [ruleReady, setRuleReady] = useState<boolean | null>(null);
+  useEffect(() => {
+    supabase.rpc("wa_sees_all").then(({ error }) => setRuleReady(!error));
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="font-heading font-bold text-2xl text-foreground">WhatsApp</h1>
+        <p className="text-muted-foreground text-sm">
+          Conversas dos doadores da sua carteira e as encaminhadas pela coordenação.
+        </p>
+      </div>
+      {ruleReady === null ? (
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      ) : ruleReady ? (
+        <WhatsAppChat />
+      ) : (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>WhatsApp ainda não liberado para operadores</AlertTitle>
+          <AlertDescription>
+            A coordenação precisa concluir a configuração de acesso por carteira. Tente novamente mais tarde.
+          </AlertDescription>
+        </Alert>
+      )}
     </div>
-    <WhatsAppChat />
-  </div>
-);
+  );
+};
 
 const WhatsApp = () => {
   const { role } = useAuth();
